@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Privacy-Enhanced Techniques: From Theory to Application</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f9f9f9;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: auto;
+            padding: 20px;
+        }
+
+        header {
+            background-color: #0073e6;
+            color: #fff;
+            padding: 30px 0;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            font-size: 1.1rem;
+        }
+
+        main {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        h2 {
+            color: #0073e6;
+            margin-bottom: 15px;
+        }
+
+        ul {
+            list-style-type: disc;
+            margin-left: 20px;
+        }
+
+        .grading-scale {
+            list-style-type: none;
+        }
+
+        .grading-scale li {
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.9rem;
+            border: 2px solid #000;
+        }
+
+        table th, table td {
+            padding: 10px;
+            text-align: left;
+            border: 2px solid #000;
+        }
+
+        table th {
+            background-color: #f2f2f2;
+            font-weight: 700;
+        }
+
+        table tr:hover {
+            background-color: #f9f9f9;
+        }
+
+        footer {
+            background-color: #0073e6;
+            color: #fff;
+            text-align: center;
+            padding: 10px 0;
+            margin-top: 20px;
+        }
+
+        footer p {
+            margin: 0;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Privacy-Enhanced Techniques: From Theory to Application</h1>
+            <p><strong>Instructor:</strong> Ning Luo</p>
+            <p><strong>Time:</strong> Tue 9:00-10:20 PM | <strong>Location:</strong> TBD</p>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="description">
+            <h2>Course Description</h2>
+            <p>This course provides an in-depth exploration of privacy-enhancing technologies (PETs), from theoretical foundations to their practical deployment in real-world applications. Students will study advanced cryptographic protocols such as secure multi-party computation, oblivious transfer, ORAM, and zero-knowledge proofs and their implementations in frameworks like MP-SPDZ and ObliVM. The course emphasizes developing efficient, safe systems and using formal verification techniques to analyze their security and improve their scalability. Throughout the course, students will gain hands-on experience with tools and programming frameworks designed for PETs while exploring emerging research in private information retrieval, searchable encryption, and secure enclaves. By the end of the course, students will be equipped to design, analyze, and implement privacy-preserving solutions. </p>
+        </section>
+
+        <section class="learning-outcomes">
+            <h2>Learning Outcomes</h2>
+            <ul>
+                <li>Understand the theoretical foundations of privacy-enhancing technologies (PETs).</li>
+                <li>Understand secure development using formal methods and programming languages.</li>
+                <li>Analyze and compare privacy-preserving cryptographic protocols.</li>
+                <li>Implement and apply privacy-preserving frameworks.</li>
+            </ul>
+        </section>
+
+        <section class="grading">
+            <h2>Grading Policy</h2>
+            <ul class="grading-scale">
+                <li><strong>A:</strong> ≥ 90%</li>
+                <li><strong>B:</strong> 80% - 89%</li>
+                <li><strong>C:</strong> 70% - 79%</li>
+                <li><strong>D:</strong> 60% - 69%</li>
+                <li><strong>F:</strong> &lt; 60%</li>
+            </ul>
+            <p><strong>Class Participation:</strong> 10%<br>
+            <strong>Reading Assignment:</strong> 30%<br>
+            <strong>Project:</strong> 60%<br>
+            <strong>Proposal:</strong> 10%<br>
+            <strong>Mid-term report and presentation:</strong> 10%<br>
+            <strong>Final presentation:</strong> 20%<br>
+            <strong>Final report:</strong> 20%</p>
+        </section>
+
+        <section class="schedule">
+            <h2>Course Schedule</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Week</th>
+                        <th>Topic</th>
+                        <th>Required Reading</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>1</td>
+                        <td>Secure Multiparty Computations, Oblivious Transfer, Garbled Circuits, GMW Protocol</td>
+                        <td>
+                            Yao, A.C.: Protocols for secure computations.<br>
+                            Goldreich, O., Micali, S., Wigderson, A.: How to play any mental game.<br>
+                            Naor, M., & Pinkas, B. (2001). Efficient oblivious transfer protocol.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>2</td>
+                        <td>ORAM and Oblivious Data Structures</td>
+                        <td>
+                            Goldreich, O., & Ostrovsky, R. (1996). Software protection and simulation on oblivious RAMs.<br>
+                            Stefanov, E., et al. (2018). Path ORAM: an extremely simple oblivious RAM protocol.<br>
+                            Wang, X. S., et al. (2014). Oblivious data structures.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>3</td>
+                        <td>Multi-Party Computation (MPC) Implementation Frameworks</td>
+                        <td>
+                            Keller, M. (2020). MP-SPDZ: A versatile framework for multi-party computation.<br>
+                            Songhori, E. M., et al. TinyGarble: Highly Compressed and Scalable Garbled Circuits.<br>
+                            Liu, C., et al. ObliVM: A Programming Framework for Secure Computation.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>4</td>
+                        <td>Programming Languages for Obliviousness and MPC</td>
+                        <td>
+                            Rastogi, A., et al. Wysteria: A programming language for generic, mixed-mode multiparty computations.<br>
+                            Darais, D., et al. A language for probabilistically oblivious computation.<br>
+                            Liu, C., et al. Memory trace oblivious program execution.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>5</td>
+                        <td>Private Information Retrieval</td>
+                        <td>
+                            Chor, B., et al. Private information retrieval.<br>
+                            Devet, C., Goldberg, I., & Heninger, N. (2012). Optimally robust private information retrieval.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>6</td>
+                        <td>Searchable Encryption</td>
+                        <td>
+                            Song, D. X., Wagner, D., & Perrig, A. (2000). Practical techniques for searches on encrypted data.<br>
+                            Pappas, V., et al. Blind seer: A scalable private DBMS.<br>
+                            Kamara, S., Papamanthou, C., & Roeder, T. (2012). Dynamic searchable symmetric encryption.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>7</td>
+                        <td>Private Set Intersection</td>
+                        <td>
+                            Pinkas, B., Schneider, T., & Zohner, M. (2018). Scalable private set intersection based on OT extension.<br>
+                            De Cristofaro, E., & Tsudik, G. (2010). Practical private set intersection protocols.<br>
+                            Huang, Y., Evans, D., & Katz, J. (2012). Private set intersection: Are garbled circuits better than custom protocols?
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>8</td>
+                        <td>Mid-term project presentation</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>9</td>
+                        <td>Secure Enclaves</td>
+                        <td>
+                            Costan, V. (2016). Intel SGX explained.<br>
+                            Sabt, M., Achemlal, M., & Bouabdallah, A. (2015). Trusted execution environment.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>10</td>
+                        <td>Zero Knowledge Proof and Verifiable Computation</td>
+                        <td>
+                            Parno, B., Howell, J., Gentry, C., & Raykova, M. (2016). Pinocchio: Nearly practical verifiable computation.<br>
+                            Groth, J. (2016). On the size of pairing-based non-interactive arguments.<br>
+                            Ben-Sasson, E., et al. SNARKs for C: Verify program executions succinctly and with zero knowledge.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>11</td>
+                        <td>ZKP Compiler and Acceleration</td>
+                        <td>
+                            Ozdemir, A., et al. (2022). CirC: Compiler infrastructure for proof systems.<br>
+                            Wu, H., Zheng, W., Chiesa, A., Popa, R. A., & Stoica, I. (2018). DIZK: A distributed zero-knowledge proof system.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>12</td>
+                        <td>Formal Verification of ZKP</td>
+                        <td>
+                            Wen, H., et al. (2024). Practical Security Analysis of Zero-Knowledge Proof Circuits.<br>
+                            Pailoor, S., et al. (2023). Automated detection of under-constrained circuits in ZK proofs.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>13-14</td>
+                        <td>Final project presentation</td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 Privacy-Enhanced Techniques Course</p>
+    </footer>
+</body>
+</html>
