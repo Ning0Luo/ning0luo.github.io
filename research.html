@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Research - My Academic Website</title>
+    <style>
+         body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+        }
+        header {
+            background: #FF5F05;
+            color: #13294b;
+            padding: 1rem 0;
+            text-align: center;
+        }
+        
+        nav {
+            display: flex;
+            justify-content: center;
+            background: #faa371;
+        }
+        nav a {
+            color: #13294b;
+            padding: 0.5rem 1rem;
+            text-decoration: none;
+        }
+        nav a:hover {
+            background: #cc4c04;
+        }
+        .container {
+            padding: 2rem;
+        }
+        .container div {
+            margin-top: 50px;
+            font-size: 24px;
+        }
+        .container ul {
+            list-style: none;
+            padding: 0;
+            margin-left: 20px;
+            font-size: 18px;
+        }
+        .container ul li {
+            margin-top: 10px;
+        }
+        .container a {
+            color: #FF5F05;
+            text-decoration: none;
+        }
+        .container a:hover {
+            text-decoration: underline;
+        }
+        footer {
+            background: #FF5F05;
+            color: #fff;
+            text-align: center;
+            padding: 1rem 0;
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Ning Luo 罗 宁</h1>
+    </header>
+    <nav>
+        <a href="index.html">Home</a>
+        <a href="research.html">Research</a>
+        <a href="students.html">Students</a>
+        <a href="teaching.html">Teaching</a>
+        <a href="service.html">Service</a>
+
+        <a href="CV_Ning_Luo.pdf">CV</a>
+
+    </nav>
+
+    <div class="container">
+        <div>Publications</div>
+        <div style="margin-left: 20px; font-size: 18px; margin-top: 10px"> * indicates equal contribution</div>
+        <ul>
+            <li>
+                <em><strong> ZKSMT: A VM for Proving SMT Theorems in Zero Knowledge </strong></em><br>
+                Daniel Luick, John Kolesar, Timos Antonopoulos, William R. Harris, James Parker, Ruzica Piskac, Eran Tromer, Xiao Wang, Ning Luo.<br>
+                USENIX Security 2024<br>
+                <a href="https://eprint.iacr.org/2023/1762">PDF</a>
+            </li>
+            <li>
+                <em><strong> Privacy-Preserving Regular Expression Matching using Nondeterministic Finite Automata </strong></em><br>
+                Ning Luo<sup>*</sup>, Chenkai Weng<sup>*</sup>, Jaspal Singh, Gefei Tan, Ruzica Piskac, Mariana Raykova<br>
+                ESORICS 2024<br>
+                <a href="https://eprint.iacr.org/2023/643">PDF</a>
+            </li>
+            <li>
+                <em><strong> Ou: Automating the Parallelization of Zero-Knowledge Protocols </strong></em><br>
+                Yuyang Sang<sup>*</sup>, Ning Luo<sup>*</sup>, Samuel Judson, Ben Chaimberg, Timos Antonopoulos, Ruzica Piskac, Xiao Wang, Zhong Shao<br>
+                CCS 2023<br>
+                <a href="https://eprint.iacr.org/2023/657">PDF</a>
+            </li>
+            <li>
+                <em><strong> Proving UNSAT in Zero Knowledge </strong></em><br>
+                Ning Luo, Timos Antonopoulos, William Harris, Ruzica Piskac, Eran Tromer, Xiao Wang<br>
+                CCS 2022 (Distinguished paper award)<br>
+                <a href="https://eprint.iacr.org/2022/206.pdf">PDF</a>
+            </li>
+            <li>
+                <em><strong> ppSAT: Towards Two-Party Private SAT Solving</strong></em><br>
+                Ning Luo, Samuel Judson, Timos Antonopoulos, Ruzica Piskac, Xiao Wang<br>
+                USENIX Security 2022<br>
+                <a href="https://eprint.iacr.org/2021/1584">PDF</a>
+            </li>
+            <li>
+                <em><strong>Looking for the Maximum Independent Set: A New Perspective on the Stable Path Problem</strong></em><br>
+                Yichao Cheng, Ning Luo, Jingxuan Zhang, Timos Antonopoulos, Ruzica Piskac, Qiao Xiang<br>
+                INFOCOM 2021<br>
+                <a href="https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=9488682">PDF</a>
+            </li>
+            <li>
+                <em><strong>Privacy Preserving CTL Model Checking through Oblivious Graph Algorithms</strong></em><br>
+                Samuel Judson, Ning Luo, Timos Antonopoulos, Ruzica Piskac<br>
+                WPES 2020<br>
+                <a href="https://dl.acm.org/doi/pdf/10.1145/3411497.3420212">PDF</a>
+            </li>
+        </ul>
+
+        <div>Awards</div>
+        <ul>
+            <li><strong>Yale Computer Science Distinguished Dissertation Award</strong>, 2023</li>
+            <li><strong>EECS Rising Stars</strong>, 2023</li>
+            <li><strong>Yale Roberts Innovation Award</strong>, 2023</li>
+            <li><strong>Distinguished Paper Award, ACM CCS</strong>, 2022</li>
+            <li><strong>USENIX Security Student Grant</strong>, 2022</li>
+            <li><strong>VMCAI Student Fellowship</strong>, 2022</li>
+            <li><strong>CAV Student Fellowship</strong>, 2019</li>
+        </ul>
+
+        <div>Talks</div>
+        <ul>
+            <li>Oct. 2023, Incorporating Privacy-preserving Constraints into Automated Reasoning<br>Northeastern Formal Methods Meetup, Yale University</li>
+            <li>Oct. 2023, Proving SMT Theorems in Zero Knowledge<br>DARPA SIEVE PI Meeting</li>
+            <li>Apr. 2023, Proving UNSAT in Zero Knowledge<br><strong>Invited talk</strong> at Satisfiability: Theory, Practice, and Beyond Workshop, Simons Institute, University of California, Berkeley</li>
+            <li>Apr. 2023, Automating the Parallelization of Zero-Knowledge Protocols<br>DARPA SIEVE PI Meeting</li>
+            <li>Nov. 2022, Proving UNSAT in Zero Knowledge<br>ACM SIGSAC Conference on Computer and Communications Security</li>
+            <li>Aug. 2022, ppSAT: Towards Two-Party Privacy-Preserving SAT Solving<br>USENIX Security Symposium</li>
+            <li>Jan. 2022, Privacy-Preserving Formal Methods: Proving UNSAT in Zero Knowledge<br><strong>Invited talk</strong> at New York University</li>
+            <li>Dec. 2019, Privacy-Preserving Model Checking<br><strong>Invited talk</strong> at Microsoft</li>
+        </ul>
+    </div>
+
+    <footer>
+        <p>&copy; 2024 Ning Luo</p>
+    </footer>
+</body>
+</html>
