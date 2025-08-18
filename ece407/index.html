@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ECE 407 · Cryptography (Fall 2025)</title>
+  <meta name="description" content="ECE 407: Cryptography — course website for Fall 2025." />
+  <style>
+    :root {
+      --uiuc-orange: #E84A27;
+      --uiuc-blue: #13294B;
+      --text: #1b1b1b;
+      --muted: #555;
+      --bg: #ffffff;
+      --card: #fafafa;
+      --border: #e5e7eb;
+      --shadow: 0 8px 24px rgba(0,0,0,0.08);
+      --radius: 14px;
+    }
+    html, body { margin: 0; padding: 0; font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Ubuntu, "Helvetica Neue", Arial; color: var(--text); background: var(--bg); }
+    .site-header { position: sticky; top: 0; z-index: 50; backdrop-filter: saturate(180%) blur(8px); background: color-mix(in srgb, var(--bg) 75%, white); border-bottom: 1px solid var(--border); transition: all .2s ease; }
+    .site-header.compact { box-shadow: var(--shadow); }
+    .nav { max-width: 1100px; margin: 0 auto; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; }
+    .brand { display: flex; gap: 12px; align-items: center; font-weight: 700; color: var(--uiuc-blue); }
+    .brand .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--uiuc-orange); }
+    .nav a { text-decoration: none; color: var(--uiuc-blue); font-weight: 600; padding: 8px 10px; border-radius: 8px; }
+    .nav a:hover { background: color-mix(in srgb, var(--uiuc-orange) 14%, transparent); }
+    .hero { background: linear-gradient(135deg, color-mix(in srgb, var(--uiuc-orange) 20%, white), #fff); border-bottom: 1px solid var(--border); }
+    .hero-inner { max-width: 1100px; margin: 0 auto; padding: 42px 20px; display: grid; grid-template-columns: 1.2fr .8fr; gap: 28px; align-items: center; }
+    .hero h1 { margin: 0 0 8px; font-size: clamp(28px, 3.6vw, 46px); line-height: 1.1; color: var(--uiuc-blue); }
+    .subtitle { color: var(--muted); font-size: 16px; }
+    .facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 18px; }
+    .chip { background: var(--bg); border: 1px solid var(--border); border-left: 4px solid var(--uiuc-orange); padding: 10px 12px; border-radius: 10px; font-size: 14px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px; }
+    section { scroll-margin-top: 84px; }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 30px 20px; }
+    .section-title { color: var(--uiuc-blue); margin: 0 0 10px; font-size: clamp(22px, 2.6vw, 30px); }
+    .section-sub { color: var(--muted); margin: 0 0 18px; }
+    .table { width: 100%; border-collapse: collapse; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .table th, .table td { padding: 14px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .table th { text-align: left; background: color-mix(in srgb, var(--uiuc-orange) 12%, white); color: var(--uiuc-blue); font-weight: 700; }
+    .table tr:hover td { background: color-mix(in srgb, var(--uiuc-orange) 6%, transparent); }
+    .week { font-weight: 700; color: var(--uiuc-blue); }
+    .date { white-space: nowrap; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .topic, .subtopics { font-weight: 600; color: var(--uiuc-blue); }
+    footer { border-top: 1px solid var(--border); }
+    .footer-inner { max-width: 1100px; margin: 0 auto; padding: 24px 20px; color: var(--muted); display: flex; justify-content: space-between; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+  <header class="site-header" id="top">
+    <nav class="nav">
+      <div class="brand"><span class="dot"></span> ECE 407 · Cryptography</div>
+      <div class="links">
+        <a href="#overview">Overview</a>
+        <a href="#schedule">Schedule</a>
+        <a href="#policies">Policies</a>
+      </div>
+    </nav>
+  </header>
+  <div class="hero">
+    <div class="hero-inner">
+      <div>
+        <h1>Cryptography: From Theory to Practice</h1>
+        <p class="subtitle">Fall 2025 · University of Illinois Urbana–Champaign</p>
+        <div class="facts">
+          <div class="chip"><strong>Instructor:</strong> Ning Luo</div>
+          <div class="chip"><strong>TA:</strong> <a href="https://liutianyi.site/" target="_blank">Tianyi Liu</a></div>
+          <div class="chip"><strong>Time:</strong> Tue & Thu · 5:00–6:20 PM</div>
+          <div class="chip"><strong>Location:</strong> 1013 ECEB</div>
+          <div class="chip"><strong>Canvas:</strong> TBD</div>
+          <div class="chip"><strong>Office Hour:</strong> By appointment</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <main>
+    <section id="overview" class="wrap">
+      <h2 class="section-title">Overview</h2>
+      <p class="section-sub">This course covers modern cryptography with a focus on symmetric-key and public-key primitives, security models, basic number theory, and proofs. Applications include authenticated encryption, signatures, zero-knowledge proof, and selected protocols.</p>
+      <p><strong>Textbooks:</strong> <a href="https://toc.cryptobook.us/" target="_blank">Boneh & Shoup: A Graduate Course in Applied Cryptography</a>, <a href="https://eclass.uniwa.gr/modules/document/file.php/CSCYB105/Reading%20Material/%5BJonathan_Katz%2C_Yehuda_Lindell%5D_Introduction_to_Mo%282nd%29.pdf" target="_blank">Katz & Lindell: Introduction to Modern Cryptography (2nd Ed.)</a></p>
+    </section>
+    <section id="schedule" class="wrap">
+      <h2 class="section-title">Course Schedule (Tentative)</h2>
+      <p class="section-sub">Each week has two classes: Tuesday and Thursday. Dates are MM.DD.</p>
+      <div class="card">
+        <table class="table" aria-label="Course schedule">
+          <thead>
+            <tr>
+              <th style="width: 80px;">Week</th>
+              <th style="width: 90px;">Tue (MM.DD)</th>
+              <th style="width: 28%;">Tuesday Topic</th>
+              <th>Thursday Topic</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="week">1</td>
+              <td class="date">8.26</td>
+              <td class="topic">Introduction and background on cryptography</td>
+              <td class="subtopics">One-time pad, information-theoretic security</td>
+            </tr>
+            <tr>
+              <td class="week">2</td>
+              <td class="date">9.2</td>
+              <td class="topic">Stream ciphers</td>
+              <td class="subtopics">PRG, pseudorandomness, CPA</td>
+            </tr>
+            <tr>
+              <td class="week">3</td>
+              <td class="date">9.9</td>
+              <td class="topic">Block ciphers; DES and attacks</td>
+              <td class="subtopics">AES, block ciphers from PRG, pRP, pRF</td>
+            </tr>
+            <tr>
+              <td class="week">4</td>
+              <td class="date">9.16</td>
+              <td class="topic">One-time key vs. many-time key; modes of operation</td>
+              <td class="subtopics">Padding-oracle attacks</td>
+            </tr>
+            <tr>
+              <td class="week">5</td>
+              <td class="date">9.23</td>
+              <td class="topic">Message Authentication Codes (MAC)</td>
+              <td class="subtopics">Generic birthday attack, cryptographic hash</td>
+            </tr>
+            <tr>
+              <td class="week">6</td>
+              <td class="date">9.3</td>
+              <td class="topic">Merkle–Damgård paradigm; Merkle hash tree</td>
+              <td class="subtopics">HMAC, authenticated encryption</td>
+            </tr>
+            <tr>
+              <td class="week">7</td>
+              <td class="date">10.7</td>
+              <td class="topic">Midterm</td>
+              <td class="subtopics">First presentation</td>
+            </tr>
+            <tr>
+              <td class="week">8</td>
+              <td class="date">10.14</td>
+              <td class="topic">Number theory</td>
+              <td class="subtopics">Diffie–Hellman key exchange</td>
+            </tr>
+            <tr>
+              <td class="week">9</td>
+              <td class="date">10.21</td>
+              <td class="topic">Trapdoor permutations; public-key encryption</td>
+              <td class="subtopics">RSA-based public-key encryption</td>
+            </tr>
+            <tr>
+              <td class="week">10</td>
+              <td class="date">10.28</td>
+              <td class="topic">Discrete-log–based public-key encryption</td>
+              <td class="subtopics">Digital signatures</td>
+            </tr>
+            <tr>
+              <td class="week">11</td>
+              <td class="date">11.4</td>
+              <td class="topic">RSA signature and BLS signature</td>
+              <td class="subtopics">One-way functions, Lamport signature</td>
+            </tr>
+            <tr>
+              <td class="week">12</td>
+              <td class="date">11.11</td>
+              <td class="topic">Blind signatures</td>
+              <td class="subtopics">Multi-party computation (MPC)</td>
+            </tr>
+            <tr>
+              <td class="week">13</td>
+              <td class="date">11.18</td>
+              <td class="topic">Zero-knowledge proof</td>
+              <td class="subtopics">Indistinguishability obfuscation</td>
+            </tr>
+            <tr>
+              <td class="week">14</td>
+              <td class="date">11.25</td>
+              <td class="topic">Fall Break</td>
+              <td class="subtopics">—</td>
+            </tr>
+            <tr>
+              <td class="week">15</td>
+              <td class="date">12.2</td>
+              <td class="topic">Presentation</td>
+              <td class="subtopics">Final exam review</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+    <section id="policies" class="wrap">
+      <h2 class="section-title">Policies</h2>
+      <div class="card">
+        <p><strong>Grading:</strong> In-class quiz 30%, Homework assignments 50%, Presentation 20%. The course will include five homework assignments. Each homework will include careful instructions, with both (1) long-form problem write-ups and proofs, and (2) C++ programming assignments. For programming assignments, follow instructions carefully to receive full credit. Use of AI-based tools is allowed.</p>
+        <p><strong>Academic Integrity:</strong> Academic dishonesty is a serious offense. The <a href='https://studentcode.illinois.edu' target='_blank'>University of Illinois Urbana-Champaign Student Code</a> is considered a part of this syllabus. If you are ever in doubt of what constitutes plagiarism or cheating, do not hesitate to ask me.</p>
+        <p><strong>Disability Accommodations:</strong> To obtain disability-related academic adjustments and/or auxiliary aids, students with disabilities must contact the course instructor and the Disability Resources and Educational Services (DRES) as soon as possible. To contact DRES you may visit 1207 S. Oak St., Champaign, call 333-4603 (V/TTY), or e-mail a message to disability@illinois.edu.</p>
+      </div>
+    </section>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      <div>© 2025 ECE 407 — Cryptography</div>
+      <div>Theme accents use Illinois Orange and Blue.</div>
+    </div>
+  </footer>
+  <script>
+    const header=document.querySelector('.site-header');
+    const onScroll=()=>{if(window.scrollY>8) header.classList.add('compact'); else header.classList.remove('compact');};
+    document.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  </script>
+</body>
+</html>
