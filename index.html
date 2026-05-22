@@ -4,7 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title> Ning Luo Website </title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
     <style>
+        * { box-sizing: border-box; }
         body {
             font-family: Arial, sans-serif;
             margin: 0;
@@ -17,10 +21,20 @@
             padding: 1rem 0;
             text-align: center;
         }
-        
+        header h1 {
+            margin: 0;
+            font-size: clamp(1.5rem, 5vw, 2.2rem);
+        }
+        .cn-name {
+            font-family: 'Ma Shan Zheng', 'STKaiti', '华文楷体', 'KaiTi', '楷体', cursive;
+            font-weight: normal;
+            margin-left: 0.3em;
+            letter-spacing: 0.1em;
+        }
         nav {
             display: flex;
             justify-content: center;
+            flex-wrap: wrap;
             background: #faa371;
         }
         nav a {
@@ -35,10 +49,11 @@
             display: flex;
             align-items: flex-start;
             padding: 2rem;
+            gap: 1.5rem;
         }
         .text-content {
             flex: 2;
-            padding-right: 1rem;
+            min-width: 0;
         }
         .photo-container {
             flex: 1;
@@ -46,6 +61,8 @@
         }
         .photo-container img {
             max-width: 200px;
+            width: 100%;
+            height: auto;
             border-radius: 30%;
             border: 0px solid #FF5F05;
         }
@@ -57,6 +74,7 @@
         .contact-info a {
             color: #FF5F05;
             text-decoration: none;
+            word-break: break-word;
         }
         .contact-info a:hover {
             text-decoration: underline;
@@ -72,11 +90,38 @@
         a[href*="https://wangxiao1254.github.io/"] {color: #FF5F05;}
         a[href*="https://cpsc.yale.edu/"] {color: #FF5F05;}
 
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column-reverse;
+                padding: 1.25rem;
+                gap: 1rem;
+            }
+            .text-content {
+                padding-right: 0;
+            }
+            .photo-container img {
+                max-width: 180px;
+            }
+            nav a {
+                padding: 0.5rem 0.75rem;
+                font-size: 0.95rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 1rem;
+            }
+            nav a {
+                padding: 0.45rem 0.6rem;
+                font-size: 0.9rem;
+            }
+        }
     </style>
 </head>
 <body>
     <header>
-        <h1>Ning Luo 罗 宁</h1>
+        <h1>Ning Luo <span class="cn-name">罗 宁</span></h1>
     </header>
     <nav>
         <a href="index.html">Home</a>

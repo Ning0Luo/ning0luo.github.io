@@ -4,7 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Students -Ning Luo Website </title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
     <style>
+        * { box-sizing: border-box; }
         body {
             font-family: Arial, sans-serif;
             margin: 0;
@@ -17,10 +21,20 @@
             padding: 1rem 0;
             text-align: center;
         }
-        
+        header h1 {
+            margin: 0;
+            font-size: clamp(1.5rem, 5vw, 2.2rem);
+        }
+        .cn-name {
+            font-family: 'Ma Shan Zheng', 'STKaiti', '华文楷体', 'KaiTi', '楷体', cursive;
+            font-weight: normal;
+            margin-left: 0.3em;
+            letter-spacing: 0.1em;
+        }
         nav {
             display: flex;
             justify-content: center;
+            flex-wrap: wrap;
             background: #faa371;
         }
         nav a {
@@ -40,6 +54,7 @@
         }
         .student-list li {
             margin-bottom: 1rem;
+            word-wrap: break-word;
         }
         .student-list a {
             color: #FF5F05;
@@ -58,6 +73,8 @@
         }
         .photo-container img {
             max-width: 200px;
+            width: 100%;
+            height: auto;
             border-radius: 30%;
             border: 0px solid #FF5F05;
         }
@@ -80,13 +97,31 @@
             padding: 1rem 0;
             margin-top: 2rem;
         }
-        
 
+        @media (max-width: 768px) {
+            .container {
+                padding: 1.25rem;
+            }
+            nav a {
+                padding: 0.5rem 0.75rem;
+                font-size: 0.95rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 1rem;
+            }
+            nav a {
+                padding: 0.45rem 0.6rem;
+                font-size: 0.9rem;
+            }
+        }
     </style>
 </head>
 <body>
     <header>
-        <h1>Ning Luo 罗 宁</h1>
+        <h1>Ning Luo <span class="cn-name">罗 宁</span></h1>
     </header>
     <nav>
         <a href="index.html">Home</a>
@@ -129,8 +164,12 @@
         <h2>Alumni</h2>
        
         <ul>
-            <li> Fall 2025 - Fall 2026, MS., Joy Wan (MS. student at UIUC) 
+            <li> Fall 2025 - Fall 2026, MS., Joy Wan (MS. student at UIUC,now at WeRide) 
                 <br> Publication: <em>Weakly Private Distributed Multi-User Secret Sharing</em> ( IEEE Transactions on Information Theory)
+            </li>
+            <li> Summer 2025, Visiting student, Zhaoxiang Liu (Ph.D. Student at Kansas State University, now at NVIDIA) 
+                <br> Publication: <em>BlindMarket: Enabling Verifiable, Confidential, and Traceable IP Core Distribution in Zero-Trust Settings</em>  (HOST 2026)
+
             </li>
             <li> Fall 2024 - Fall 2025, MS., Hengyu Liu (Ph.D. Student at UIUC)
                 <br> Publication:
@@ -139,10 +178,7 @@
     
             </li>
 
-            <li> Summer 2025, Visiting student, Zhaoxiang Liu (Ph.D. Student at Kansas State University) 
-                <br> Publication: <em>BlindMarket: Enabling Verifiable, Confidential, and Traceable IP Core Distribution in Zero-Trust Settings</em>  (HOST 2026)
 
-            </li>
             <li> Summer 2025, Visiting student, Can Liu (Undergraduate at Tsinghua University)
                 <br> Publication: <em>Improved Garbled RAM via Garbled Merge</em>  (CCS 2026)
             </li>
