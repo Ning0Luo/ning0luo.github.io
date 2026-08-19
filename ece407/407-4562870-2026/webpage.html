@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="ECE 407: Cryptography — course website for Fall 2026.">
+<title>ECE 407 · Cryptography (Fall 2026)</title>
+<style>
+  :root{
+    --illini-orange:#FF5F05;   /* decorative use only (borders, rules) */
+    --orange-text:#B03A00;     /* accessible orange for text: 6.0:1 on white */
+    --illini-blue:#13294B;
+    --ink:#1b1f27;
+    --muted:#565f6d;
+    --link:#0b5fa5;
+    --rule:#dfe3ea;
+    --bg:#ffffff;
+    --tint:#f5f7fa;
+    --break-bg:#fff4ea;
+    --break-ink:#7d420f;
+    --focus:#0b5fa5;
+  }
+
+  @media (prefers-color-scheme: dark){
+    :root{
+      --orange-text:#FF9550;
+      --illini-blue:#9FC0EE;
+      --ink:#e8ebf0;
+      --muted:#a9b2c0;
+      --link:#7fb6ee;
+      --rule:#333b48;
+      --bg:#14171c;
+      --tint:#1b1f26;
+      --break-bg:#2a2119;
+      --break-ink:#f0b581;
+      --focus:#8ec2ff;
+    }
+  }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+
+  /* Respect users who ask for less motion */
+  @media (prefers-reduced-motion: reduce){
+    html{scroll-behavior:auto}
+    *,*::before,*::after{
+      animation-duration:.01ms !important;
+      animation-iteration-count:1 !important;
+      transition-duration:.01ms !important;
+    }
+  }
+
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font:16px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* Visible focus for every interactive element */
+  a:focus-visible,
+  [tabindex]:focus-visible{
+    outline:3px solid var(--focus);
+    outline-offset:3px;
+    border-radius:2px;
+  }
+
+  /* Visually hidden, still read by screen readers */
+  .vh{
+    position:absolute;width:1px;height:1px;
+    padding:0;margin:-1px;overflow:hidden;
+    clip:rect(0 0 0 0);white-space:nowrap;border:0;
+  }
+
+  /* Skip link */
+  .skip{
+    position:absolute;left:-9999px;top:0;z-index:100;
+    background:var(--bg);color:var(--link);
+    padding:.75rem 1.25rem;font-weight:600;
+    border:2px solid var(--focus);border-radius:0 0 6px 0;
+  }
+  .skip:focus{left:0}
+
+  /* ---------- nav ---------- */
+  .nav{
+    position:sticky;top:0;z-index:50;
+    display:flex;flex-wrap:wrap;gap:.25rem 1rem;align-items:center;
+    padding:.5rem 1.5rem;
+    background:var(--illini-blue);
+    border-bottom:3px solid var(--illini-orange);
+  }
+  @media (prefers-color-scheme: dark){
+    .nav{background:#0d1420}
+  }
+  /* Don't eat the screen when zoomed in or on short viewports */
+  @media (max-height:26rem){ .nav{position:static} }
+
+  .nav .brand{
+    color:#fff;font-weight:700;letter-spacing:.02em;
+    margin-right:auto;padding:.6rem 0;
+  }
+  .nav a{
+    color:#e4eaf3;text-decoration:none;font-size:.95rem;
+    padding:.7rem .25rem;              /* ≥44px tall touch target */
+    border-bottom:2px solid transparent;
+  }
+  .nav a:hover{color:#fff;border-bottom-color:var(--illini-orange)}
+  .nav a:focus-visible{outline:3px solid #fff;outline-offset:2px}
+
+  /* ---------- layout ---------- */
+  main{max-width:1000px;margin:0 auto;padding:2.5rem 1.5rem 4rem}
+  /* Cap prose line length for readability; tables may run full width */
+  main > p, .facts, .legend, .note, .policy, footer{max-width:70ch}
+
+  h1{
+    font-size:clamp(1.9rem,4.5vw,2.7rem);line-height:1.2;
+    margin:0 0 .4rem;color:var(--illini-blue);letter-spacing:-.015em;
+  }
+  .term{color:var(--muted);margin:0 0 2rem;font-size:1.02rem}
+  h2{
+    font-size:1.35rem;color:var(--illini-blue);
+    margin:2.8rem 0 .9rem;padding-bottom:.4rem;
+    border-bottom:2px solid var(--rule);
+    scroll-margin-top:5rem;            /* clear the sticky nav on anchor jumps */
+  }
+  a{color:var(--link);text-underline-offset:.15em}
+  a:hover{color:var(--orange-text)}
+
+  /* ---------- course facts ---------- */
+  .facts{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));
+    gap:.1rem 2rem;
+    background:var(--tint);border-left:4px solid var(--illini-orange);
+    padding:1.1rem 1.3rem;border-radius:0 6px 6px 0;
+  }
+  .facts p{margin:.3rem 0}
+  .facts strong{color:var(--illini-blue)}
+
+  /* ---------- schedule table ---------- */
+  .legend{
+    font-size:.95rem;color:var(--muted);
+    margin:0 0 1rem;padding:.7rem 1rem;
+    background:var(--tint);border-radius:6px;
+  }
+  .legend strong{color:var(--illini-blue)}
+
+  .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .table-hint{font-size:.9rem;color:var(--muted);margin:0 0 .5rem}
+  table{border-collapse:collapse;width:100%;min-width:680px;font-size:.95rem}
+  caption{text-align:left;color:var(--muted);font-size:.95rem;padding-bottom:.7rem}
+  th,td{padding:.65rem .7rem;text-align:left;vertical-align:top;border-bottom:1px solid var(--rule)}
+  thead th{
+    background:var(--illini-blue);color:#fff;font-weight:600;font-size:.9rem;
+  }
+  @media (prefers-color-scheme: dark){
+    thead th{background:#0d1420;color:#fff}
+  }
+  tbody tr:nth-child(even) td,
+  tbody tr:nth-child(even) th{background:var(--tint)}
+  th.wk{font-variant-numeric:tabular-nums;color:var(--muted);width:3.4rem;font-weight:600}
+  td.date{font-variant-numeric:tabular-nums;white-space:nowrap;width:5.5rem}
+
+  .read{display:block;margin-top:.3rem;font-size:.875rem;color:var(--muted)}
+  .read-label{color:var(--orange-text);font-weight:700}
+
+  tr.exam td,tr.exam th{font-weight:600;color:var(--illini-blue)}
+  tr.break td,tr.break th{background:var(--break-bg);color:var(--break-ink)}
+  .note{font-size:.92rem;color:var(--muted);margin-top:.9rem}
+
+  /* ---------- policies ---------- */
+  .policy{margin:0 0 1.15rem}
+  .policy strong{color:var(--illini-blue)}
+
+  .grading{max-width:70ch;margin:0 0 1.15rem;padding-left:1.2rem}
+  .grading > li{margin:.5rem 0}
+  .grading > li > strong{color:var(--illini-blue)}
+  .grading ul{margin:.3rem 0 0;padding-left:1.2rem;font-size:.95rem;color:var(--muted)}
+  .grading ul li{margin:.15rem 0}
+  .grading .weight{font-variant-numeric:tabular-nums}
+  .flag{color:var(--orange-text);font-weight:700}
+
+  footer{
+    border-top:1px solid var(--rule);margin-top:3rem;padding-top:1.2rem;
+    color:var(--muted);font-size:.9rem;
+  }
+  footer .accent{color:var(--orange-text)}
+
+  /* Windows High Contrast / forced colours */
+  @media (forced-colors: active){
+    .facts,.legend,thead th,tr.break td,tr.break th{
+      background:Canvas;color:CanvasText;border:1px solid CanvasText;
+    }
+    a:focus-visible,[tabindex]:focus-visible{outline:3px solid Highlight}
+  }
+
+  @media print{
+    .nav,.skip,.table-hint{display:none}
+    body{color:#000;background:#fff}
+    .table-wrap{overflow:visible}
+    a::after{content:" (" attr(href) ")";font-size:.8em;color:#333}
+  }
+</style>
+</head>
+<body>
+
+<a class="skip" href="#main">Skip to main content</a>
+
+<nav class="nav" aria-label="Page sections">
+  <span class="brand">ECE 407 · Cryptography</span>
+  <a href="#overview">Overview</a>
+  <a href="#schedule">Schedule</a>
+  <a href="#policies">Policies</a>
+  <a href="#accessibility">Accessibility</a>
+</nav>
+
+<main id="main">
+  <h1>Cryptography: From Theory to Practice</h1>
+  <p class="term">Fall 2026 · University of Illinois Urbana–Champaign</p>
+
+  <div class="facts">
+    <p><strong>Instructor:</strong> Ning Luo</p>
+    <p><strong>TA:</strong> TBD</p>
+    <p><strong>Time:</strong> Tue &amp; Thu · 5:00–6:20 PM</p>
+    <p><strong>Location:</strong> 1013 ECEB</p>
+    <p><strong>Canvas:</strong> TBD</p>
+    <p><strong>Office Hour:</strong> By appointment</p>
+  </div>
+
+  <h2 id="overview">Overview</h2>
+  <p>This course covers modern cryptography with a focus on symmetric-key and public-key primitives, security models, basic number theory, and proofs. Applications include authenticated encryption, signatures, zero-knowledge proof, and selected protocols.</p>
+  <p><strong>Textbook:</strong>
+    <a href="https://www.cs.umd.edu/~jkatz/imc.html">Katz &amp; Lindell: Introduction to Modern Cryptography</a>, 3rd Edition (or Revised 3rd Edition — same section numbering).
+  </p>
+
+  <h2 id="schedule">Course Schedule (Tentative)</h2>
+
+  <p class="legend">
+    Section numbers refer to <strong>Katz &amp; Lindell, 3rd edition</strong>. Starred sections in the book (e.g. 8.1, 14.4, 15.1) are marked by the authors as optional; here they are assigned. A few late-semester topics are not covered by the textbook and will be taught from lecture notes.
+  </p>
+
+  <p class="table-hint">The schedule is a wide table. On a narrow screen it scrolls sideways; you can also focus it and scroll with the arrow keys.</p>
+
+  <div class="table-wrap" role="region" aria-labelledby="sched-caption" tabindex="0">
+    <table>
+      <caption id="sched-caption">Weekly schedule. Each week has two classes, Tuesday and Thursday. Dates are month.day.</caption>
+      <thead>
+        <tr>
+          <th scope="col">Week</th>
+          <th scope="col">Tue date</th>
+          <th scope="col">Tuesday topic</th>
+          <th scope="col">Thu date</th>
+          <th scope="col">Thursday topic</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row" class="wk">1</th>
+          <td class="date">8.25</td>
+          <td>Introduction and background on cryptography<span class="read"><span class="read-label">Reading:</span> KL 1</span></td>
+          <td class="date">8.27</td>
+          <td>One-time pad, information-theoretic security<span class="read"><span class="read-label">Reading:</span> KL 2</span></td>
+        </tr>
+        <tr>
+          <th scope="row" class="wk">2</th>
+          <td class="date">9.1</td>
+          <td>Stream ciphers, PRG<span class="read"><span class="read-label">Reading:</span> KL 3.1–3.3, 3.6.1–3.6.2</span></td>
+          <td class="date">9.3</td>
+          <td>Pseudorandomness, CPA<span class="read"><span class="read-label">Reading:</span> KL 3.4–3.5</span></td>
+        </tr>
+        <tr>
+          <th scope="row" class="wk">3</th>
+          <td class="date">9.8</td>
+          <td>Block ciphers; DES and attacks, AES<span class="read"><span class="read-label">Reading:</span> KL 7.2</span></td>
+          <td class="date">9.10</td>
+          <td>PRP, PRF, block ciphers from PRG<span class="read"><span class="read-label">Reading:</span> KL 3.5.1, 8.5–8.6</span></td>
+        </tr>
+        <tr>
+          <th scope="row" class="wk">4</th>
+          <td class="date">9.15</td>
+          <td>One-time key vs. many-time key; modes of operation<span class="read"><span class="read-label">Reading:</span> KL 3.4.1, 3.6</span></td>
+          <td class="date">9.17</td>
+          <td>Padding-oracle attacks<span class="read"><span class="read-label">Reading:</span> KL 5.1</span></td>
+        </tr>
+        <tr>
+          <th scope="row" class="wk">5</th>
+          <td class="date">9.22</td>
+          <td>Message Authentication Codes (MAC)<span class="read"><span class="read-label">Reading:</span> KL 4.1–4.4</span></td>
+          <td class="date">9.24</td>
+          <td>Generic birthday attack, cryptographic hash<span class="read"><span class="read-label">Reading:</span> KL 6.1, 6.4, Appendix A.4</span></td>
+        </tr>
+        <tr>
+          <th scope="row" class="wk">6</th>
+          <td class="date">9.29</td>
+          <td>Merkle–Damgård paradigm; Merkle hash tree<span class="read"><span class="read-label">Reading:</span> KL 6.2, 6.6.2</span></td>
+          <td class="date">10.1</td>
+          <td>HMAC, authenticated encryption<span class="read"><span class="read-label">Reading:</span> KL 6.3, 5.2–5.3</span></td>
+        </tr>
+        <tr class="exam">
+          <th scope="row" class="wk">7</th>
+          <td class="date">10.6</td>
+          <td>Midterm review<span class="read"><span class="read-label">Note:</span> covers weeks 1–6</span></td>
+          <td class="date">10.8</td>
+          <td>Midterm<span class="read"><span class="read-label">Note:</span> in class, 5:00–6:20 PM</span></td>
+        </tr>
+        <tr>
+          <th scope="row" class="wk">8</th>
+          <td class="date">10.13</td>
+          <td>Number theory<span class="read"><span class="read-label">Reading:</span> KL 9.1–9.3, Appendix B</span></td>
+          <td class="date">10.15</td>
+          <td>Diffie–Hellman key exchange<span class="read"><span class="read-label">Reading:</span> KL 9.3.2, 11.3</span></td>
+        </tr>
+        <tr>
+          <th scope="row" class="wk">9</th>
+          <td class="date">10.20</td>
+          <td>Trapdoor permutations; public-key encryption<span class="read"><span class="read-label">Reading:</span> KL 12.1–12.2, 15.1</span></td>
+          <td class="date">10.22</td>
+          <td>RSA-based public-key encryption<span class="read"><span class="read-label">Reading:</span> KL 9.2.4, 12.5</span></td>
+        </tr>
+        <tr>
+          <th scope="row" class="wk">10</th>
+          <td class="date">10.27</td>
+          <td>Discrete-log–based public-key encryption<span class="read"><span class="read-label">Reading:</span> KL 12.4</span></td>
+          <td class="date">10.29</td>
+          <td>Digital signatures<span class="read"><span class="read-label">Reading:</span> KL 13.1–13.3</span></td>
+        </tr>
+        <tr>
+          <th scope="row" class="wk">11</th>
+          <td class="date">11.3</td>
+          <td>RSA signature and BLS signature<span class="read"><span class="read-label">Reading:</span> KL 13.4. BLS is not in KL — lecture notes; background in KL 9.3.4</span></td>
+          <td class="date">11.5</td>
+          <td>One-way functions, Lamport signature<span class="read"><span class="read-label">Reading:</span> KL 8.1, 14.4</span></td>
+        </tr>
+        <tr>
+          <th scope="row" class="wk">12</th>
+          <td class="date">11.10</td>
+          <td>Blind signatures<span class="read"><span class="read-label">Note:</span> not in KL — lecture notes only</span></td>
+          <td class="date">11.12</td>
+          <td>Multi-party computation (MPC)<span class="read"><span class="read-label">Note:</span> not in KL — lecture notes; related material in KL 15.3</span></td>
+        </tr>
+        <tr>
+          <th scope="row" class="wk">13</th>
+          <td class="date">11.17</td>
+          <td>Zero-knowledge proof<span class="read"><span class="read-label">Reading:</span> KL 13.5.1 only (partial) — lecture notes</span></td>
+          <td class="date">11.19</td>
+          <td>Fully homomorphic encryption<span class="read"><span class="read-label">Note:</span> not in KL — lecture notes only</span></td>
+        </tr>
+        <tr class="break">
+          <th scope="row" class="wk">14</th>
+          <td class="date">11.24</td>
+          <td>Fall Break — no class</td>
+          <td class="date">11.26</td>
+          <td>Fall Break — no class</td>
+        </tr>
+        <tr>
+          <th scope="row" class="wk">15</th>
+          <td class="date">12.1</td>
+          <td>Final project presentations<span class="read"><span class="read-label">Note:</span> worth 20% of the course grade</span></td>
+          <td class="date">12.3</td>
+          <td>Final project presentations</td>
+        </tr>
+        <tr>
+          <th scope="row" class="wk">16</th>
+          <td class="date">12.8</td>
+          <td>Final exam review</td>
+          <td class="date"><span aria-hidden="true">—</span><span class="vh">No date</span></td>
+          <td>No class. December 9 is the last day of instruction; December 10 is Reading Day.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">Instruction begins Monday, August 24, 2026. Fall Break runs November 21–29. The last day of instruction is Wednesday, December 9; Reading Day is Thursday, December 10; the final examination period is December 11–17. Our final exam slot will be posted by the Registrar on October 14.</p>
+
+  <h2 id="policies">Policies</h2>
+
+  <p class="policy"><strong>Grading:</strong> the course grade is composed as follows.</p>
+
+  <ul class="grading">
+    <li><strong>In-class quiz <span class="weight">10%</span></strong>
+      <ul>
+        <li>The final grade is the average score of the selected quizzes, scaled to 100.</li>
+      </ul>
+    </li>
+    <li><strong>Homework <span class="weight">20%</span></strong>
+      <ul>
+        <li>5 assignments.</li>
+        <li>Submit a single PDF compiled from LaTeX. No Word, Google Docs, or photographs of handwritten work.</li>
+        <li>No late submission allowed.</li>
+        <li><span class="flag">AI-based tools are NOT allowed unless specified.</span></li>
+      </ul>
+    </li>
+    <li><strong>Midterm exam <span class="weight">20%</span></strong>
+      <ul>
+        <li>In class, 5:00–6:20 PM, Thursday, October 8.</li>
+      </ul>
+    </li>
+    <li><strong>Final exam <span class="weight">30%</span></strong>
+      <ul>
+        <li>Cumulative. Date set by the Registrar; the final exam period is December 11–17.</li>
+      </ul>
+    </li>
+    <li><strong>Final project <span class="weight">20%</span></strong>
+      <ul>
+        <li>Design a cryptographic application of the course contents.</li>
+        <li><span class="flag">AI-based tools are allowed for the project.</span></li>
+        <li>Presentations are in week 15 (December 1 and 3).</li>
+      </ul>
+    </li>
+  </ul>
+
+  <p class="policy"><strong>Academic Integrity:</strong> Academic dishonesty is a serious offense. The <a href="https://studentcode.illinois.edu">University of Illinois Urbana-Champaign Student Code</a> is considered a part of this syllabus. If you are ever in doubt of what constitutes plagiarism or cheating, do not hesitate to ask me.</p>
+
+  <h2 id="accessibility">Accessibility and Accommodations</h2>
+
+  <p class="policy"><strong>Disability accommodations:</strong> To obtain disability-related academic adjustments and/or auxiliary aids, students with disabilities must contact the course instructor and Disability Resources and Educational Services (DRES) as soon as possible. To contact DRES, you may visit 1207 S. Oak St., Champaign, call <a href="tel:+12173331970">217-333-1970</a>, e-mail <a href="mailto:disability@illinois.edu">disability@illinois.edu</a>, or go to the <a href="https://go.illinois.edu/DRES">DRES website</a>.</p>
+
+  <p class="policy"><strong>Talk to me early:</strong> So that disability-related concerns are addressed from the beginning, students who require accommodations to participate in this class are encouraged to see me as soon as possible. You do not need to disclose a diagnosis, and I will not discuss your accommodations in class. Accommodations are not retroactive, so the earlier we talk, the more I can do.</p>
+
+  <p class="policy"><strong>Course materials:</strong> If any course material — slides, homework, the textbook, or this website — is difficult for you to read or use, tell me and I will provide an alternative format. Requests for captioning, alternative text for figures, or accessible versions of problem sets are welcome at any point in the semester, with or without a Letter of Academic Accommodations.</p>
+
+  <footer>
+    <p>© 2026 ECE 407 — Cryptography</p>
+    <p>Theme accents use <span class="accent">Illinois Orange</span> and Illinois Blue.</p>
+    <p>Found an accessibility barrier on this page? Please email me (address on Canvas) and I will fix it.</p>
+  </footer>
+</main>
+
+</body>
+</html>
