@@ -1,0 +1,366 @@
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --paper:#EEF1F5; --sheet:#FBFCFD; --ink:#16202B; --muted:#65788C; --rule:#D3DAE3;
+    --blue:#2B4FD8; --rose:#C31B5B; --slate:#7F91A5; --good:#0F6E56;
+    --sans:"IBM Plex Sans", system-ui, -apple-system, Segoe UI, sans-serif;
+    --mono:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  *{box-sizing:border-box}
+  .lab{background:var(--paper); color:var(--ink); font-family:var(--sans);
+       font-size:14px; line-height:1.45; padding:22px}
+  .lab h1{font-size:19px; font-weight:600; margin:0 0 2px; letter-spacing:-0.01em}
+  .lab .sub{color:var(--muted); margin:0 0 18px; max-width:70ch}
+  .sheet{background:var(--sheet); border:1px solid var(--rule); padding:18px 20px}
+
+  .bar{display:flex; flex-wrap:wrap; gap:20px; align-items:flex-end;
+       padding-bottom:16px; border-bottom:1px solid var(--rule)}
+  .ctl{display:flex; flex-direction:column; gap:5px}
+  .ctl > span{font-size:12px; color:var(--muted)}
+  .lab select, .lab button{font-family:var(--sans); font-size:13px; color:var(--ink);
+       background:#fff; border:1px solid var(--rule); padding:5px 9px}
+  .lab button{cursor:pointer}
+  .lab button:hover:not(:disabled){border-color:var(--ink)}
+  .lab button:disabled{color:var(--muted); cursor:default}
+  .lab button:focus-visible, .lab select:focus-visible{outline:2px solid var(--blue); outline-offset:1px}
+  .lab button.go{background:var(--ink); color:#fff; border-color:var(--ink); min-width:66px}
+  .lab button.go:disabled{background:#B9C2CC; border-color:#B9C2CC; color:#fff}
+  .bits{display:flex; gap:3px}
+  .bits button{font-family:var(--mono); font-weight:500; width:24px; padding:5px 0; text-align:center}
+  .bits button.on{background:var(--ink); color:#fff; border-color:var(--ink)}
+  .lab input[type=range]{width:120px; accent-color:var(--ink)}
+  .count{margin-left:auto; text-align:right}
+  .count b{font-family:var(--mono); font-size:26px; font-weight:500; display:block; line-height:1.1}
+  .count span{font-size:12px; color:var(--muted)}
+
+  .top{display:grid; grid-template-columns:1fr 1.25fr}
+  .top > div{padding:16px 18px 8px}
+  .top > div + div{border-left:1px solid var(--rule)}
+  .top h2{font-size:13px; font-weight:600; margin:0 0 10px}
+
+  table.ch{border-collapse:collapse; font-family:var(--mono)}
+  table.ch td{padding:2px 0}
+  table.ch .lbl{padding-right:14px; font-size:12px; color:var(--muted); text-align:right; white-space:nowrap}
+  table.ch .val{font-size:21px; font-weight:500; letter-spacing:0.13em}
+  table.ch tr.big td{border-top:1px solid var(--ink); padding-top:5px}
+  .m0{color:var(--blue)} .m1{color:var(--rose)}
+  .guess{display:flex; gap:8px; margin-top:14px; flex-wrap:wrap}
+  .verdict{font-family:var(--mono); font-size:12.5px; margin-top:12px; min-height:20px}
+  .verdict b{font-weight:500}
+  .score{font-family:var(--mono); font-size:12.5px; margin-top:8px; color:var(--muted)}
+
+  .pair{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+  .pair h3{font-size:12px; font-weight:500; margin:0 0 4px; font-family:var(--mono)}
+  .pair svg{display:block; width:100%; height:auto}
+  .tvline{font-family:var(--mono); font-size:12px; margin-top:10px}
+  .tvline i{font-style:normal; color:var(--muted)}
+
+  .lower{border-top:1px solid var(--rule); padding:16px 18px 8px}
+  .lower h2{font-size:13px; font-weight:600; margin:0}
+  .lower p{font-size:12px; color:var(--muted); margin:2px 0 10px}
+  .lower canvas{display:block; width:100%; height:200px}
+  .key{display:flex; gap:18px; font-size:12px; color:var(--muted); margin-top:6px; flex-wrap:wrap}
+  .key i{display:inline-block; width:16px; height:2px; vertical-align:middle; margin-right:6px}
+  .worst{font-size:12px; color:var(--muted); margin-top:10px; line-height:1.6}
+  .worst b{font-family:var(--mono); font-weight:500; color:var(--ink)}
+
+  @media (max-width:820px){
+    .top{grid-template-columns:1fr}
+    .top > div + div{border-left:0; border-top:1px solid var(--rule)}
+  }
+</style>
+
+<div class="lab">
+  <h1>The indistinguishability experiment</h1>
+  <p class="sub">You pick two messages. A hidden coin decides which one gets encrypted, and you see
+    only the ciphertext. A scheme is perfectly indistinguishable when no strategy, on any pair of
+    messages, beats a coin flip.</p>
+
+  <div class="sheet">
+    <div class="bar">
+      <label class="ctl"><span>Scheme</span>
+        <select id="scheme">
+          <option value="otp" selected>One-time pad, key length n</option>
+          <option value="short">Short key, only k bits masked</option>
+          <option value="bias">Biased key bits</option>
+        </select>
+      </label>
+      <label class="ctl" id="kwrap" style="display:none"><span>Key bits k <em id="klab" style="font-style:normal;font-family:var(--mono)"></em></span>
+        <input type="range" id="k" min="0" max="4" value="2">
+      </label>
+      <label class="ctl" id="pwrap" style="display:none"><span>P(key bit = 1) <em id="plab" style="font-style:normal;font-family:var(--mono)"></em></span>
+        <input type="range" id="p" min="50" max="95" value="70">
+      </label>
+      <label class="ctl"><span>Length n</span>
+        <select id="n"><option>2</option><option>3</option><option selected>4</option><option>5</option></select>
+      </label>
+      <div class="ctl"><span>Message m₀</span><div class="bits" id="m0bits"></div></div>
+      <div class="ctl"><span>Message m₁</span><div class="bits" id="m1bits"></div></div>
+      <label class="ctl"><span>Adversary</span>
+        <select id="adv">
+          <option value="you" selected>You</option>
+          <option value="ml">Maximum likelihood</option>
+          <option value="zero">Always guess m₀</option>
+        </select>
+      </label>
+      <label class="ctl"><span>Speed</span><input type="range" id="rate" min="0" max="100" value="40"></label>
+      <div class="ctl"><span>&nbsp;</span><div style="display:flex; gap:6px">
+        <button class="go" id="run">Run</button>
+        <button id="step">One round</button>
+        <button id="reset">Reset</button>
+      </div></div>
+      <div class="count"><b id="tcount">0</b><span>rounds</span></div>
+    </div>
+
+    <div class="top">
+      <div>
+        <h2>The challenge</h2>
+        <table class="ch">
+          <tr><td class="lbl">m₀</td><td class="val m0" id="e-m0">····</td></tr>
+          <tr><td class="lbl">m₁</td><td class="val m1" id="e-m1">····</td></tr>
+          <tr class="big"><td class="lbl">ciphertext</td><td class="val" id="e-c">····</td></tr>
+        </table>
+        <div class="guess">
+          <button id="g0">It encrypts m₀</button>
+          <button id="g1">It encrypts m₁</button>
+        </div>
+        <div class="verdict" id="verdict">Press “One round” to get a ciphertext.</div>
+        <div class="score" id="score"></div>
+      </div>
+      <div>
+        <h2>What the ciphertext looks like under each coin</h2>
+        <div class="pair">
+          <div><h3>P(c | b = 0)</h3><svg id="s-c0" viewBox="0 0 300 140"></svg></div>
+          <div><h3>P(c | b = 1)</h3><svg id="s-c1" viewBox="0 0 300 140"></svg></div>
+        </div>
+        <div class="tvline" id="tvline"></div>
+      </div>
+    </div>
+
+    <div class="lower">
+      <h2>Success rate as rounds accumulate</h2>
+      <p>Rounds on a log axis. The grey envelope is two standard deviations around a coin flip.</p>
+      <canvas id="chart"></canvas>
+      <div class="key">
+        <span><i style="background:var(--ink)"></i>your success rate</span>
+        <span><i style="background:transparent; border-top:2px dashed var(--rose)"></i>best possible for this pair</span>
+        <span><i style="background:var(--slate)"></i>coin-flip envelope</span>
+      </div>
+      <div class="worst" id="worst"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const S={n:4,N:16,scheme:'otp',k:2,p:0.70,m0:0b1011,m1:0b0110,adv:'you',
+           keyP:[],cum:[],c0:[],c1:[],rounds:0,wins:0,
+           hist:[],nextRec:1,running:false,pending:null};
+  const bits=(v,n)=>v.toString(2).padStart(n,'0');
+  const sp=v=>bits(v,S.n).split('').join(' ');
+
+  function buildKey(){
+    const N=S.N; let p=new Array(N).fill(0);
+    if(S.scheme==='otp') p.fill(1/N);
+    else if(S.scheme==='short'){
+      const K=1<<S.k;
+      for(let r=0;r<K;r++) p[r]=1/K;
+    } else {
+      for(let r=0;r<N;r++){ let q=1;
+        for(let i=0;i<S.n;i++) q*=((r>>i)&1)?S.p:1-S.p; p[r]=q; }
+    }
+    S.keyP=p; S.cum=[]; let a=0;
+    for(let r=0;r<N;r++){ a+=p[r]; S.cum.push(a); }
+  }
+  const sampleKey=()=>{ const u=Math.random()*S.cum[S.N-1];
+    for(let r=0;r<S.N;r++) if(u<=S.cum[r]) return r; return S.N-1; };
+
+  const P0=c=>S.keyP[(c^S.m0)&(S.N-1)];
+  const P1=c=>S.keyP[(c^S.m1)&(S.N-1)];
+  function tvFor(delta){ let s=0;
+    for(let u=0;u<S.N;u++) s+=Math.abs(S.keyP[u]-S.keyP[u^delta]); return s/2; }
+  const tvNow=()=>tvFor((S.m0^S.m1)&(S.N-1));
+  function worstDelta(){ let best=0,bv=-1;
+    for(let d=1;d<S.N;d++){ const v=tvFor(d); if(v>bv){ bv=v; best=d; } }
+    return {d:best, v:bv}; }
+
+  function reset(){
+    S.N=1<<S.n; S.m0&=S.N-1; S.m1&=S.N-1;
+    $('k').max=String(S.n); if(S.k>S.n) S.k=S.n;
+    buildKey();
+    S.c0=new Array(S.N).fill(0); S.c1=new Array(S.N).fill(0);
+    S.rounds=0; S.wins=0; S.hist=[]; S.nextRec=1; S.pending=null;
+    $('kwrap').style.display = S.scheme==='short'?'flex':'none';
+    $('pwrap').style.display = S.scheme==='bias'?'flex':'none';
+    $('klab').textContent = S.k;
+    $('plab').textContent = S.p.toFixed(2);
+    $('verdict').textContent = 'Press “One round” to get a ciphertext.';
+    drawBitRows(); draw();
+  }
+
+  function newChallenge(){
+    const b=Math.random()<0.5?0:1, r=sampleKey();
+    const c=((b?S.m1:S.m0)^r)&(S.N-1);
+    return {b,r,c};
+  }
+  function guessBy(c){
+    if(S.adv==='zero') return 0;
+    const a=P0(c), b=P1(c);
+    if(a===b) return Math.random()<0.5?0:1;
+    return a>b?0:1;
+  }
+  function record(ch,g){
+    (ch.b?S.c1:S.c0)[ch.c]++;
+    S.rounds++; if(g===ch.b) S.wins++;
+    if(S.rounds>=S.nextRec){
+      S.hist.push({t:S.rounds, w:S.wins/S.rounds});
+      S.nextRec=Math.max(S.rounds+1, Math.ceil(S.rounds*1.06));
+    }
+  }
+  function autoRound(){ const ch=newChallenge(); record(ch, guessBy(ch.c)); return ch; }
+
+  function hist(svg,counts,total,theory,color){
+    const W=300,H=140,L=6,R=6,T=10,B=20, iw=W-L-R, ih=H-T-B, t=total||1;
+    let peak=0; for(let i=0;i<S.N;i++) peak=Math.max(peak,counts[i]/t,theory(i));
+    const ymax=Math.max(1.7/S.N,peak*1.14);
+    const bw=iw/S.N, gap=Math.min(3,bw*0.24), yOf=v=>T+ih-(v/ymax)*ih;
+    let g=`<line x1="${L}" y1="${T+ih}" x2="${W-R}" y2="${T+ih}" stroke="var(--rule)"/>`;
+    for(let i=0;i<S.N;i++){
+      const v=total?counts[i]/t:0, x0=L+i*bw+gap/2, w=bw-gap, h=Math.max(0,T+ih-yOf(v));
+      g+=`<rect x="${x0.toFixed(2)}" y="${yOf(v).toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}" fill="${color}" opacity=".85"/>`;
+      const th=theory(i);
+      g+=`<line x1="${x0.toFixed(2)}" y1="${yOf(th).toFixed(2)}" x2="${(x0+w).toFixed(2)}" y2="${yOf(th).toFixed(2)}" stroke="var(--ink)" stroke-width="1.3" opacity=".55"/>`;
+      if(S.N<=8||(S.N<=16&&i%2===0))
+        g+=`<text x="${(x0+w/2).toFixed(2)}" y="${T+ih+11}" text-anchor="middle" font-size="8" fill="var(--muted)" font-family="var(--mono)">${bits(i,S.n)}</text>`;
+    }
+    svg.innerHTML=g;
+  }
+
+  function chart(){
+    const cv=$('chart'), dpr=window.devicePixelRatio||1, w=cv.clientWidth||600, h=200;
+    cv.width=w*dpr; cv.height=h*dpr;
+    const c=cv.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0); c.clearRect(0,0,w,h);
+    const L=34,R=8,T=10,B=24, iw=w-L-R, ih=h-T-B, tmax=Math.max(50,S.rounds);
+    const X=t=>L+(Math.log10(t+1)/Math.log10(tmax+1))*iw, Y=v=>T+ih-Math.min(1,Math.max(0,v))*ih;
+    c.font='10px "IBM Plex Mono", monospace'; c.fillStyle='#65788C'; c.lineWidth=1;
+    [0,.25,.5,.75,1].forEach(v=>{ c.strokeStyle = v===.5?'#B9C2CC':'#D3DAE3';
+      c.beginPath(); c.moveTo(L,Y(v)); c.lineTo(w-R,Y(v)); c.stroke();
+      c.textAlign='right'; c.textBaseline='middle'; c.fillText(v.toFixed(2),L-7,Y(v)); });
+    c.textAlign='center'; c.textBaseline='top';
+    for(let e=0;Math.pow(10,e)<=tmax;e++){ const t=Math.pow(10,e);
+      c.strokeStyle='#E6EAF0'; c.beginPath(); c.moveTo(X(t),T); c.lineTo(X(t),T+ih); c.stroke();
+      c.fillText(t.toLocaleString(),X(t),T+ih+6); }
+
+    c.strokeStyle='#7F91A5'; c.globalAlpha=.55; c.lineWidth=1;
+    [1,-1].forEach(sgn=>{ c.beginPath();
+      for(let px=0;px<=iw;px+=3){ const t=Math.pow(10,(px/iw)*Math.log10(tmax+1))-1;
+        if(t<1) continue; const v=0.5+sgn/Math.sqrt(t);
+        px===0?c.moveTo(L+px,Y(v)):c.lineTo(L+px,Y(v)); }
+      c.stroke(); });
+    c.globalAlpha=1;
+
+    const opt=0.5+tvNow()/2;
+    c.save(); c.setLineDash([5,4]); c.strokeStyle='#C31B5B'; c.lineWidth=1.5; c.globalAlpha=.7;
+    c.beginPath(); c.moveTo(L,Y(opt)); c.lineTo(w-R,Y(opt)); c.stroke(); c.restore();
+
+    if(S.hist.length>1){
+      c.beginPath(); c.strokeStyle='#16202B'; c.lineWidth=1.8; c.lineJoin='round';
+      S.hist.forEach((p,i)=> i?c.lineTo(X(p.t),Y(p.w)):c.moveTo(X(p.t),Y(p.w)));
+      c.stroke();
+    }
+  }
+
+  function draw(){
+    hist($('s-c0'),S.c0,S.c0.reduce((a,b)=>a+b,0),P0,'var(--blue)');
+    hist($('s-c1'),S.c1,S.c1.reduce((a,b)=>a+b,0),P1,'var(--rose)');
+    $('e-m0').textContent=sp(S.m0); $('e-m1').textContent=sp(S.m1);
+    $('e-c').textContent = S.pending ? sp(S.pending.c) : '·'.repeat(S.n).split('').join(' ');
+    $('tcount').textContent=S.rounds.toLocaleString();
+
+    const tv=tvNow(), opt=0.5+tv/2;
+    $('tvline').innerHTML = `<i>distance between the two</i> ${tv.toFixed(4)} `
+      + `&nbsp;·&nbsp; <i>best possible success rate</i> ${(opt*100).toFixed(2)}%`;
+
+    const play = S.adv==='you';
+    $('g0').disabled = !play || !S.pending;
+    $('g1').disabled = !play || !S.pending;
+    $('run').disabled = play;
+    $('run').title = play ? 'Switch the adversary to an automated strategy to run in bulk' : '';
+
+    if(S.rounds){
+      const rate=S.wins/S.rounds, se=1/Math.sqrt(S.rounds);
+      const inside = Math.abs(rate-0.5) <= se;
+      $('score').innerHTML = `${S.wins.toLocaleString()} correct of ${S.rounds.toLocaleString()} `
+        + `· ${(rate*100).toFixed(2)}% · ${inside?'within':'outside'} the coin-flip envelope`;
+    } else $('score').textContent='';
+
+    const wd=worstDelta();
+    const cur=(S.m0^S.m1)&(S.N-1);
+    $('worst').innerHTML = tv<1e-12 && wd.v<1e-12
+      ? 'Every pair of messages gives distance 0, so no adversary can do better than guessing. That is perfect indistinguishability.'
+      : `Worst pair for this scheme differs by <b>${bits(wd.d,S.n)}</b>, giving distance <b>${wd.v.toFixed(4)}</b> `
+        + `and a success rate of <b>${((0.5+wd.v/2)*100).toFixed(2)}%</b>. `
+        + `Your pair differs by <b>${bits(cur,S.n)}</b>. `
+        + `<button id="useworst" style="margin-left:6px">Use the worst pair</button>`;
+    const uw=$('useworst');
+    if(uw) uw.onclick=()=>{ S.m1=(S.m0^wd.d)&(S.N-1); reset(); };
+    chart();
+  }
+
+  function humanGuess(g){
+    if(!S.pending) return;
+    const ch=S.pending; record(ch,g); S.pending=null;
+    const right = g===ch.b;
+    $('verdict').innerHTML = `<b style="color:${right?'var(--good)':'var(--rose)'}">`
+      + `${right?'Correct':'Wrong'}</b> — the coin said <b>${ch.b}</b>, key was `
+      + `<b style="font-family:var(--mono)">${bits(ch.r,S.n)}</b>.`;
+    draw();
+  }
+
+  function drawBitRows(){
+    const row=(el,get,set)=>{ el.innerHTML='';
+      for(let i=S.n-1;i>=0;i--){ const b=document.createElement('button');
+        const on=(get()>>i)&1; b.textContent=on?'1':'0'; if(on) b.className='on';
+        b.onclick=()=>{ set(get()^(1<<i)); reset(); }; el.appendChild(b); } };
+    row($('m0bits'), ()=>S.m0, v=>S.m0=v);
+    row($('m1bits'), ()=>S.m1, v=>S.m1=v);
+  }
+
+  let acc=0, prev=0;
+  const rateOf=()=>Math.round(Math.pow(10, 0.3+(+$('rate').value/100)*3.2));
+  function frame(ts){
+    if(!S.running) return;
+    if(!prev) prev=ts;
+    const dt=Math.min(0.1,(ts-prev)/1000); prev=ts;
+    acc+=dt*rateOf(); let k=Math.min(Math.floor(acc),20000); acc-=k;
+    let last=null; while(k-->0) last=autoRound();
+    S.pending=last; draw(); S.pending=null;
+    requestAnimationFrame(frame);
+  }
+
+  $('run').onclick=()=>{ if(S.adv==='you') return;
+    S.running=!S.running; $('run').textContent=S.running?'Pause':'Run';
+    if(S.running){ prev=0; requestAnimationFrame(frame); } };
+  $('step').onclick=()=>{
+    if(S.adv==='you'){ S.pending=newChallenge();
+      $('verdict').textContent='Which message does this encrypt?'; draw(); }
+    else { const ch=autoRound(); S.pending=ch;
+      $('verdict').innerHTML=`Guessed <b>${guessBy(ch.c)}</b>, coin was <b>${ch.b}</b>.`;
+      draw(); S.pending=null; }
+  };
+  $('g0').onclick=()=>humanGuess(0);
+  $('g1').onclick=()=>humanGuess(1);
+  $('reset').onclick=()=>reset();
+  $('n').onchange=e=>{ S.n=+e.target.value; reset(); };
+  $('scheme').onchange=e=>{ S.scheme=e.target.value; reset(); };
+  $('adv').onchange=e=>{ S.adv=e.target.value; S.running=false; $('run').textContent='Run'; reset(); };
+  $('k').oninput=e=>{ S.k=+e.target.value; reset(); };
+  $('p').oninput=e=>{ S.p=+e.target.value/100; reset(); };
+  window.addEventListener('resize', chart);
+  reset();
+})();
+</script>

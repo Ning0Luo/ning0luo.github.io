@@ -1,0 +1,328 @@
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --paper:#EEF1F5; --sheet:#FBFCFD; --ink:#16202B; --muted:#65788C; --rule:#D3DAE3;
+    --blue:#2B4FD8; --rose:#C31B5B; --slate:#7F91A5;
+    --sans:"IBM Plex Sans", system-ui, -apple-system, Segoe UI, sans-serif;
+    --mono:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  *{box-sizing:border-box}
+  .lab{background:var(--paper); color:var(--ink); font-family:var(--sans);
+       font-size:14px; line-height:1.45; padding:22px}
+  .lab h1{font-size:19px; font-weight:600; margin:0 0 2px; letter-spacing:-0.01em}
+  .lab .sub{color:var(--muted); margin:0 0 18px; max-width:70ch}
+  .sheet{background:var(--sheet); border:1px solid var(--rule); padding:18px 20px}
+
+  .bar{display:flex; flex-wrap:wrap; gap:20px; align-items:flex-end;
+       padding-bottom:16px; border-bottom:1px solid var(--rule)}
+  .ctl{display:flex; flex-direction:column; gap:5px}
+  .ctl > span{font-size:12px; color:var(--muted)}
+  .lab select, .lab button{font-family:var(--sans); font-size:13px; color:var(--ink);
+       background:#fff; border:1px solid var(--rule); padding:5px 9px}
+  .lab button{cursor:pointer}
+  .lab button:hover{border-color:var(--ink)}
+  .lab button:focus-visible, .lab select:focus-visible{outline:2px solid var(--blue); outline-offset:1px}
+  .lab button.go{background:var(--ink); color:#fff; border-color:var(--ink); min-width:66px}
+  .lab select:disabled{color:var(--muted); background:#F3F5F8}
+  .bits{display:flex; gap:3px; align-items:center}
+  .bits button{font-family:var(--mono); font-weight:500; width:24px; padding:5px 0; text-align:center}
+  .bits button.on{background:var(--ink); color:#fff; border-color:var(--ink)}
+  .bits em{font-style:normal; font-family:var(--mono); font-size:12px; color:var(--muted); margin-left:6px}
+  .lab input[type=range]{width:110px; accent-color:var(--ink)}
+  .count{margin-left:auto; text-align:right}
+  .count b{font-family:var(--mono); font-size:26px; font-weight:500; display:block; line-height:1.1}
+  .count span{font-size:12px; color:var(--muted)}
+
+  .grid{display:grid; grid-template-columns:1fr 1fr}
+  .cell{padding:16px 16px 6px}
+  .cell:nth-child(even){border-left:1px solid var(--rule)}
+  .cell:nth-child(n+3){border-top:1px solid var(--rule)}
+  .cell h2{font-size:13px; font-weight:600; margin:0; font-family:var(--mono)}
+  .cell p{font-size:12px; color:var(--muted); margin:3px 0 8px; min-height:32px}
+  .cell svg{display:block; width:100%; height:auto}
+  .stat{font-family:var(--mono); font-size:12px; margin-top:4px}
+  .stat i{font-style:normal; color:var(--muted)}
+  .warn{color:var(--rose)}
+
+  .lower{border-top:1px solid var(--rule); padding:16px 16px 8px}
+  .lower h2{font-size:13px; font-weight:600; margin:0}
+  .lower p{font-size:12px; color:var(--muted); margin:2px 0 10px}
+  .lower canvas{display:block; width:100%; height:210px}
+  .key{display:flex; gap:18px; font-size:12px; color:var(--muted); margin-top:6px; flex-wrap:wrap}
+  .key i{display:inline-block; width:16px; height:2px; vertical-align:middle; margin-right:6px}
+  .mi{font-family:var(--mono); font-size:12px; margin-top:10px; color:var(--muted)}
+
+  @media (max-width:800px){
+    .grid{grid-template-columns:1fr}
+    .cell:nth-child(even){border-left:0}
+    .cell + .cell{border-top:1px solid var(--rule)}
+  }
+</style>
+
+<div class="lab">
+  <h1>Estimating all four distributions from samples</h1>
+  <p class="sub">Each trial draws x from the source and r uniformly, then forms c = x ⊕ r.
+    The top row uses every trial. The bottom row keeps only the trials matching a chosen
+    message or a chosen ciphertext, so those panels fill in far more slowly.</p>
+
+  <div class="sheet">
+    <div class="bar">
+      <label class="ctl"><span>Messages</span>
+        <select id="mode">
+          <optgroup label="Measured">
+            <option value="english" selected>English letter frequencies</option>
+            <option value="benford">Leading digits (Benford)</option>
+            <option value="dna">DNA bases, human genome</option>
+          </optgroup>
+          <optgroup label="Synthetic">
+            <option value="biased">Biased bits (each 1 with p = 0.75)</option>
+            <option value="uniform">Uniform</option>
+          </optgroup>
+        </select>
+      </label>
+      <label class="ctl"><span>Length n</span>
+        <select id="n"><option>2</option><option>3</option><option>4</option><option selected>5</option></select>
+      </label>
+      <div class="ctl"><span>Condition on message x*</span><div class="bits" id="xbits"></div></div>
+      <div class="ctl"><span>Condition on ciphertext c*</span><div class="bits" id="cbits"></div></div>
+      <label class="ctl"><span>Speed</span><input type="range" id="rate" min="0" max="100" value="50"></label>
+      <div class="ctl"><span>&nbsp;</span><div style="display:flex; gap:6px">
+        <button class="go" id="run">Run</button>
+        <button id="step">One trial</button>
+        <button id="reset">Reset</button>
+      </div></div>
+      <div class="count"><b id="tcount">0</b><span>trials</span></div>
+    </div>
+
+    <div class="grid">
+      <div class="cell">
+        <h2>P(x)</h2>
+        <p>The source, over all trials. Outline is the published table.</p>
+        <svg id="s-x" viewBox="0 0 340 150"></svg>
+        <div class="stat" id="t-x"></div>
+      </div>
+      <div class="cell">
+        <h2>P(c)</h2>
+        <p>Ciphertexts, over all trials. Flat however lumpy the source is.</p>
+        <svg id="s-c" viewBox="0 0 340 150"></svg>
+        <div class="stat" id="t-c"></div>
+      </div>
+      <div class="cell">
+        <h2>P(c | x = x*)</h2>
+        <p>Only trials that sent x*. Uniform, and the same uniform for every choice of x*.</p>
+        <svg id="s-cx" viewBox="0 0 340 150"></svg>
+        <div class="stat" id="t-cx"></div>
+      </div>
+      <div class="cell">
+        <h2>P(x | c = c*)</h2>
+        <p>Only trials that produced c*. Converges to the source, not to uniform.</p>
+        <svg id="s-xc" viewBox="0 0 340 150"></svg>
+        <div class="stat" id="t-xc"></div>
+      </div>
+    </div>
+
+    <div class="lower">
+      <h2>What each slice is converging to</h2>
+      <p>Total variation distance, trials on a log axis.</p>
+      <canvas id="chart"></canvas>
+      <div class="key">
+        <span><i style="background:var(--blue)"></i>P(c | x*) against uniform</span>
+        <span><i style="background:var(--rose)"></i>P(x | c*) against the source</span>
+        <span><i style="background:var(--slate)"></i>P(x | c*) against uniform</span>
+        <span><i style="background:transparent; border-top:2px dashed var(--slate)"></i>distance from source to uniform</span>
+      </div>
+      <div class="mi" id="mi"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const ENGLISH=[8.167,1.492,2.782,4.253,12.702,2.228,2.015,6.094,6.966,0.153,0.772,4.025,
+                 2.406,6.749,7.507,1.929,0.095,5.987,6.327,9.056,2.758,0.978,2.360,0.150,1.974,0.074];
+  const ALPHA="abcdefghijklmnopqrstuvwxyz";
+  const FIXED_N={english:5, benford:4, dna:2};
+
+  const S={n:5,N:32,mode:'english',xstar:4,cstar:11,
+           pmf:[],cum:[],labels:null,
+           joint:null,xC:[],cC:[],trials:0,
+           hist:[],nextRec:1,running:false};
+
+  const bits=(v,n)=>v.toString(2).padStart(n,'0');
+
+  function buildPMF(){
+    const N=S.N; let p=new Array(N).fill(0), labels=null;
+    if(S.mode==='english'){
+      const tot=ENGLISH.reduce((a,b)=>a+b,0);
+      for(let i=0;i<26;i++) p[i]=ENGLISH[i]/tot;
+      labels=Array.from({length:N},(_,i)=> i<26?ALPHA[i]:'·');
+    } else if(S.mode==='benford'){
+      for(let d=1;d<=9;d++) p[d]=Math.log10(1+1/d);
+      labels=Array.from({length:N},(_,i)=>(i>=1&&i<=9)?String(i):'·');
+    } else if(S.mode==='dna'){
+      p=[0.295,0.205,0.205,0.295]; labels=['A','C','G','T'];
+    } else if(S.mode==='uniform'){ p.fill(1/N); }
+    else { for(let v=0;v<N;v++){ let q=1;
+        for(let i=0;i<S.n;i++) q*=((v>>i)&1)?0.75:0.25; p[v]=q; } }
+    S.pmf=p; S.labels=labels;
+    S.cum=[]; let a=0; for(let v=0;v<N;v++){ a+=p[v]; S.cum.push(a); }
+  }
+  const sampleMsg=()=>{ const u=Math.random()*S.cum[S.N-1];
+    for(let v=0;v<S.N;v++) if(u<=S.cum[v]) return v; return S.N-1; };
+
+  const UNIF=()=>1/S.N;
+  function tvTo(counts,total,target){
+    if(!total) return 0;
+    let s=0; for(let i=0;i<S.N;i++) s+=Math.abs(counts[i]/total-target(i));
+    return s/2;
+  }
+  const srcVsUnif=()=>{ let s=0; for(let v=0;v<S.N;v++) s+=Math.abs(S.pmf[v]-1/S.N); return s/2; };
+
+  function reset(){
+    if(FIXED_N[S.mode]) S.n=FIXED_N[S.mode];
+    $('n').value=String(S.n); $('n').disabled=!!FIXED_N[S.mode];
+    S.N=1<<S.n; S.xstar&=S.N-1; S.cstar&=S.N-1;
+    buildPMF();
+    S.joint=Array.from({length:S.N},()=>new Array(S.N).fill(0));
+    S.xC=new Array(S.N).fill(0); S.cC=new Array(S.N).fill(0);
+    S.trials=0; S.hist=[]; S.nextRec=1;
+    drawBitRows(); drawAll();
+  }
+
+  function trial(){
+    const x=sampleMsg(), r=Math.floor(Math.random()*S.N), c=x^r;
+    S.joint[x][c]++; S.xC[x]++; S.cC[c]++; S.trials++;
+    if(S.trials>=S.nextRec){
+      const rowT=S.xC[S.xstar], colT=S.cC[S.cstar];
+      const row=S.joint[S.xstar];
+      const col=new Array(S.N); for(let i=0;i<S.N;i++) col[i]=S.joint[i][S.cstar];
+      S.hist.push({t:S.trials,
+        a: rowT ? tvTo(row,rowT,UNIF) : null,
+        b: colT ? tvTo(col,colT,i=>S.pmf[i]) : null,
+        d: colT ? tvTo(col,colT,UNIF) : null});
+      S.nextRec=Math.max(S.trials+1, Math.ceil(S.trials*1.06));
+    }
+  }
+
+  function hist(svg,counts,total,color,theory){
+    const W=340,H=150,L=6,R=6,T=10,B=22, iw=W-L-R, ih=H-T-B;
+    const t=total||1;
+    let peak=0; for(let i=0;i<S.N;i++) peak=Math.max(peak,counts[i]/t,theory(i));
+    const ymax=Math.max(1.7/S.N,peak*1.14);
+    const bw=iw/S.N, gap=Math.min(3,bw*0.24), yOf=p=>T+ih-(p/ymax)*ih;
+    let g=`<line x1="${L}" y1="${T+ih}" x2="${W-R}" y2="${T+ih}" stroke="var(--rule)"/>`;
+    const yu=yOf(1/S.N);
+    g+=`<line x1="${L}" y1="${yu}" x2="${W-R}" y2="${yu}" stroke="var(--muted)" stroke-dasharray="2 3" opacity=".6"/>`;
+    for(let i=0;i<S.N;i++){
+      const p=total?counts[i]/t:0, x0=L+i*bw+gap/2, w=bw-gap, h=Math.max(0,T+ih-yOf(p));
+      g+=`<rect x="${x0.toFixed(2)}" y="${yOf(p).toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}" fill="${color}" opacity=".88"/>`;
+      const th=theory(i);
+      g+=`<line x1="${x0.toFixed(2)}" y1="${yOf(th).toFixed(2)}" x2="${(x0+w).toFixed(2)}" y2="${yOf(th).toFixed(2)}" stroke="var(--ink)" stroke-width="1.4" opacity=".55"/>`;
+      let lab=null;
+      if(S.labels) lab=S.labels[i];
+      else if(S.N<=8||(S.N<=16&&i%2===0)) lab=bits(i,S.n);
+      if(lab) g+=`<text x="${(x0+w/2).toFixed(2)}" y="${T+ih+12}" text-anchor="middle" font-size="${S.labels?9.5:8.5}" fill="var(--muted)" font-family="var(--mono)">${lab}</text>`;
+    }
+    svg.innerHTML=g;
+  }
+
+  function chart(){
+    const cv=$('chart'), dpr=window.devicePixelRatio||1, w=cv.clientWidth||600, h=210;
+    cv.width=w*dpr; cv.height=h*dpr;
+    const c=cv.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0); c.clearRect(0,0,w,h);
+    const L=34,R=8,T=10,B=24, iw=w-L-R, ih=h-T-B, tmax=Math.max(100,S.trials);
+    const X=t=>L+(Math.log10(t+1)/Math.log10(tmax+1))*iw, Y=v=>T+ih-Math.min(1,v)*ih;
+    c.font='10px "IBM Plex Mono", monospace'; c.fillStyle='#65788C'; c.lineWidth=1;
+    [0,.25,.5,.75,1].forEach(v=>{ c.strokeStyle='#D3DAE3';
+      c.beginPath(); c.moveTo(L,Y(v)); c.lineTo(w-R,Y(v)); c.stroke();
+      c.textAlign='right'; c.textBaseline='middle'; c.fillText(v.toFixed(2),L-7,Y(v)); });
+    c.textAlign='center'; c.textBaseline='top';
+    for(let e=0;Math.pow(10,e)<=tmax;e++){ const t=Math.pow(10,e);
+      c.strokeStyle='#E6EAF0'; c.beginPath(); c.moveTo(X(t),T); c.lineTo(X(t),T+ih); c.stroke();
+      c.fillText(t.toLocaleString(),X(t),T+ih+6); }
+    const lim=srcVsUnif();
+    c.save(); c.setLineDash([5,4]); c.strokeStyle='#7F91A5'; c.globalAlpha=.6; c.lineWidth=1.5;
+    c.beginPath(); c.moveTo(L,Y(lim)); c.lineTo(w-R,Y(lim)); c.stroke(); c.restore();
+    const line=(k,col)=>{ let started=false;
+      c.beginPath(); c.strokeStyle=col; c.lineWidth=1.8; c.lineJoin='round';
+      for(const p of S.hist){ if(p[k]===null) continue;
+        if(!started){ c.moveTo(X(p.t),Y(p[k])); started=true; } else c.lineTo(X(p.t),Y(p[k])); }
+      if(started) c.stroke(); };
+    line('d','#7F91A5'); line('a','#2B4FD8'); line('b','#C31B5B');
+  }
+
+  function mutualInfo(){
+    const t=S.trials; if(!t) return 0;
+    let mi=0;
+    for(let x=0;x<S.N;x++){ if(!S.xC[x]) continue;
+      for(let cc=0;cc<S.N;cc++){ const j=S.joint[x][cc]; if(!j) continue;
+        mi += (j/t)*Math.log2((j/t)/((S.xC[x]/t)*(S.cC[cc]/t))); } }
+    return mi;
+  }
+
+  function drawAll(){
+    const t=S.trials, rowT=S.xC[S.xstar], colT=S.cC[S.cstar];
+    const row=S.joint[S.xstar];
+    const col=new Array(S.N); for(let i=0;i<S.N;i++) col[i]=S.joint[i][S.cstar];
+
+    hist($('s-x'),  S.xC, t,    'var(--rose)', i=>S.pmf[i]);
+    hist($('s-c'),  S.cC, t,    'var(--blue)', UNIF);
+    hist($('s-cx'), row,  rowT, 'var(--blue)', UNIF);
+    hist($('s-xc'), col,  colT, 'var(--rose)', i=>S.pmf[i]);
+
+    $('tcount').textContent=t.toLocaleString();
+    $('t-x').innerHTML  = `<i>TV to source</i> ${tvTo(S.xC,t,i=>S.pmf[i]).toFixed(4)}`;
+    $('t-c').innerHTML  = `<i>TV to uniform</i> ${tvTo(S.cC,t,UNIF).toFixed(4)}`;
+
+    const sym = v => S.labels && S.labels[v]!=='·' ? ` “${S.labels[v]}”` : '';
+    if(!rowT && S.pmf[S.xstar]===0)
+      $('t-cx').innerHTML = `<span class="warn">the source never emits ${bits(S.xstar,S.n)} — no trials to condition on</span>`;
+    else
+      $('t-cx').innerHTML = `<i>TV to uniform</i> ${tvTo(row,rowT,UNIF).toFixed(4)} <i>· from</i> ${rowT.toLocaleString()} <i>trials</i>`;
+    $('t-xc').innerHTML = colT
+      ? `<i>TV to source</i> ${tvTo(col,colT,i=>S.pmf[i]).toFixed(4)} <i>· to uniform</i> ${tvTo(col,colT,UNIF).toFixed(4)} <i>· from</i> ${colT.toLocaleString()}`
+      : `<i>waiting for a trial that produces ${bits(S.cstar,S.n)}</i>`;
+
+    const bias = t ? ((S.N-1)*(S.N-1))/(2*t*Math.LN2) : 0;
+    $('mi').innerHTML = t
+      ? `Î(X;C) = ${mutualInfo().toFixed(4)} bits &nbsp; · &nbsp; expected finite-sample bias ≈ ${bias.toFixed(4)} bits &nbsp; · &nbsp; true value 0`
+      : '';
+    chart();
+  }
+
+  function drawBitRows(){
+    const row=(el,get,set,showSym)=>{ el.innerHTML='';
+      for(let i=S.n-1;i>=0;i--){ const b=document.createElement('button');
+        const on=(get()>>i)&1; b.textContent=on?'1':'0'; if(on) b.className='on';
+        b.onclick=()=>{ set(get()^(1<<i)); reset(); }; el.appendChild(b); }
+      if(showSym && S.labels){ const e=document.createElement('em');
+        e.textContent = S.labels[get()]==='·' ? 'unused' : S.labels[get()]; el.appendChild(e); } };
+    row($('xbits'), ()=>S.xstar, v=>S.xstar=v, true);
+    row($('cbits'), ()=>S.cstar, v=>S.cstar=v, false);
+  }
+
+  let acc=0, prev=0;
+  const rateOf=()=>Math.round(Math.pow(10, 0.3+(+$('rate').value/100)*3.4));
+  function frame(ts){
+    if(!S.running) return;
+    if(!prev) prev=ts;
+    const dt=Math.min(0.1,(ts-prev)/1000); prev=ts;
+    acc+=dt*rateOf(); let k=Math.min(Math.floor(acc),30000); acc-=k;
+    while(k-->0) trial();
+    drawAll(); requestAnimationFrame(frame);
+  }
+  $('run').onclick=()=>{ S.running=!S.running;
+    $('run').textContent=S.running?'Pause':'Run';
+    if(S.running){ prev=0; requestAnimationFrame(frame); } };
+  $('step').onclick=()=>{ trial(); drawAll(); };
+  $('reset').onclick=()=>reset();
+  $('n').onchange=e=>{ S.n=+e.target.value; reset(); };
+  $('mode').onchange=e=>{ S.mode=e.target.value; reset(); };
+  window.addEventListener('resize', chart);
+  reset();
+})();
+</script>

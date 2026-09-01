@@ -1,0 +1,275 @@
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --paper:#EEF1F5; --sheet:#FBFCFD; --ink:#16202B; --muted:#65788C; --rule:#D3DAE3;
+    --blue:#2B4FD8; --rose:#C31B5B; --slate:#7F91A5; --good:#0F6E56;
+    --hole:#FBE7EE; --even:#E3F1EC; --over:#FBF0DC;
+    --sans:"IBM Plex Sans", system-ui, -apple-system, Segoe UI, sans-serif;
+    --mono:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  *{box-sizing:border-box}
+  .lab{background:var(--paper); color:var(--ink); font-family:var(--sans);
+       font-size:14px; line-height:1.45; padding:22px}
+  .lab h1{font-size:19px; font-weight:600; margin:0 0 2px; letter-spacing:-0.01em}
+  .lab .sub{color:var(--muted); margin:0 0 18px; max-width:72ch}
+  .sheet{background:var(--sheet); border:1px solid var(--rule); padding:18px 20px}
+
+  .bar{display:flex; flex-wrap:wrap; gap:20px; align-items:flex-end;
+       padding-bottom:16px; border-bottom:1px solid var(--rule)}
+  .ctl{display:flex; flex-direction:column; gap:5px}
+  .ctl > span{font-size:12px; color:var(--muted)}
+  .lab select, .lab button{font-family:var(--sans); font-size:13px; color:var(--ink);
+       background:#fff; border:1px solid var(--rule); padding:5px 9px}
+  .lab button{cursor:pointer}
+  .lab button:hover{border-color:var(--ink)}
+  .lab button:focus-visible, .lab select:focus-visible{outline:2px solid var(--blue); outline-offset:1px}
+  .lab input[type=range]{width:120px; accent-color:var(--ink)}
+  .ctl em{font-style:normal; font-family:var(--mono)}
+
+  .top{display:grid; grid-template-columns:auto 1fr}
+  .top > div{padding:16px 20px 10px}
+  .top > div + div{border-left:1px solid var(--rule)}
+  .top h2{font-size:13px; font-weight:600; margin:0 0 3px}
+  .top p{font-size:12px; color:var(--muted); margin:0 0 12px; max-width:46ch}
+
+  .grid{display:inline-grid; gap:3px; font-family:var(--mono); font-size:13px}
+  .grid .hd{font-size:11px; color:var(--muted); display:flex; align-items:center;
+            justify-content:center; height:22px}
+  .grid .rh{font-size:11px; color:var(--muted); display:flex; align-items:center;
+            justify-content:flex-end; padding-right:8px; min-width:34px}
+  .cell{width:46px; height:34px; border:1px solid var(--rule); background:#fff;
+        display:flex; align-items:center; justify-content:center; font-family:var(--mono);
+        font-size:13px; padding:0}
+  button.cell{cursor:pointer}
+  button.cell:hover{border-color:var(--ink)}
+  .cell.hole{background:var(--hole); border-color:#EFC3D2; color:#8C1B44}
+  .cell.even{background:var(--even); border-color:#B7DCCE; color:#0B5442}
+  .cell.over{background:var(--over); border-color:#EBD3A2; color:#7A5408}
+  .cell.sum{border:0; background:transparent; color:var(--muted); font-size:12px}
+  .cell.selcol{outline:2px solid var(--ink); outline-offset:-2px}
+
+  .verdict{margin-top:16px; font-size:13px; line-height:1.6; max-width:60ch}
+  .verdict b{font-family:var(--mono); font-weight:500}
+  .tag{display:inline-block; font-size:12px; padding:2px 8px; margin-bottom:8px;
+       border:1px solid; border-radius:2px}
+  .tag.no{color:#8C1B44; border-color:#EFC3D2; background:var(--hole)}
+  .tag.yes{color:#0B5442; border-color:#B7DCCE; background:var(--even)}
+
+  .lower{border-top:1px solid var(--rule); padding:16px 20px 12px;
+         display:grid; grid-template-columns:1fr 1fr; gap:28px}
+  .lower h2{font-size:13px; font-weight:600; margin:0 0 3px}
+  .lower p{font-size:12px; color:var(--muted); margin:0 0 12px}
+  .rowbar{display:grid; grid-template-columns:32px 1fr 54px; gap:8px;
+          align-items:center; font-family:var(--mono); font-size:12px; margin-bottom:5px}
+  .rowbar em{font-style:normal; height:12px; display:block; background:var(--slate)}
+  .rowbar em.zero{background:var(--rose); width:3px !important}
+  .rowbar.prior em{background:var(--blue); opacity:.55}
+  .note{font-size:12px; color:var(--muted); margin-top:12px; line-height:1.6}
+
+  @media (max-width:900px){
+    .top{grid-template-columns:1fr}
+    .top > div + div{border-left:0; border-top:1px solid var(--rule)}
+    .lower{grid-template-columns:1fr; gap:20px}
+  }
+</style>
+
+<div class="lab">
+  <h1>Why the keys have to outnumber the messages</h1>
+  <p class="sub">Every key turns the message list into a ciphertext list without collisions, otherwise
+    decryption fails. Try to arrange the keys so that no ciphertext ever rules a message out. With
+    fewer keys than messages the arrangement does not exist, and the grid shows you why.</p>
+
+  <div class="sheet">
+    <div class="bar">
+      <label class="ctl"><span>Messages |M| <em id="mlab">4</em></span>
+        <input type="range" id="M" min="2" max="6" value="4"></label>
+      <label class="ctl"><span>Keys |K| <em id="klab">3</em></span>
+        <input type="range" id="K" min="1" max="8" value="3"></label>
+      <label class="ctl"><span>Starting arrangement</span>
+        <select id="preset">
+          <option value="shift" selected>Shifts</option>
+          <option value="random">Random</option>
+          <option value="same">Every key identical</option>
+        </select>
+      </label>
+      <div class="ctl"><span>&nbsp;</span><div style="display:flex; gap:6px">
+        <button id="shuffle">Shuffle</button>
+        <button id="reset">Reset</button>
+      </div></div>
+    </div>
+
+    <div class="top">
+      <div>
+        <h2>The scheme</h2>
+        <p>Row k, column m holds Enc(k, m). Click any cell to change it — the clash swaps automatically so each key stays invertible.</p>
+        <div class="grid" id="ktable"></div>
+      </div>
+      <div>
+        <h2>How many keys send m to c</h2>
+        <p>Click a column to inspect that ciphertext. Every column sums to |K|, because each key sends exactly one message there.</p>
+        <div class="grid" id="cov"></div>
+        <div class="verdict" id="verdict"></div>
+      </div>
+    </div>
+
+    <div class="lower">
+      <div>
+        <h2>Posterior after seeing <span id="csel" style="font-family:var(--mono)">A</span></h2>
+        <p>Blue is the prior, uniform over messages. Grey is what remains possible.</p>
+        <div id="post"></div>
+      </div>
+      <div>
+        <h2>The counting argument</h2>
+        <p>Why no rearrangement can help.</p>
+        <div class="note" id="argument"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const CL="ABCDEF";
+  const S={M:4,K:3,preset:'shift',perm:[],sel:0};
+
+  function build(){
+    S.perm=[];
+    for(let k=0;k<S.K;k++){
+      let row=[];
+      if(S.preset==='shift') for(let m=0;m<S.M;m++) row.push((m+k)%S.M);
+      else if(S.preset==='same') for(let m=0;m<S.M;m++) row.push(m);
+      else { row=[...Array(S.M).keys()];
+        for(let i=S.M-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1));
+          [row[i],row[j]]=[row[j],row[i]]; } }
+      S.perm.push(row);
+    }
+    if(S.sel>=S.M) S.sel=0;
+  }
+  const coverage=()=>{
+    const c=Array.from({length:S.M},()=>new Array(S.M).fill(0));
+    for(let k=0;k<S.K;k++) for(let m=0;m<S.M;m++) c[m][S.perm[k][m]]++;
+    return c;
+  };
+
+  function cycleCell(k,m){
+    const row=S.perm[k], cOld=row[m], cNew=(cOld+1)%S.M;
+    const m2=row.indexOf(cNew);
+    row[m]=cNew; if(m2>=0) row[m2]=cOld;
+    render();
+  }
+
+  function renderKTable(){
+    const g=$('ktable');
+    g.style.gridTemplateColumns=`auto repeat(${S.M}, 46px)`;
+    let h=`<div class="rh"></div>`;
+    for(let m=0;m<S.M;m++) h+=`<div class="hd">m${m}</div>`;
+    for(let k=0;k<S.K;k++){
+      h+=`<div class="rh">k${k}</div>`;
+      for(let m=0;m<S.M;m++)
+        h+=`<button class="cell" data-k="${k}" data-m="${m}">${CL[S.perm[k][m]]}</button>`;
+    }
+    g.innerHTML=h;
+    g.querySelectorAll('button.cell').forEach(b=>{
+      b.onclick=()=>cycleCell(+b.dataset.k,+b.dataset.m); });
+  }
+
+  function renderCov(cov){
+    const g=$('cov'), target=S.K/S.M;
+    g.style.gridTemplateColumns=`auto repeat(${S.M}, 46px)`;
+    let h=`<div class="rh"></div>`;
+    for(let c=0;c<S.M;c++) h+=`<div class="hd">${CL[c]}</div>`;
+    for(let m=0;m<S.M;m++){
+      h+=`<div class="rh">m${m}</div>`;
+      for(let c=0;c<S.M;c++){
+        const v=cov[m][c];
+        const cls = v===0 ? 'hole' : (Math.abs(v-target)<1e-9 ? 'even' : 'over');
+        h+=`<button class="cell ${cls}${c===S.sel?' selcol':''}" data-c="${c}">${v}</button>`;
+      }
+    }
+    h+=`<div class="rh">sum</div>`;
+    for(let c=0;c<S.M;c++) h+=`<div class="cell sum">${S.K}</div>`;
+    g.innerHTML=h;
+    g.querySelectorAll('button.cell').forEach(b=>{
+      b.onclick=()=>{ S.sel=+b.dataset.c; render(); }; });
+  }
+
+  function renderPost(cov){
+    $('csel').textContent=CL[S.sel];
+    const col=[], K=S.K;
+    for(let m=0;m<S.M;m++) col.push(cov[m][S.sel]);
+    const prior=1/S.M;
+    let h='';
+    for(let m=0;m<S.M;m++){
+      const p=col[m]/K;
+      h+=`<div class="rowbar"><span>m${m}</span>`
+       + `<em class="${p===0?'zero':''}" style="width:${Math.max(p*100,p===0?0:2)}%"></em>`
+       + `<span>${p.toFixed(3)}</span></div>`;
+    }
+    h+=`<div style="height:10px"></div>`;
+    for(let m=0;m<S.M;m++)
+      h+=`<div class="rowbar prior"><span>m${m}</span>`
+       + `<em style="width:${(prior*100).toFixed(1)}%"></em>`
+       + `<span>${prior.toFixed(3)}</span></div>`;
+    $('post').innerHTML=h;
+  }
+
+  function render(){
+    $('mlab').textContent=S.M; $('klab').textContent=S.K;
+    const cov=coverage(), target=S.K/S.M;
+    renderKTable(); renderCov(cov); renderPost(cov);
+
+    let hole=null, uneven=null;
+    for(let c=0;c<S.M && !hole;c++) for(let m=0;m<S.M;m++)
+      if(cov[m][c]===0){ hole={m,c}; break; }
+    for(let c=0;c<S.M && !uneven;c++) for(let m=0;m<S.M;m++)
+      if(Math.abs(cov[m][c]-target)>1e-9){ uneven={m,c,v:cov[m][c]}; break; }
+
+    const perfect = !uneven;
+    let v = perfect
+      ? `<span class="tag yes">perfectly secret</span><br>`
+        + `Every ciphertext is produced from every message by exactly <b>${target}</b> `
+        + `key${target===1?'':'s'}, so the posterior matches the prior no matter what you intercept.`
+      : `<span class="tag no">not perfectly secret</span><br>`;
+    if(!perfect){
+      if(hole) v += `Intercept <b>${CL[hole.c]}</b> and message <b>m${hole.m}</b> is eliminated — `
+                  + `no key encrypts it to that. The prior gave it ${(1/S.M).toFixed(3)}; the posterior gives 0.`;
+      else v += `Column <b>${CL[uneven.c]}</b> reaches <b>m${uneven.m}</b> `
+              + `${uneven.v} time${uneven.v===1?'':'s'} but needs ${target.toFixed(2)}, `
+              + `so that ciphertext shifts your beliefs.`;
+    }
+    $('verdict').innerHTML=v;
+
+    let a;
+    if(S.K<S.M){
+      a = `Each key sends exactly one message to a given ciphertext, so every column sums to `
+        + `<b>|K| = ${S.K}</b>. That total has to be spread across <b>|M| = ${S.M}</b> rows. `
+        + `With ${S.K} &lt; ${S.M}, at least ${S.M-S.K} row${S.M-S.K===1?'':'s'} in every column `
+        + `must be 0 — the pigeonhole leaves nothing else. Each zero is a message the ciphertext rules out. `
+        + `Rearranging the scheme moves the holes around but never removes them, which is Shannon's bound: `
+        + `perfect secrecy forces <b>|K| ≥ |M|</b>.`;
+    } else if(S.K % S.M !== 0){
+      a = `You have enough keys, but with the key chosen uniformly the columns cannot come out level: `
+        + `<b>${S.K}</b> does not divide evenly among <b>${S.M}</b> messages. `
+        + `|K| ≥ |M| is necessary, not sufficient — try |K| = ${S.M * Math.ceil(S.K/S.M)}.`;
+    } else {
+      a = `Column sums of <b>${S.K}</b> across <b>${S.M}</b> messages allow <b>${target}</b> per cell, `
+        + `so a level arrangement is possible. `
+        + (perfect ? `This one achieves it: the keys form a Latin square, every message reaching every ciphertext equally.`
+                   : `This arrangement has not found it — some keys are duplicating each other's work. Try the shift preset.`);
+    }
+    $('argument').innerHTML=a;
+  }
+
+  $('M').oninput=e=>{ S.M=+e.target.value; build(); render(); };
+  $('K').oninput=e=>{ S.K=+e.target.value; build(); render(); };
+  $('preset').onchange=e=>{ S.preset=e.target.value; build(); render(); };
+  $('shuffle').onclick=()=>{ const p=S.preset; S.preset='random'; build(); S.preset=p; render(); };
+  $('reset').onclick=()=>{ build(); render(); };
+
+  build(); render();
+})();
+</script>
