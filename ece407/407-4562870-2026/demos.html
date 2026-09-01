@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="ECE 407: Cryptography — interactive demos for Fall 2026.">
+<title>Interactive Demos · ECE 407 · Cryptography (Fall 2026)</title>
+<style>
+  :root{
+    --illini-orange:#FF5F05;
+    --orange-text:#B03A00;
+    --illini-blue:#13294B;
+    --ink:#1b1f27;
+    --muted:#565f6d;
+    --link:#0b5fa5;
+    --rule:#dfe3ea;
+    --bg:#ffffff;
+    --tint:#f5f7fa;
+    --focus:#0b5fa5;
+  }
+
+  @media (prefers-color-scheme: dark){
+    :root{
+      --orange-text:#FF9550;
+      --illini-blue:#9FC0EE;
+      --ink:#e8ebf0;
+      --muted:#a9b2c0;
+      --link:#7fb6ee;
+      --rule:#333b48;
+      --bg:#14171c;
+      --tint:#1b1f26;
+      --focus:#8ec2ff;
+    }
+  }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+
+  @media (prefers-reduced-motion: reduce){
+    html{scroll-behavior:auto}
+    *,*::before,*::after{
+      animation-duration:.01ms !important;
+      animation-iteration-count:1 !important;
+      transition-duration:.01ms !important;
+    }
+  }
+
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font:16px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  a:focus-visible,
+  [tabindex]:focus-visible{
+    outline:3px solid var(--focus);
+    outline-offset:3px;
+    border-radius:2px;
+  }
+
+  .skip{
+    position:absolute;left:-9999px;top:0;z-index:100;
+    background:var(--bg);color:var(--link);
+    padding:.75rem 1.25rem;font-weight:600;
+    border:2px solid var(--focus);border-radius:0 0 6px 0;
+  }
+  .skip:focus{left:0}
+
+  /* ---------- nav ---------- */
+  .nav{
+    position:sticky;top:0;z-index:50;
+    display:flex;flex-wrap:wrap;gap:.25rem 1rem;align-items:center;
+    padding:.5rem 1.5rem;
+    background:var(--illini-blue);
+    border-bottom:3px solid var(--illini-orange);
+  }
+  @media (prefers-color-scheme: dark){
+    .nav{background:#0d1420}
+  }
+  @media (max-height:26rem){ .nav{position:static} }
+
+  .nav .brand{
+    color:#fff;font-weight:700;letter-spacing:.02em;
+    margin-right:auto;padding:.6rem 0;
+  }
+  .nav a{
+    color:#e4eaf3;text-decoration:none;font-size:.95rem;
+    padding:.7rem .25rem;
+    border-bottom:2px solid transparent;
+  }
+  .nav a:hover{color:#fff;border-bottom-color:var(--illini-orange)}
+  .nav a:focus-visible{outline:3px solid #fff;outline-offset:2px}
+  .nav a[aria-current="page"]{color:#fff;border-bottom-color:var(--illini-orange)}
+
+  /* ---------- layout ---------- */
+  main{max-width:1000px;margin:0 auto;padding:2.5rem 1.5rem 4rem}
+  main > p, .note, footer{max-width:70ch}
+
+  h1{
+    font-size:clamp(1.9rem,4.5vw,2.7rem);line-height:1.2;
+    margin:0 0 .4rem;color:var(--illini-blue);letter-spacing:-.015em;
+  }
+  .term{color:var(--muted);margin:0 0 1.6rem;font-size:1.02rem}
+  a{color:var(--link);text-underline-offset:.15em}
+  a:hover{color:var(--orange-text)}
+
+  .note{
+    font-size:.95rem;color:var(--muted);
+    margin:0 0 2.4rem;padding:.9rem 1.2rem;
+    background:var(--tint);border-left:4px solid var(--illini-orange);
+    border-radius:0 6px 6px 0;
+  }
+  .note strong{color:var(--illini-blue)}
+
+  /* ---------- demo list ---------- */
+  .demos{list-style:none;margin:0;padding:0;display:grid;gap:1.4rem}
+
+  .demo{
+    border:1px solid var(--rule);border-left:4px solid var(--illini-orange);
+    border-radius:0 6px 6px 0;padding:1.25rem 1.4rem;
+    background:var(--bg);
+  }
+  .demo h2{
+    font-size:1.25rem;margin:0 0 .5rem;line-height:1.3;
+    color:var(--illini-blue);letter-spacing:-.01em;
+  }
+  /* Whole card is the click target, but the name stays the accessible link text */
+  .demo h2 a{
+    color:inherit;text-decoration:none;
+  }
+  .demo h2 a::after{
+    content:"";position:absolute;inset:0;
+  }
+  .demo{position:relative}
+  .demo:hover{border-color:var(--illini-orange);background:var(--tint)}
+  .demo:hover h2 a{color:var(--orange-text);text-decoration:underline}
+  .demo h2 a:focus-visible{outline:none}
+  .demo:focus-within{outline:3px solid var(--focus);outline-offset:3px}
+
+  .demo p{margin:0 0 .8rem;color:var(--ink)}
+
+  .meta{
+    display:flex;flex-wrap:wrap;gap:.35rem .9rem;align-items:baseline;
+    font-size:.88rem;color:var(--muted);margin:0;
+  }
+  .meta .topic{color:var(--orange-text);font-weight:700}
+  .meta .file{
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:.85rem;
+  }
+  .panels{
+    margin:.7rem 0 .9rem;padding:0;list-style:none;
+    display:flex;flex-wrap:wrap;gap:.4rem;
+    font-size:.85rem;color:var(--muted);
+  }
+  .panels li{
+    border:1px solid var(--rule);border-radius:999px;
+    padding:.12rem .7rem;background:var(--tint);
+    white-space:nowrap;
+  }
+
+  footer{
+    border-top:1px solid var(--rule);margin-top:3rem;padding-top:1.2rem;
+    color:var(--muted);font-size:.9rem;
+  }
+
+  @media (forced-colors: active){
+    .demo,.note,.panels li{
+      background:Canvas;color:CanvasText;border:1px solid CanvasText;
+    }
+    a:focus-visible,[tabindex]:focus-visible{outline:3px solid Highlight}
+  }
+
+  @media print{
+    .nav,.skip{display:none}
+    body{color:#000;background:#fff}
+    .demo{break-inside:avoid;page-break-inside:avoid}
+    .demo h2 a::after{content:none}
+    .demo h2 a[href]::after{content:" (" attr(href) ")";font-size:.75em;color:#333;position:static}
+  }
+</style>
+</head>
+<body>
+
+<a class="skip" href="#main">Skip to main content</a>
+
+<nav class="nav" aria-label="Site sections">
+  <span class="brand">ECE 407 · Cryptography</span>
+  <a href="index.html">Syllabus</a>
+  <a href="index.html#schedule">Schedule</a>
+  <a href="demos.html" aria-current="page">Demos</a>
+</nav>
+
+<main id="main">
+  <h1>Interactive Demos</h1>
+  <p class="term">Fall 2026 · University of Illinois Urbana–Champaign</p>
+
+  <p class="note">
+    <strong>Three browser demos</strong> for the perfect-secrecy material in weeks 1 and 2
+    (<a href="https://www.cs.umd.edu/~jkatz/imc.html">Katz &amp; Lindell</a>, chapter 2). Each one runs
+    entirely in your browser — nothing is installed, nothing is uploaded, and reloading the page
+    starts over. Every control is keyboard reachable.
+  </p>
+
+  <ul class="demos">
+
+    <li class="demo">
+      <h2><a href="otp_simulation.html">Estimating all four distributions from samples</a></h2>
+      <p>
+        Each trial draws a message <em>x</em> from the source and a key <em>r</em> uniformly, then
+        forms the ciphertext <em>c</em> = <em>x</em> ⊕ <em>r</em>. The top row uses every trial; the
+        bottom row keeps only the trials matching a chosen message or a chosen ciphertext, so those
+        panels fill in far more slowly. Watch P(<em>x</em> | <em>c</em>) converge back onto P(<em>x</em>).
+      </p>
+      <ul class="panels">
+        <li>P(x)</li><li>P(c)</li><li>P(c | x = x*)</li><li>P(x | c = c*)</li>
+      </ul>
+      <p class="meta">
+        <span class="topic">One-time pad · information-theoretic security</span>
+        <span>Week 1, Thu 8.27 · KL 2</span>
+        <span class="file">otp_simulation.html</span>
+      </p>
+    </li>
+
+    <li class="demo">
+      <h2><a href="indistinguishability-game.html">The indistinguishability experiment</a></h2>
+      <p>
+        You pick two messages. A hidden coin decides which one gets encrypted, and you see only the
+        ciphertext. A scheme is perfectly indistinguishable when no strategy, on any pair of messages,
+        beats a coin flip. Play the adversary yourself, or hand it to maximum likelihood and run a few
+        hundred thousand rounds against a one-time pad, a short key, or biased key bits.
+      </p>
+      <ul class="panels">
+        <li>The challenge</li><li>Ciphertext under each coin</li><li>Success rate over rounds</li>
+      </ul>
+      <p class="meta">
+        <span class="topic">Perfect indistinguishability</span>
+        <span>Week 1, Thu 8.27 · KL 2.1–2.2</span>
+        <span class="file">indistinguishability-game.html</span>
+      </p>
+    </li>
+
+    <li class="demo">
+      <h2><a href="key-space-bound.html">Why the keys have to outnumber the messages</a></h2>
+      <p>
+        Every key turns the message list into a ciphertext list without collisions, otherwise
+        decryption fails. Try to arrange the keys so that no ciphertext ever rules a message out.
+        With fewer keys than messages the arrangement does not exist, and the grid shows you why —
+        this is Shannon's bound, |K| ≥ |M|, built by hand.
+      </p>
+      <ul class="panels">
+        <li>The scheme</li><li>Keys sending m to c</li><li>Posterior</li><li>The counting argument</li>
+      </ul>
+      <p class="meta">
+        <span class="topic">Shannon's theorem · key-space bound</span>
+        <span>Week 1–2 · KL 2.3</span>
+        <span class="file">key-space-bound.html</span>
+      </p>
+    </li>
+
+  </ul>
+
+  <footer>
+    <p>© 2026 ECE 407 — Cryptography · <a href="index.html">Back to the syllabus</a></p>
+    <p>If a demo is difficult to read or operate, email me (address on Canvas) and I will provide an
+      alternative — a static walkthrough, or the same content in another format.</p>
+  </footer>
+</main>
+
+</body>
+</html>
