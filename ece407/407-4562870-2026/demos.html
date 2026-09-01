@@ -198,7 +198,7 @@
   <p class="term">Fall 2026 · University of Illinois Urbana–Champaign</p>
 
   <p class="note">
-    <strong>Three browser demos</strong> for the perfect-secrecy material in weeks 1 and 2
+    <strong>Four browser demos</strong> for the perfect-secrecy material in weeks 1 and 2
     (<a href="https://www.cs.umd.edu/~jkatz/imc.html">Katz &amp; Lindell</a>, chapter 2). Each one runs
     entirely in your browser — nothing is installed, nothing is uploaded, and reloading the page
     starts over. Every control is keyboard reachable.
@@ -239,6 +239,26 @@
         <span class="topic">Perfect indistinguishability</span>
         <span>Week 1, Thu 8.27 · KL 2.1–2.2</span>
         <span class="file">indistinguishability-game.html</span>
+      </p>
+    </li>
+
+    <li class="demo">
+      <h2><a href="build-the-reduction.html">Build the reduction</a></h2>
+      <p>
+        Proposition 1 says a scheme is perfectly secret exactly when every message gives every
+        ciphertext the same probability. Suppose that fails somewhere. Your job is to turn that
+        single failure into an adversary that actually wins the distinguishing game — and to check
+        that your construction never once looks at the key. This is the reduction from lecture,
+        built one step at a time instead of read off a slide.
+      </p>
+      <ul class="panels">
+        <li>Find where the proposition fails</li><li>Turn it into a strategy</li>
+        <li>Why it wins</li><li>What you proved</li>
+      </ul>
+      <p class="meta">
+        <span class="topic">Proof technique · reduction to a distinguisher</span>
+        <span>Week 1, Thu 8.27 · KL 2.1–2.2</span>
+        <span class="file">build-the-reduction.html</span>
       </p>
     </li>
 

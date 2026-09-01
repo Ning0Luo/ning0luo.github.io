@@ -1,0 +1,479 @@
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --paper:#EEF1F5; --sheet:#FBFCFD; --ink:#16202B; --muted:#65788C; --rule:#D3DAE3;
+    --blue:#2B4FD8; --rose:#C31B5B; --slate:#7F91A5;
+    --hole:#FBE7EE; --okbg:#E3F1EC; --edge:#EFC3D2; --okedge:#B7DCCE; --warn:#FBF0DC;
+    --sans:"IBM Plex Sans", system-ui, -apple-system, Segoe UI, sans-serif;
+    --mono:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  *{box-sizing:border-box}
+  .lab{background:var(--paper); color:var(--ink); font-family:var(--sans);
+       font-size:14px; line-height:1.5; padding:22px}
+  .lab h1{font-size:20px; font-weight:600; margin:0 0 3px; letter-spacing:-0.01em}
+  .lab .sub{color:var(--muted); margin:0 0 18px; max-width:80ch}
+  .sheet{background:var(--sheet); border:1px solid var(--rule)}
+  .m{font-family:var(--mono)}
+
+  .tabs{display:flex; flex-wrap:wrap; border-bottom:1px solid var(--rule)}
+  .tab{flex:1 1 0; min-width:140px; padding:11px 13px; cursor:pointer; background:none;
+       border:0; border-left:1px solid var(--rule); text-align:left; font-family:var(--sans);
+       font-size:12.5px; color:var(--muted); line-height:1.35}
+  .tab:first-child{border-left:0}
+  .tab:hover{background:#F3F5F8}
+  .tab.on{background:var(--ink); color:#fff}
+  .tab b{display:block; font-size:13px; font-weight:600; color:inherit}
+
+  section{border-bottom:1px solid var(--rule); padding:18px 20px}
+  section:last-child{border-bottom:0}
+  .stage{font-family:var(--mono); font-size:11px; color:var(--muted); letter-spacing:.06em;
+         text-transform:uppercase; margin-bottom:3px}
+  h2{font-size:15px; font-weight:600; margin:0 0 4px}
+  p.lead{font-size:12.5px; color:var(--muted); margin:0 0 15px; max-width:80ch}
+
+  .two{display:grid; grid-template-columns:auto 1fr; gap:32px; align-items:start}
+  .kgrid{display:grid; grid-template-columns:repeat(8,22px); gap:2px}
+  .kc{width:22px; height:22px; border:1px solid transparent}
+  .kc.c0{border-color:var(--blue); border-width:2px}
+  .kc.c1{border-color:var(--rose); border-width:2px}
+  .klegend{font-size:11.5px; color:var(--muted); margin-top:9px; line-height:1.7; max-width:220px}
+  .klegend i{display:inline-block; width:9px; height:9px; border:2px solid; margin-right:5px}
+
+  .ctl{display:flex; flex-direction:column; gap:5px; margin-bottom:12px}
+  .ctl > span{font-size:12px; color:var(--muted)}
+  .bits{display:flex; gap:3px}
+  .bits button{font-family:var(--mono); font-weight:500; width:25px; padding:5px 0;
+       text-align:center; background:#fff; border:1px solid var(--rule); cursor:pointer}
+  .bits button.on{background:var(--ink); color:#fff; border-color:var(--ink)}
+  .bits button:hover{border-color:var(--ink)}
+  .inline{display:flex; gap:22px; flex-wrap:wrap}
+  .lab select, .lab button.b{font-family:var(--sans); font-size:12.5px; color:var(--ink);
+       background:#fff; border:1px solid var(--rule); padding:6px 10px; cursor:pointer}
+  .lab button.b:hover:not(:disabled){border-color:var(--ink)}
+  .lab button.b:disabled{color:var(--muted); cursor:default}
+  .lab button.go{background:var(--ink); color:#fff; border-color:var(--ink)}
+
+  .probs{font-family:var(--mono); font-size:13px; line-height:2; margin-top:6px}
+  .probs .p0{color:var(--blue)} .probs .p1{color:var(--rose)}
+  .status{padding:11px 13px; border:1px solid var(--rule); margin-top:12px;
+          font-size:12.5px; line-height:1.6; max-width:66ch}
+  .status.good{background:var(--okbg); border-color:var(--okedge)}
+  .status.bad{background:var(--hole); border-color:var(--edge)}
+  .status.info{background:#F3F5F8}
+  .status b{font-family:var(--mono); font-weight:500}
+
+  .builder{font-size:15px; line-height:2.4; font-family:var(--mono); margin-bottom:12px}
+  .builder select{font-size:13px; padding:4px 7px}
+  .bar{height:10px; background:#E6EAF0; position:relative; margin:14px 0 4px; max-width:520px}
+  .bar i{position:absolute; top:0; bottom:0; background:var(--slate); opacity:.35}
+  .bar s{position:absolute; top:-3px; bottom:-3px; width:1px; background:var(--muted)}
+  .bar u{position:absolute; top:-4px; bottom:-4px; width:2px; background:var(--ink)}
+  .bar em{position:absolute; top:-4px; bottom:-4px; width:0; border-left:2px dashed var(--rose)}
+  .scale{display:flex; justify-content:space-between; font-family:var(--mono);
+         font-size:10.5px; color:var(--muted); max-width:520px}
+
+  .viz{display:grid; grid-template-columns:1fr 1fr; gap:26px; align-items:start; margin-top:2px}
+  .viz h3{font-size:12px; font-weight:600; margin:0 0 3px; font-family:var(--mono); color:var(--muted)}
+  .viz p.cap{font-size:11.5px; color:var(--muted); margin:0 0 9px; line-height:1.5}
+  .viz canvas{display:block; width:100%}
+  .vkey{display:flex; gap:14px; flex-wrap:wrap; font-size:11.5px; color:var(--muted); margin-top:8px}
+  .vkey i{display:inline-block; width:9px; height:9px; margin-right:5px; vertical-align:-1px}
+  .decomp{font-family:var(--mono); font-size:12.5px; line-height:2; margin-top:16px;
+          border:1px solid var(--rule); background:#F3F5F8; padding:13px 15px; max-width:82ch}
+  .decomp .hi{color:var(--blue); font-weight:500}
+  .decomp .lo{color:var(--muted)}
+  @media (max-width:900px){ .viz{grid-template-columns:1fr} }
+
+  .blank{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:12px;
+         font-family:var(--mono); font-size:14px}
+  .blank select{font-family:var(--mono)}
+  .blank .ok{color:#0F6E56} .blank .no{color:var(--rose)}
+  .assembled{font-family:var(--mono); font-size:14px; padding:13px 15px; background:#F3F5F8;
+             border:1px solid var(--rule); margin-top:6px; line-height:2; display:none; max-width:74ch}
+  .assembled.show{display:block}
+
+  .q{margin-bottom:15px; max-width:80ch}
+  .q > p{margin:0 0 7px; font-size:13.5px}
+  .opts{display:flex; flex-direction:column; gap:5px}
+  .opts button{text-align:left; font-family:var(--sans); font-size:13px; color:var(--ink);
+       background:#fff; border:1px solid var(--rule); padding:7px 11px; cursor:pointer}
+  .opts button:hover{border-color:var(--ink)}
+  .opts button.right{background:var(--okbg); border-color:var(--okedge); color:#0B5442}
+  .opts button.wrong{background:var(--hole); border-color:var(--edge); color:#8C1B44}
+  .fb{font-size:12.5px; margin-top:7px; padding-left:11px; border-left:2px solid var(--rule);
+      color:var(--muted); display:none}
+  .fb.show{display:block}
+
+  @media (max-width:900px){ .two{grid-template-columns:1fr; gap:20px} }
+</style>
+
+<div class="lab">
+  <h1>Build the attack yourself</h1>
+  <p class="sub">Proposition 1 says a scheme is perfectly secret exactly when every message gives every
+    ciphertext the same probability. Suppose that fails somewhere. Your job is to turn that single
+    failure into an adversary that actually wins the distinguishing game — and to check that your
+    construction never once looks at the key.</p>
+
+  <div class="sheet">
+    <div class="tabs" id="tabs"></div>
+
+    <section>
+      <div class="stage">Stage 1</div>
+      <h2>Find one place where the proposition fails</h2>
+      <p class="lead">You need a triple <span class="m">m₀, m₁, c*</span> with
+        <span class="m">Pr<sub>k</sub>[Enc<sub>k</sub>(m₀) = c*] &gt; Pr<sub>k</sub>[Enc<sub>k</sub>(m₁) = c*]</span>.
+        Since <span class="m">c = m ⊕ k</span>, each of those is just the probability of one particular
+        pad — read it straight off the grid.</p>
+      <div class="two">
+        <div>
+          <div class="kgrid" id="kgrid"></div>
+          <div class="klegend" id="klegend"></div>
+        </div>
+        <div>
+          <div class="inline">
+            <div class="ctl"><span>m₀</span><div class="bits" id="m0"></div></div>
+            <div class="ctl"><span>m₁</span><div class="bits" id="m1"></div></div>
+            <div class="ctl"><span>target ciphertext c*</span><div class="bits" id="cs"></div></div>
+          </div>
+          <div class="probs" id="probs"></div>
+          <div class="status" id="wstat"></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="stage">Stage 2</div>
+      <h2>Turn the failure into a strategy</h2>
+      <p class="lead">You submit <span class="m">m₀</span> and <span class="m">m₁</span>, the challenger
+        flips <span class="m">b</span> and hands you <span class="m">c</span>. Fill in a decision rule
+        and measure it. The dashed line is what the rule achieves in theory; the tick is what it achieved
+        in your trials.</p>
+      <div class="builder">
+        if&nbsp; c &nbsp;=&nbsp;
+        <select id="tgt"><option value="cs">c*</option><option value="m0">m₀</option><option value="m1">m₁</option></select>
+        &nbsp; then output &nbsp;
+        <select id="oA"><option value="0">0</option><option value="1">1</option><option value="r">a coin flip</option></select>
+        <br>otherwise output &nbsp;
+        <select id="oB"><option value="r">a coin flip</option><option value="0">0</option><option value="1">1</option></select>
+      </div>
+      <div class="inline" style="align-items:flex-end">
+        <label class="ctl"><span>trials</span>
+          <select id="ntr"><option>200</option><option selected>5000</option><option>50000</option></select></label>
+        <div class="ctl"><span>&nbsp;</span><button class="b go" id="run">Run the attack</button></div>
+      </div>
+      <div class="bar" id="bar"><i id="band"></i><s id="half"></s>
+        <em id="opt" style="display:none"></em><u id="mark" style="display:none"></u></div>
+      <div class="scale"><span>0%</span><span>50%</span><span>100%</span></div>
+      <div class="status info" id="rstat">Nothing measured yet.</div>
+
+      <div class="viz">
+        <div>
+          <h3>every trial, one square</h3>
+          <p class="cap">Reading left to right. Pale squares are rounds where the rule saw nothing and
+            flipped a coin; coloured squares are the rounds where the equality test fired.</p>
+          <canvas id="strip" height="220"></canvas>
+          <div class="vkey">
+            <span><i style="background:#2B4FD8"></i>test fired, guessed right</span>
+            <span><i style="background:#C31B5B"></i>test fired, guessed wrong</span>
+            <span><i style="background:#CFD6E0"></i>coin flip, right</span>
+            <span><i style="background:#EFF2F6; border:1px solid #E0E5EB"></i>coin flip, wrong</span>
+          </div>
+        </div>
+        <div>
+          <h3>running success rate</h3>
+          <p class="cap">The rate after each trial, against the theoretical value (dashed) and the
+            shrinking two-sigma envelope around a coin flip.</p>
+          <canvas id="walk" height="220"></canvas>
+        </div>
+      </div>
+      <div class="decomp" id="decomp" style="display:none"></div>
+    </section>
+
+    <section>
+      <div class="stage">Stage 3</div>
+      <h2>Work out why it wins</h2>
+      <p class="lead">For the standard rule — output 0 on <span class="m">c*</span>, otherwise flip —
+        write <span class="m">p₀ = Pr[Enc(m₀) = c*]</span> and
+        <span class="m">p₁ = Pr[Enc(m₁) = c*]</span> and fill in the two conditional probabilities.</p>
+      <div class="blank">
+        <span>Pr[ output 0 | b = 0 ] &nbsp;=&nbsp;</span>
+        <select id="b1"><option value="-1">choose…</option>
+          <option value="0">p₀</option>
+          <option value="1">p₀ + (1 − p₀)/2</option>
+          <option value="2">(1 − p₀)/2</option>
+          <option value="3">1/2</option></select>
+        <span id="f1"></span>
+      </div>
+      <div class="blank">
+        <span>Pr[ output 1 | b = 1 ] &nbsp;=&nbsp;</span>
+        <select id="b2"><option value="-1">choose…</option>
+          <option value="0">p₁</option>
+          <option value="1">p₁ + (1 − p₁)/2</option>
+          <option value="2">(1 − p₁)/2</option>
+          <option value="3">1/2</option></select>
+        <span id="f2"></span>
+      </div>
+      <div class="assembled" id="asm"></div>
+    </section>
+
+    <section>
+      <div class="stage">Stage 4</div>
+      <h2>What you have actually proved</h2>
+      <p class="lead">Switch tabs and rebuild the attack on another scheme before answering. The point is
+        what stays the same.</p>
+      <div id="quiz"></div>
+    </section>
+  </div>
+</div>
+
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const n=6,N=1<<n;
+  const bits=v=>v.toString(2).padStart(n,'0');
+  const pop=v=>{let c=0;while(v){c+=v&1;v>>=1;}return c;};
+
+  const LV=[
+    {id:'Uniform pad', note:'k uniform over all 64 strings.',
+     pmf:()=>new Array(N).fill(1/N)},
+    {id:'Three-bit pad', note:'k is 3 bits, zero-extended to 6.',
+     pmf:()=>{const p=new Array(N).fill(0);for(let u=0;u<8;u++)p[u]=1/8;return p;}},
+    {id:'Biased bits', note:'each pad bit is 1 with probability 0.58.',
+     pmf:()=>{const p=new Array(N).fill(0),q=0.58;
+       for(let v=0;v<N;v++){let x=1;for(let i=0;i<n;i++)x*=((v>>i)&1)?q:1-q;p[v]=x;}return p;}},
+    {id:'Even-weight pad', note:'k uniform over the 32 even-weight strings.',
+     pmf:()=>{const p=new Array(N).fill(0);
+       for(let v=0;v<N;v++) if(pop(v)%2===0) p[v]=1/32; return p;}}
+  ];
+
+  const S={lv:1, m0:0b000000, m1:0b100000, cs:0b000000, keyP:[], cum:[]};
+  function loadKey(){ S.keyP=LV[S.lv].pmf(); S.cum=[]; let a=0;
+    for(let v=0;v<N;v++){ a+=S.keyP[v]; S.cum.push(a);} }
+  const sampleKey=()=>{const u=Math.random()*S.cum[N-1];
+    for(let v=0;v<N;v++) if(u<=S.cum[v]) return v; return N-1;};
+
+  const p0=()=>S.keyP[(S.cs^S.m0)&(N-1)];
+  const p1=()=>S.keyP[(S.cs^S.m1)&(N-1)];
+  const tgtVal=()=>{const t=$('tgt').value; return t==='cs'?S.cs:(t==='m0'?S.m0:S.m1);};
+
+  function theory(){
+    const T=tgtVal();
+    const q0=S.keyP[(T^S.m0)&(N-1)], q1=S.keyP[(T^S.m1)&(N-1)];
+    const A=$('oA').value, B=$('oB').value;
+    const z=o=>o==='0'?1:(o==='1'?0:0.5);
+    const c0=q0*z(A)+(1-q0)*z(B);
+    const c1=q1*(1-z(A))+(1-q1)*(1-z(B));
+    return (c0+c1)/2;
+  }
+
+  function renderTabs(){
+    $('tabs').innerHTML=LV.map((l,i)=>
+      `<button class="tab ${i===S.lv?'on':''}" data-i="${i}"><b>${l.id}</b>${l.note}</button>`).join('');
+    $('tabs').querySelectorAll('button').forEach(b=>{
+      b.onclick=()=>{ S.lv=+b.dataset.i; loadKey(); render(); }; });
+  }
+  function renderGrid(){
+    const mx=Math.max(...S.keyP);
+    const a=(S.cs^S.m0)&(N-1), b=(S.cs^S.m1)&(N-1);
+    let h='';
+    for(let v=0;v<N;v++){
+      const t=mx>0?S.keyP[v]/mx:0;
+      const bg=S.keyP[v]<1e-12?'#F7F8FA':`rgba(22,32,43,${(0.10+0.80*t).toFixed(3)})`;
+      h+=`<div class="kc ${v===a?'c0':''} ${v===b?'c1':''}" style="background:${bg}"></div>`;
+    }
+    $('kgrid').innerHTML=h;
+    $('klegend').innerHTML=`<div><i style="border-color:var(--blue)"></i>the pad c* ⊕ m₀ &nbsp;`
+      +`<i style="border-color:var(--rose)"></i>the pad c* ⊕ m₁</div>`
+      +`<div>Darker is more likely; white pads never occur. You want the blue cell darker than the rose one.</div>`;
+  }
+  function renderBits(){
+    const mk=(el,key)=>{const d=$(el); d.innerHTML='';
+      for(let i=n-1;i>=0;i--){const btn=document.createElement('button');
+        const on=(S[key]>>i)&1; btn.textContent=on?'1':'0'; if(on) btn.className='on';
+        btn.onclick=()=>{ S[key]^=(1<<i); render(); }; d.appendChild(btn);} };
+    mk('m0','m0'); mk('m1','m1'); mk('cs','cs');
+  }
+
+  function render(){
+    renderTabs(); renderGrid(); renderBits();
+    const a=p0(), b=p1();
+    $('probs').innerHTML=
+       `<span class="p0">p₀ = Pr[Enc(m₀) = c*] = Pr[k = ${bits((S.cs^S.m0)&(N-1))}] = ${a.toFixed(4)}</span><br>`
+      +`<span class="p1">p₁ = Pr[Enc(m₁) = c*] = Pr[k = ${bits((S.cs^S.m1)&(N-1))}] = ${b.toFixed(4)}</span>`;
+    const w=$('wstat');
+    if(S.m0===S.m1){ w.className='status bad';
+      w.innerHTML='The two messages are equal, so the two probabilities are the same by definition. Change one.'; }
+    else if(a>b+1e-12){ w.className='status good';
+      w.innerHTML=`<b>Witness found.</b> p₀ − p₁ = <b>${(a-b).toFixed(4)}</b>. `
+        +`This single triple is all Proposition 1 needs to be violated — now build an attack out of it.`; }
+    else if(b>a+1e-12){ w.className='status info';
+      w.innerHTML='The inequality runs the wrong way here. Swap m₀ and m₁, or pick a different c*.'; }
+    else { w.className='status info';
+      w.innerHTML= LV[S.lv].id==='Uniform pad'
+        ? 'Equal — and on this scheme they will be equal for every triple you try. That is exactly what perfect secrecy means, and it is why the attack below can never get started.'
+        : 'Equal here. Try a c* that makes one of the two pads impossible or unusually likely.'; }
+    $('run').disabled = S.m0===S.m1;
+  }
+
+  function drawTrials(fired, ok, run, th, T, A, B){
+    const t=fired.length, dpr=window.devicePixelRatio||1;
+
+    /* --- strip: one square per trial, capped at 5000 --- */
+    const cv=$('strip'), w=cv.clientWidth||420;
+    const shown=Math.min(t,5000), cell=4, gap=1;
+    const cols=Math.max(20,Math.floor(w/(cell+gap)));
+    const rows=Math.ceil(shown/cols);
+    const h=Math.min(220, rows*(cell+gap)+2);
+    cv.height=h*dpr; cv.width=w*dpr; cv.style.height=h+'px';
+    const c=cv.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0); c.clearRect(0,0,w,h);
+    for(let i=0;i<shown;i++){
+      const x=(i%cols)*(cell+gap), y=Math.floor(i/cols)*(cell+gap);
+      c.fillStyle = fired[i] ? (ok[i]?'#2B4FD8':'#C31B5B') : (ok[i]?'#CFD6E0':'#EFF2F6');
+      c.fillRect(x,y,cell,cell);
+    }
+
+    /* --- running rate --- */
+    const cw=$('walk'), W=cw.clientWidth||420, H=220;
+    cw.height=H*dpr; cw.width=W*dpr; cw.style.height=H+'px';
+    const g=cw.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H);
+    const L=42,R=8,Tp=10,Bt=22, iw=W-L-R, ih=H-Tp-Bt;
+    const half=Math.max(0.015, 4/Math.sqrt(t), Math.abs(th-0.5)*2.4);
+    const Y=v=>Tp+ih-((v-(0.5-half))/(2*half))*ih;
+    const X=i=>L+(i/t)*iw;
+    g.font='10px "IBM Plex Mono", monospace'; g.fillStyle='#65788C'; g.lineWidth=1;
+    [-1,-0.5,0,0.5,1].forEach(f=>{ const v=0.5+f*half;
+      g.strokeStyle = f===0?'#B9C2CC':'#E6EAF0';
+      g.beginPath(); g.moveTo(L,Y(v)); g.lineTo(W-R,Y(v)); g.stroke();
+      g.textAlign='right'; g.textBaseline='middle'; g.fillText((v*100).toFixed(1)+'%', L-6, Y(v)); });
+    g.textAlign='center'; g.textBaseline='top';
+    [0,0.5,1].forEach(f=>g.fillText(Math.round(f*t).toLocaleString(), L+f*iw, Tp+ih+6));
+    g.strokeStyle='#7F91A5'; g.globalAlpha=.5;
+    [1,-1].forEach(s=>{ g.beginPath();
+      for(let px=0;px<=iw;px++){ const i=Math.max(30,(px/iw)*t);
+        const v=0.5+s/Math.sqrt(i); px===0?g.moveTo(L+px,Y(v)):g.lineTo(L+px,Y(v)); }
+      g.stroke(); });
+    g.globalAlpha=1;
+    g.save(); g.setLineDash([5,4]); g.strokeStyle='#C31B5B'; g.lineWidth=1.5;
+    g.beginPath(); g.moveTo(L,Y(th)); g.lineTo(W-R,Y(th)); g.stroke(); g.restore();
+    g.beginPath(); g.strokeStyle='#16202B'; g.lineWidth=1.6;
+    const step=Math.max(1,Math.floor(t/900));
+    for(let i=30;i<t;i+=step){ const y=Y(run[i]);
+      i===30?g.moveTo(X(i),y):g.lineTo(X(i),y); }
+    g.lineTo(X(t-1),Y(run[t-1])); g.stroke();
+
+    /* --- decomposition --- */
+    let nf=0, wf=0, wm=0;
+    for(let i=0;i<t;i++){ if(fired[i]){ nf++; if(ok[i]) wf++; } else if(ok[i]) wm++; }
+    const nm=t-nf;
+    const q0=S.keyP[(T^S.m0)&(N-1)], q1=S.keyP[(T^S.m1)&(N-1)];
+    const z=o=>o==='0'?1:(o==='1'?0:0.5);
+    const pf=(q0+q1)/2;
+    const cf=(q0+q1)>0 ? (q0*z(A)+q1*(1-z(A)))/(q0+q1) : 0.5;
+    const cm=(2-q0-q1)>0 ? ((1-q0)*z(B)+(1-q1)*(1-z(B)))/(2-q0-q1) : 0.5;
+    const d=$('decomp'); d.style.display='block';
+    d.innerHTML=
+       `<span class="hi">rounds where the test fired</span> &nbsp;${nf.toLocaleString()} of ${t.toLocaleString()} `
+      +`= ${(nf/t*100).toFixed(2)}% &nbsp;<span class="lo">(theory ${(pf*100).toFixed(2)}%)</span><br>`
+      +`&nbsp;&nbsp;&nbsp;of those, guessed right &nbsp;${wf.toLocaleString()} `
+      +`= ${nf?(wf/nf*100).toFixed(2):'—'}% &nbsp;<span class="lo">(theory ${(cf*100).toFixed(2)}%)</span><br>`
+      +`<span class="lo">rounds that were pure coin flips</span> &nbsp;${nm.toLocaleString()} `
+      +`= ${(nm/t*100).toFixed(2)}%<br>`
+      +`&nbsp;&nbsp;&nbsp;of those, guessed right &nbsp;${wm.toLocaleString()} `
+      +`= ${nm?(wm/nm*100).toFixed(2):'—'}% &nbsp;<span class="lo">(theory ${(cm*100).toFixed(2)}%)</span><br>`
+      +`<span class="lo">─────</span><br>`
+      +`advantage = P(fires) × (edge when it fires) = `
+      +`${(pf).toFixed(4)} × ${(cf-0.5).toFixed(4)} = <b>${((pf*(cf-0.5))*100).toFixed(2)}</b> points`;
+  }
+
+  $('run').onclick=()=>{
+    const t=+$('ntr').value, T=tgtVal(), A=$('oA').value, B=$('oB').value;
+    const pick=o=>o==='0'?0:(o==='1'?1:(Math.random()<0.5?0:1));
+    let w=0;
+    const fired=new Uint8Array(t), ok=new Uint8Array(t), run=new Float32Array(t);
+    for(let i=0;i<t;i++){
+      const bb=Math.random()<0.5?0:1, k=sampleKey();
+      const c=((bb?S.m1:S.m0)^k)&(N-1);
+      const hit=(c===T);
+      const g=hit?pick(A):pick(B);
+      const good=(g===bb);
+      if(good) w++;
+      fired[i]=hit?1:0; ok[i]=good?1:0; run[i]=w/(i+1);
+    }
+    const rate=w/t, se=1/Math.sqrt(t), th=theory();
+    drawTrials(fired, ok, run, th, T, A, B);
+    $('band').style.left=`${(0.5-se)*100}%`; $('band').style.width=`${2*se*100}%`;
+    $('half').style.left='50%';
+    $('mark').style.display='block'; $('mark').style.left=`${rate*100}%`;
+    $('opt').style.display='block'; $('opt').style.left=`${th*100}%`;
+    const st=$('rstat');
+    let h=`Measured <b>${(rate*100).toFixed(2)}%</b> over ${t.toLocaleString()} trials `
+        + `(noise band ±${(se*100).toFixed(2)}%). Theory for this rule: <b>${(th*100).toFixed(2)}%</b>.`;
+    if(th>0.5+1e-9){ st.className='status good';
+      h+=`<br>This rule beats a coin flip by <b>${((th-0.5)*100).toFixed(2)}</b> percentage points. `
+       + `That is all the theorem requires — not the best possible attack, just one that provably wins.`; }
+    else if(th<0.5-1e-9){ st.className='status bad';
+      h+=`<br>This rule loses. Note that an adversary who reliably loses is just as useful — swap its two outputs and it wins.`; }
+    else { st.className='status info';
+      h+=`<br>Exactly a coin flip. Either your rule ignores the witness, or this scheme has no witness to exploit.`; }
+    st.innerHTML=h;
+  };
+  ['tgt','oA','oB'].forEach(id=>$(id).onchange=()=>{
+    $('mark').style.display='none'; $('opt').style.display='none';
+    $('rstat').className='status info'; $('rstat').textContent='Rule changed — run it again.'; });
+
+  /* stage 3 */
+  const B1=1, B2=2;
+  function checkBlanks(){
+    const v1=+$('b1').value, v2=+$('b2').value;
+    $('f1').innerHTML = v1<0?'' : (v1===B1?'<span class="ok">✓</span>':'<span class="no">not that</span>');
+    $('f2').innerHTML = v2<0?'' : (v2===B2?'<span class="ok">✓</span>':'<span class="no">not that</span>');
+    if(v1===B1&&v2===B2){
+      const a=p0(), b=p1();
+      $('asm').className='assembled show';
+      $('asm').innerHTML=
+         `Pr[success] = ½·( p₀ + (1 − p₀)/2 ) + ½·( (1 − p₁)/2 )<br>`
+        +`&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= ½ + (p₀ − p₁)/4<br>`
+        +`<span style="color:var(--muted)">with your current witness: ½ + (${a.toFixed(4)} − ${b.toFixed(4)})/4 `
+        +`= <b>${((0.5+(a-b)/4)*100).toFixed(2)}%</b> — compare the dashed line above.</span><br>`
+        +`<span style="color:var(--muted)">Whenever p₀ &gt; p₁ this is strictly above ½, however small the gap.</span>`;
+    } else $('asm').className='assembled';
+  }
+  $('b1').onchange=checkBlanks; $('b2').onchange=checkBlanks;
+
+  /* stage 4 */
+  const QZ=[
+    {q:'Which of these does your adversary read while it runs?',
+     o:['The key k','The pad distribution','Only m₀, m₁, c* and the ciphertext it receives','The challenger\u2019s bit b'],
+     a:2, fb:'Right. The distribution was used once, offline, to find the witness. The running attack is a single equality test — which is why the construction works for any scheme at all, not just these four.'},
+    {q:'On the uniform pad, why can this attack never be built?',
+     o:['The advantage is too small to measure','No triple m₀, m₁, c* has p₀ > p₁, so there is no witness to start from','You would need more trials','The key is too long'],
+     a:1, fb:'Exactly. The attack is manufactured out of the witness. No witness, no attack — and Proposition 1 says a perfectly secret scheme has none.'},
+    {q:'You have now shown: if a scheme violates the displayed equation, some adversary wins with probability > ½. Read as a statement about perfect secrecy, this is:',
+     o:['A proof that perfect secrecy implies indistinguishability',
+        'The contrapositive: if no adversary beats ½, the equation holds for all m₀, m₁, c*',
+        'An unrelated fact about biased pads'],
+     a:1, fb:'Yes. You built the ⟸ direction of the equivalence by contraposition, which is nearly always the easier way round — constructing one attack from one failure, rather than reasoning about all adversaries at once.'},
+    {q:'Your measured rate on a good witness was only a point or two above 50%, while maximum likelihood does much better. Does that weaken the proof?',
+     o:['Yes — a proof should exhibit the best attack',
+        'No — the claim is only that some adversary exceeds ½, and a weak explicit one is easier to analyse',
+        'Yes — the advantage must be at least a constant'],
+     a:1, fb:'Right. The reduction trades power for analysability: this adversary has an exact closed-form success rate, ½ + (p₀ − p₁)/4, that holds for every scheme. A stronger attack would be harder to reason about and would prove nothing extra.'}
+  ];
+  function renderQuiz(){
+    $('quiz').innerHTML=QZ.map((it,i)=>
+      `<div class="q"><p>${it.q}</p><div class="opts">`
+      +it.o.map((t,j)=>`<button data-i="${i}" data-j="${j}">${t}</button>`).join('')
+      +`</div><div class="fb" id="qf${i}"></div></div>`).join('');
+    $('quiz').querySelectorAll('button').forEach(b=>{ b.onclick=()=>{
+      const i=+b.dataset.i,j=+b.dataset.j,it=QZ[i];
+      b.className=j===it.a?'right':'wrong';
+      const f=$('qf'+i); f.classList.add('show');
+      f.textContent = j===it.a?it.fb:'Not that one.'; }; });
+  }
+
+  loadKey(); render(); renderQuiz();
+})();
+</script>
