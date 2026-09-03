@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>One bit of stretch, and the hybrid argument that pays for the rest</title>
+<style>
+:root{
+  --ink:#131e26; --panel:#1a2833; --sunk:#22323e; --edge:#2c414f;
+  --bone:#e7e2d5; --dim:#8ba0ad; --brass:#d8a33f; --oxide:#b8523f; --verdigris:#63a99a;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--ink);color:var(--bone);font-family:var(--serif);font-size:17px;line-height:1.6;padding:32px 20px 72px}
+.wrap{max-width:960px;margin:0 auto}
+h1{font-size:clamp(29px,4.8vw,48px);line-height:1.05;font-weight:400;letter-spacing:-.015em;margin:0 0 14px;max-width:20ch}
+h1 em{font-style:italic;color:var(--brass)}
+.standfirst{font-size:19px;color:var(--dim);max-width:64ch;margin:0 0 18px}
+.masthead{border-bottom:1px solid var(--edge);padding-bottom:24px}
+.sig{font-family:var(--mono);font-size:14px;color:var(--brass);margin-top:12px}
+
+.stage{border-top:1px solid var(--edge);padding-top:26px;margin-top:34px;display:grid;grid-template-columns:52px minmax(0,1fr);gap:0 20px}
+@media(max-width:640px){.stage{grid-template-columns:1fr}}
+.stage .num{font-family:var(--mono);font-size:13px;color:var(--brass);padding-top:6px}
+.stage h2{grid-column:2;font-size:27px;font-weight:400;margin:0 0 10px;letter-spacing:-.01em}
+@media(max-width:640px){.stage h2,.stage .body{grid-column:1}.stage .num{margin-bottom:6px}}
+.stage .body{grid-column:2}
+.stage p{max-width:66ch}
+
+.def{border-left:2px solid var(--brass);background:rgba(216,163,63,.05);padding:12px 16px;margin:16px 0;border-radius:0 3px 3px 0}
+.def h4{margin:0 0 6px;font-size:13px;font-family:var(--mono);font-weight:400;color:var(--brass)}
+.def p{margin:0 0 8px;font-size:16px}
+.def p:last-child{margin-bottom:0}
+.thm{border-left-color:var(--verdigris);background:rgba(99,169,154,.05)}
+.thm h4{color:var(--verdigris)}
+.warn{border-left-color:var(--oxide);background:rgba(184,82,63,.05)}
+.warn h4{color:var(--oxide)}
+code{font-family:var(--mono);font-size:.86em;color:var(--brass)}
+.def code,.thm code{color:var(--bone)}
+
+.panel{background:var(--panel);border:1px solid var(--edge);border-radius:3px;padding:16px;margin:18px 0}
+.panel .cap{font-family:var(--mono);font-size:11.5px;color:var(--dim);margin:0 0 12px}
+.controls{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+button{font-family:var(--mono);font-size:13px;color:var(--bone);background:transparent;border:1px solid var(--edge);border-radius:2px;padding:8px 13px;cursor:pointer;transition:background .12s,border-color .12s}
+button:hover:not(:disabled){background:var(--sunk);border-color:var(--dim)}
+button:disabled{opacity:.35;cursor:default}
+button:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+button.primary{border-color:var(--brass);color:var(--brass)}
+button.good{border-color:var(--verdigris);color:var(--verdigris)}
+button.bad{border-color:var(--oxide);color:var(--oxide)}
+select{font-family:var(--mono);font-size:12.5px;background:var(--sunk);color:var(--bone);border:1px solid var(--edge);border-radius:2px;padding:7px 9px}
+input[type=range]{accent-color:var(--brass);width:100%;max-width:420px}
+label.lbl{font-family:var(--mono);font-size:11.5px;color:var(--dim)}
+
+.bits{display:flex;gap:2px;flex-wrap:wrap;align-items:center}
+.bits i{width:14px;height:21px;background:var(--sunk);border-radius:1px;display:block}
+.bits i.on{background:var(--brass)}
+.bits i.gen{background:var(--verdigris)}
+.bits i.gen.zero{background:rgba(99,169,154,.22)}
+.bits i.uni{background:var(--oxide)}
+.bits i.uni.zero{background:rgba(184,82,63,.22)}
+.bits i.mark{outline:2px solid var(--bone);outline-offset:1px}
+.strip{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:7px 0}
+.strip .tag{font-family:var(--mono);font-size:11.5px;color:var(--dim);min-width:74px}
+.out{font-family:var(--mono);font-size:12.5px;color:var(--brass);margin-top:10px;line-height:1.7}
+.dimout{font-family:var(--mono);font-size:12px;color:var(--dim);margin-top:6px;line-height:1.7}
+.code{font-family:var(--mono);font-size:13px;line-height:1.75;background:var(--sunk);border:1px solid var(--edge);
+  border-radius:2px;padding:12px 14px;margin:0;white-space:pre;overflow-x:auto;color:var(--bone)}
+.opts{display:flex;gap:8px;flex-wrap:wrap}
+.opts button{text-align:left}
+.legend{font-family:var(--mono);font-size:11px;color:var(--dim);display:flex;gap:16px;flex-wrap:wrap;margin-top:10px}
+.legend span{display:flex;align-items:center;gap:6px}
+.legend b{width:12px;height:12px;border-radius:2px;display:block}
+
+table.t{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px;margin-top:10px}
+table.t th{text-align:left;font-weight:400;color:var(--dim);border-bottom:1px solid var(--edge);padding:6px 10px 6px 0}
+table.t td{padding:5px 10px 5px 0;border-bottom:1px solid rgba(44,65,79,.5)}
+
+.diagram{width:100%;height:auto;margin:6px 0}
+.diagram .box{fill:none;stroke:var(--edge);stroke-width:1.5}
+.diagram .box.lit{stroke:var(--brass)}
+.diagram .node{fill:var(--sunk);stroke:var(--edge);stroke-width:1.5}
+.diagram .node.lit{stroke:var(--brass)}
+.diagram .arrow{stroke:var(--dim);stroke-width:1.5;fill:none;marker-end:url(#ah)}
+.diagram .arrow.lit{stroke:var(--brass);stroke-width:2.5;marker-end:url(#ahl)}
+.diagram text{fill:var(--dim);font-family:var(--mono);font-size:12px}
+.diagram text.lbl{fill:var(--bone)}
+.diagram text.big{fill:var(--bone);font-family:var(--serif);font-style:italic;font-size:24px}
+.diagram text.lit{fill:var(--brass)}
+footer{margin-top:44px;border-top:1px solid var(--edge);padding-top:18px;font-size:14.5px;color:var(--dim);max-width:70ch}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <h1>One bit of stretch, and the <em>hybrid argument</em> that pays for the rest.</h1>
+  <p class="standfirst">A generator that adds a single bit looks useless. Iterate it and you get as many bits as you like — but the security proof no longer follows in one step, because the output now comes from many calls and the assumption speaks about one. The hybrid argument is how you cross that gap, and it charges you a factor of ℓ to do it.</p>
+  <p class="sig">given &nbsp;G : {0,1}<sup>n</sup> → {0,1}<sup>n+1</sup> &nbsp;·&nbsp; build &nbsp;G<sub>ℓ</sub> : {0,1}<sup>n</sup> → {0,1}<sup>ℓ</sup></p>
+</header>
+
+
+
+<section class="stage">
+  <div class="num">01</div>
+  <h2>Why the proof is not one line</h2>
+  <div class="body">
+    <p>The construction is the obvious one, and it is worth having in front of you. Write <code>G(s) = (s′, σ)</code>, splitting each call's <code>n+1</code> bits into <code>n</code> bits of state to carry forward and one bit of output. Set <code>s₀ = s</code>, put <code>(s<sub>j</sub>, σ<sub>j</sub>) = G(s<sub>j−1</sub>)</code> for <code>j = 1 … ℓ</code>, and output <code>σ₁ σ₂ ⋯ σ<sub>ℓ</sub></code>. The seed stays <code>n</code> bits and the cost is <code>ℓ</code> calls.</p>
+
+    <p>Here is the theorem, and then the difficulty.</p>
+
+    <div class="def thm">
+      <h4>theorem</h4>
+      <p>If <code>G</code> is a pseudorandom generator with one bit of stretch, then <code>G<sub>ℓ</sub></code> is a pseudorandom generator, for any polynomial <code>ℓ</code>.</p>
+    </div>
+
+    <p>Suppose <code>D</code> distinguishes <code>G<sub>ℓ</sub></code>'s output from <code>ℓ</code> uniform bits with advantage <code>ε</code>. To contradict the assumption we need a distinguisher for <code>G</code> — for <em>one</em> call, on <code>n+1</code> bits. But <code>D</code> wants <code>ℓ</code> bits produced by <code>ℓ</code> chained calls, and we are handed only one challenge string. There is no way to feed the challenge straight through: it is the wrong length and the wrong shape.</p>
+
+    <p>The hybrid argument resolves this by refusing to compare the two ends directly. It builds a chain of distributions from one end to the other, each differing from its neighbour by a single call to <code>G</code>, and shows that a gap across the whole chain forces a gap across some one link.</p>
+  </div>
+</section>
+
+<section class="stage">
+  <div class="num">02</div>
+  <h2>The ladder of hybrids</h2>
+  <div class="body">
+    <div class="def">
+      <h4>definition</h4>
+      <p>For <code>i = 0 … ℓ</code>, let <code>H<sub>i</sub></code> be the distribution on <code>ℓ</code>-bit strings given by: <strong>the first <code>i</code> bits uniform and independent</strong>, and <strong>the remaining <code>ℓ − i</code> bits produced by the construction started from a fresh uniform state</strong>.</p>
+      <p><code>H₀</code> is exactly <code>G<sub>ℓ</sub></code>'s output. <code>H<sub>ℓ</sub></code> is exactly <code>ℓ</code> uniform bits. Everything in between is a partial swap.</p>
+    </div>
+
+    <div class="panel">
+      <p class="cap">walk the ladder · one sample from each H<sub>i</sub></p>
+      <div class="controls">
+        <label class="lbl" for="hG">the one-bit generator</label>
+        <select id="hG">
+          <option value="biased">σ is 1 three times in four (not a PRG)</option>
+          <option value="sound">σ from SHA-256 (sound)</option>
+        </select>
+        <button id="hResample">New sample</button>
+      </div>
+      <div class="controls">
+        <label class="lbl" for="hSlider">i</label>
+        <input type="range" id="hSlider" min="0" max="32" step="1" value="0">
+      </div>
+      <div class="strip"><span class="tag" id="hTag">H₀</span><span class="bits" id="hBits"></span></div>
+      <div class="legend">
+        <span><b style="background:var(--oxide)"></b> uniform, tossed by hand</span>
+        <span><b style="background:var(--verdigris)"></b> generated by iterating G</span>
+        <span>pale means the bit is 0</span>
+      </div>
+      <p class="out" id="hOut"></p>
+      <p class="dimout">Slide from 0 to ℓ and the string converts from fully generated to fully random, one position at a time. Nothing about G is being assumed yet — this is just a definition.</p>
+    </div>
+
+    <div class="def">
+      <h4>the two ends are what we care about</h4>
+      <p><code>|Pr[D(H₀) = 1] − Pr[D(H<sub>ℓ</sub>) = 1]| = ε</code> is precisely the statement that <code>D</code> breaks <code>G<sub>ℓ</sub></code>. The triangle inequality spreads that across the links:</p>
+      <p style="margin-left:14px"><code>ε ≤ Σ<sub>i=0</sub><sup>ℓ−1</sup> |Pr[D(H<sub>i</sub>) = 1] − Pr[D(H<sub>i+1</sub>) = 1]|</code></p>
+      <p><code>ℓ</code> terms summing to at least <code>ε</code>, so by pigeonhole at least one term is at least <code>ε/ℓ</code>. Find that link and you have found a break of a single call to <code>G</code>.</p>
+    </div>
+  </div>
+</section>
+
+<section class="stage">
+  <div class="num">03</div>
+  <h2>One link, one call</h2>
+  <div class="body">
+    <p>Fix <code>i</code> and look at <code>H<sub>i</sub></code> beside <code>H<sub>i+1</sub></code>. Both begin with <code>i</code> uniform bits. Both end with the construction run from a fresh state. They disagree at exactly one position: in <code>H<sub>i</sub></code>, position <code>i+1</code> is the bit output by one call to <code>G</code>; in <code>H<sub>i+1</sub></code> it is a coin flip, and the state that continues the string is fresh rather than the one that call produced.</p>
+
+    <div class="panel">
+      <p class="cap">the two neighbours</p>
+      <div class="controls">
+        <label class="lbl" for="nSlider">i</label>
+        <input type="range" id="nSlider" min="0" max="31" step="1" value="6">
+        <button id="nResample">New sample</button>
+      </div>
+      <div class="strip"><span class="tag" id="nTagA">H<sub>i</sub></span><span class="bits" id="nBitsA"></span></div>
+      <div class="strip"><span class="tag" id="nTagB">H<sub>i+1</sub></span><span class="bits" id="nBitsB"></span></div>
+      <p class="out" id="nOut"></p>
+    </div>
+
+    <p>That is a difference of exactly one application of <code>G</code>, which is the shape the assumption can speak about. Build the distinguisher.</p>
+
+    <svg class="diagram" id="dia" viewBox="0 0 760 470" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Reduction diagram: D prime wraps D">
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="var(--dim)"/>
+        </marker>
+        <marker id="ahl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="var(--brass)"/>
+        </marker>
+      </defs>
+      <rect class="box" id="dBoxOuter" x="200" y="16" width="460" height="438" rx="22"/>
+      <rect class="box" id="dBoxInner" x="486" y="206" width="150" height="200" rx="16"/>
+      <text class="big" x="226" y="54">D′</text>
+      <text class="big" x="546" y="316">D</text>
+
+      <text class="lbl" id="dT1a" x="8" y="58">challenge z</text>
+      <text id="dT1b" x="8" y="78">G(u) or uniform</text>
+      <path class="arrow" id="dA1" d="M8,94 L196,94"/>
+
+      <rect class="node" id="dNodeSplit" x="222" y="112" width="200" height="28" rx="4"/>
+      <text id="dTSplit" x="234" y="131">split z = (s′, σ)</text>
+
+      <rect class="node" id="dNodeI" x="222" y="150" width="200" height="28" rx="4"/>
+      <text id="dTI" x="234" y="169">i ← {0, …, ℓ−1}</text>
+
+      <rect class="node" id="dNodePre" x="222" y="188" width="200" height="28" rx="4"/>
+      <text id="dTPre" x="234" y="207">u₁…u_i ← coin flips</text>
+
+      <rect class="node" id="dNodeRun" x="222" y="226" width="240" height="28" rx="4"/>
+      <text id="dTRun" x="234" y="245">iterate G from s′, ℓ−i−1 times</text>
+
+      <text id="dT2" x="234" y="292">u₁…u_i ‖ σ ‖ rest</text>
+      <path class="arrow" id="dA2" d="M234,304 L482,304"/>
+
+      <text id="dT3" x="300" y="360">D's output</text>
+      <path class="arrow" id="dA3" d="M482,372 L234,372"/>
+
+      <text class="lbl" id="dT4" x="8" y="422">output whatever D said</text>
+      <path class="arrow" id="dA4" d="M196,436 L8,436"/>
+    </svg>
+
+    <div class="panel">
+      <p class="cap">build D′ yourself · each correct choice writes a line</p>
+      <pre class="code" id="bdCode"></pre>
+      <p id="bdQ" style="margin:14px 0 10px;font-size:16.5px"></p>
+      <div class="opts" id="bdOpts"></div>
+      <div class="controls" style="margin-top:12px">
+        <button id="bdHint">Hint</button>
+        <button id="bdRestart">Start over</button>
+        <button id="bdSkip">Skip and show the worked answer</button>
+      </div>
+      <p class="dimout" id="bdHintText"></p>
+      <p class="out" id="bdOut"></p>
+    </div>
+
+    <div id="afterBuild" hidden>
+      <div class="controls">
+        <button id="dPrev">Back</button>
+        <button id="dNext" class="primary">Walk the reduction</button>
+        <button id="dRestart">Restart</button>
+      </div>
+      <p class="out" id="dOut"></p>
+
+      <div class="def">
+        <h4>the two worlds</h4>
+        <p><strong>If z = G(u) for uniform u.</strong> Then <code>σ</code> is a genuine output bit and <code>s′</code> is the state that call produced, so continuing from <code>s′</code> is continuing the same chain. The string D sees is distributed exactly as <code>H<sub>i</sub></code>.</p>
+        <p><strong>If z is uniform.</strong> Then <code>σ</code> is a uniform bit and <code>s′</code> is a uniform state independent of it, so the string is <code>i+1</code> uniform bits followed by the construction from a fresh state — exactly <code>H<sub>i+1</sub></code>.</p>
+        <p>So D′'s advantage on <code>G</code> equals the gap across link <code>i</code>. Averaging over a uniformly chosen <code>i</code> gives advantage <code>ε/ℓ</code>. If <code>ε</code> is non-negligible and <code>ℓ</code> is polynomial, so is <code>ε/ℓ</code> — which is why the theorem needs <code>ℓ</code> polynomial and why the factor is not free.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+
+<footer>
+  Brass cells are 1 in the construction panel; in the ladder, oxide marks bits tossed by hand and green marks bits the generator produced, with pale shades for zeros. The state is 16 bits and ℓ is 32, giving a two-fold stretch — far too small to be secure, and the point is the shape of the argument rather than the numbers. SHA-256 is implemented in this file, so the page runs offline.
+</footer>
+
+</div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const N_ST = 16, L_OUT = 32;
+
+/* ---------- SHA-256 ---------- */
+const K256=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+function sha256(bytes){
+  const rr=(x,n)=>(x>>>n)|(x<<(32-n));
+  const p=new Uint8Array(((bytes.length+9+63)>>6)<<6);
+  p.set(bytes); p[bytes.length]=0x80;
+  const dv=new DataView(p.buffer); dv.setUint32(p.length-4,(bytes.length*8)>>>0);
+  let h=[0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+  const w=new Uint32Array(64);
+  for(let off=0;off<p.length;off+=64){
+    for(let i=0;i<16;i++) w[i]=dv.getUint32(off+i*4);
+    for(let i=16;i<64;i++){
+      const s0=rr(w[i-15],7)^rr(w[i-15],18)^(w[i-15]>>>3);
+      const s1=rr(w[i-2],17)^rr(w[i-2],19)^(w[i-2]>>>10);
+      w[i]=(w[i-16]+s0+w[i-7]+s1)>>>0;
+    }
+    let [a,b,c,d,e,f,g,hh]=h;
+    for(let i=0;i<64;i++){
+      const S1=rr(e,6)^rr(e,11)^rr(e,25), ch=(e&f)^(~e&g);
+      const t1=(hh+S1+ch+K256[i]+w[i])>>>0;
+      const S0=rr(a,2)^rr(a,13)^rr(a,22), maj=(a&b)^(a&c)^(b&c);
+      const t2=(S0+maj)>>>0;
+      hh=g;g=f;f=e;e=(d+t1)>>>0;d=c;c=b;b=a;a=(t1+t2)>>>0;
+    }
+    h=[h[0]+a,h[1]+b,h[2]+c,h[3]+d,h[4]+e,h[5]+f,h[6]+g,h[7]+hh].map(x=>x>>>0);
+  }
+  const out=new Uint8Array(32);
+  h.forEach((x,i)=>{out[i*4]=x>>>24;out[i*4+1]=(x>>>16)&255;out[i*4+2]=(x>>>8)&255;out[i*4+3]=x&255;});
+  return out;
+}
+
+const rnd = m => Math.floor(Math.random()*m);
+const coin = () => Math.random()<0.5?1:0;
+const bin = (v,w) => v.toString(2).padStart(w,"0");
+
+/* ---------- the one-bit-stretch generators ----------
+   Each maps an 8-bit state to 9 bits, returned as the full bit array.  */
+function nextState(s){ const d=sha256(new Uint8Array([s&255,(s>>8)&255,0x5a]));
+  return { next:(d[0]|(d[1]<<8))&0xffff, sound:d[2]&1, biased:((d[2]&3)===0?0:1) }; }
+/* transition tables, so sampling 33 rungs is instant */
+let TAB=null;
+function tables(){
+  if(TAB) return TAB;
+  const next=new Uint16Array(65536), sound=new Uint8Array(65536), biased=new Uint8Array(65536);
+  for(let s=0;s<65536;s++){ const r=nextState(s); next[s]=r.next; sound[s]=r.sound; biased[s]=r.biased; }
+  TAB={next,sound,biased}; return TAB;
+}
+/* ---------- sampling the hybrids ----------
+   H_i : first i bits uniform, remaining L-i bits from the construction
+         started at a FRESH uniform state.                                */
+function sampleH(i, which){
+  const T=tables(), sig=T[which], out=new Uint8Array(L_OUT);
+  for(let k=0;k<i;k++) out[k]=coin();
+  let s=rnd(65536);
+  for(let k=i;k<L_OUT;k++){ out[k]=sig[s]; s=T.next[s]; }
+  return out;
+}
+function paintHybrid(el, bits, i, markAt){
+  el.innerHTML="";
+  bits.forEach((b,k)=>{
+    const e=document.createElement("i");
+    const zone = k<i ? "uni" : "gen";
+    e.className = zone + (b?"":" zero");
+    if(markAt===k) e.classList.add("mark");
+    el.appendChild(e);
+  });
+}
+
+/* ---------- 03 the ladder ---------- */
+let H={i:0, sample:null};
+function hDraw(resample){
+  const which=$("hG").value;
+  H.i=+$("hSlider").value;
+  if(resample||!H.sample) H.sample=sampleH(H.i,which);
+  else H.sample=sampleH(H.i,which);
+  paintHybrid($("hBits"),H.sample,H.i);
+  $("hTag").innerHTML=`H<sub>${H.i}</sub>`;
+  const ones=[...H.sample].reduce((a,b)=>a+b,0);
+  $("hOut").innerHTML = `${H.i} bit${H.i===1?"":"s"} tossed by hand, ${L_OUT-H.i} produced by ${L_OUT-H.i} call${L_OUT-H.i===1?"":"s"} to G. `
+    + `This sample has ${ones} ones. `
+    + (H.i===0 ? `At i = 0 this is exactly the output of G<sub>ℓ</sub> on a uniform seed.`
+      : H.i===L_OUT ? `At i = ℓ every bit is a coin flip and G is not involved at all.`
+      : `Neither end: a partial swap, which is the only reason the ladder exists.`);
+}
+$("hSlider").oninput=()=>hDraw(true);
+$("hG").onchange=()=>hDraw(true);
+$("hResample").onclick=()=>hDraw(true);
+
+/* ---------- 04 neighbours ---------- */
+function nDraw(){
+  const which=$("hG").value, i=+$("nSlider").value;
+  const a=sampleH(i,which), b=sampleH(i+1,which);
+  paintHybrid($("nBitsA"),a,i,i);
+  paintHybrid($("nBitsB"),b,i+1,i);
+  $("nTagA").innerHTML=`H<sub>${i}</sub>`;
+  $("nTagB").innerHTML=`H<sub>${i+1}</sub>`;
+  $("nOut").innerHTML=`Position ${i+1} is outlined. In H<sub>${i}</sub> it is the bit output by a call to G; in H<sub>${i+1}</sub> it is a coin flip, `
+    + `and the state continuing the string is fresh rather than the one that call produced. `
+    + `Everything to the left is uniform in both; everything to the right is generated in both. One call of difference.`;
+}
+$("nSlider").oninput=nDraw;
+$("nResample").onclick=nDraw;
+
+/* ---------- 04b the diagram ---------- */
+const DIA_IDS=["dBoxOuter","dBoxInner","dA1","dT1a","dT1b","dNodeSplit","dTSplit","dNodeI","dTI",
+               "dNodePre","dTPre","dNodeRun","dTRun","dA2","dT2","dA3","dT3","dA4","dT4"];
+function dLight(ids){
+  DIA_IDS.forEach(id=>$(id).classList.remove("lit"));
+  (ids==="all"?DIA_IDS:(ids||[])).forEach(id=>{ const e=$(id); if(e) e.classList.add("lit"); });
+}
+const STEPS=[
+ { lit:["dBoxOuter"], text:`D′ is what we are building: a distinguisher for one call to G, whose only resource is D, a distinguisher for the ℓ-bit construction.` },
+ { lit:["dA1","dT1a","dT1b"], text:`D′ is handed z, which is n+1 bits: either G(u) for a uniform state u, or uniform. It must decide which.` },
+ { lit:["dNodeSplit","dTSplit","dNodeI","dTI"], text:`Split z the same way the construction does, into a state s′ and an output bit σ. Then pick the link to attack: i uniform from 0 to ℓ−1. Guessing costs a factor ℓ and buys the reduction its universality.` },
+ { lit:["dNodePre","dTPre","dNodeRun","dTRun"], text:`Toss i coins for the prefix, then iterate G from s′ for the remaining ℓ−i−1 positions. Both halves are things D′ can do unaided — the challenge sits at exactly one position between them.` },
+ { lit:["dA2","dT2","dBoxInner"], text:`Hand D the assembled ℓ-bit string: i coin flips, then σ, then the generated tail.` },
+ { lit:["dA3","dT3","dA4","dT4"], text:`Whatever D says, D′ says. No comparison is needed here — unlike the encryption reduction, D is already answering the question D′ was asked.` },
+ { lit:"all", text:`Accounting: if z = G(u) the string is distributed exactly as H_i; if z is uniform it is exactly H_{i+1}. So D′'s advantage is the gap across link i, and averaged over the random i it is ε/ℓ.` }
+];
+let dStep=0;
+function dDraw(){
+  const s=STEPS[dStep]; dLight(s.lit);
+  $("dOut").innerHTML=`<strong>${dStep+1} of ${STEPS.length}.</strong> ${s.text}`;
+  $("dPrev").disabled=dStep===0; $("dNext").disabled=dStep===STEPS.length-1;
+}
+$("dNext").onclick=()=>{ if(dStep<STEPS.length-1) dStep++; dDraw(); };
+$("dPrev").onclick=()=>{ if(dStep>0) dStep--; dDraw(); };
+$("dRestart").onclick=()=>{ dStep=0; dDraw(); };
+
+/* ---------- 04c build D′ ---------- */
+const BUILD=[
+{ q:"D′ has been handed the challenge z, which is n+1 bits. What is its first move?",
+  line:"(s′, σ) ← split z into n bits and 1 bit", lit:["dNodeSplit","dTSplit","dA1","dT1a"],
+  opts:[
+   {t:"Split z exactly the way the construction splits a call to G", ok:true},
+   {t:"Feed z straight to D",
+    why:"D wants ℓ bits and z has only n+1. Beyond the length mismatch, handing over the raw challenge throws away the structure that makes the two worlds correspond to two hybrids."},
+   {t:"Run the construction on z as a seed",
+    why:"The seed is n bits and z is n+1, and this would put the challenge at the start of a chain rather than at a single link. The whole point is to isolate one call."},
+   {t:"Invert G on z to recover u",
+    why:"If D′ could invert G it would not need D. And in the world where z is uniform there is no u to recover."}],
+  hints:["z has the same shape as one output of G. What does the construction do with such an output?",
+         "The construction treats an output of G as two things with different jobs."] },
+
+{ q:"Which link of the ladder should D′ attack?",
+  line:"i ← uniform in {0, …, ℓ−1}", lit:["dNodeI","dTI"],
+  opts:[
+   {t:"Pick i uniformly at random from 0 to ℓ−1", ok:true},
+   {t:"Always use i = 0",
+    why:"The pigeonhole promises some link carries ε/ℓ, not that link 0 does. A generator could be perfectly fine at the first position and leak at the tenth, and this D′ would find nothing."},
+   {t:"Use the i where the gap is largest",
+    why:"That i is exactly what you do not know — computing it would require measuring all the hybrids, which is what you were trying to prove impossible. It is legitimate as non-uniform advice, but then the theorem only holds against non-uniform adversaries."},
+   {t:"Use i = ℓ, the top of the ladder",
+    why:"There is no link above ℓ−1. H_ℓ is the last rung, so the links run from 0 to ℓ−1."}],
+  hints:["You do not know which link carries the gap, and you cannot afford to find out.",
+         "What is the cheapest way to hit a good link with probability at least 1/ℓ?"] },
+
+{ q:"What goes in the first i positions of the string D′ hands to D?",
+  line:"u₁ … u_i ← i independent coin flips", lit:["dNodePre","dTPre"],
+  opts:[
+   {t:"i coin flips that D′ tosses itself", ok:true},
+   {t:"i bits generated by iterating G from s′",
+    why:"Then the prefix would be generated in both worlds, and neither string would match a hybrid. In both H_i and H_{i+1} the first i bits are uniform by definition."},
+   {t:"The first i bits of z",
+    why:"z has already been consumed as (s′, σ), and reusing its bits would correlate the prefix with the challenge. The prefix must be independent of everything."},
+   {t:"i zeros",
+    why:"H_i's prefix is uniform, not constant. A string beginning with i zeros is not distributed like either hybrid, so D's answer would say nothing about G."}],
+  hints:["Look at the definition of H_i again. What is true of the first i bits in both H_i and H_{i+1}?",
+         "The prefix is the part of the ladder that has already been converted."] },
+
+{ q:"Position i+1, and then the tail. What does D′ put there?",
+  line:"σ at position i+1, then iterate G from s′ for the last ℓ−i−1", lit:["dNodeRun","dTRun","dA2","dT2"],
+  opts:[
+   {t:"σ from the challenge, then run the construction forward from s′", ok:true},
+   {t:"A coin flip, then run the construction from s′",
+    why:"Then both worlds give H_{i+1} and the two cases coincide. The challenge bit has to occupy the one position where the hybrids differ — otherwise D′ is not testing anything."},
+   {t:"σ, then i+1 more coin flips",
+    why:"The tail of both hybrids is generated, not uniform. Filling it with coins produces a string matching neither, and D's answer becomes uninformative."},
+   {t:"σ, then run the construction from a freshly drawn state",
+    why:"Close, but this breaks the correspondence in the first world. When z = G(u), s′ is the state that call produced, and continuing from it is what makes the string a genuine H_i. A fresh state would give H_{i+1} in both worlds."}],
+  hints:["The challenge is the single call of difference, so σ belongs at the single position of difference.",
+         "In H_i the bit at i+1 and the state that follows come from the same call to G. Keep them together."] },
+
+{ q:"D has returned its answer. What does D′ output?",
+  line:"return D's output unchanged", lit:["dA3","dT3","dA4","dT4"],
+  opts:[
+   {t:"Exactly what D said", ok:true},
+   {t:"1 if D said 1 and i was even",
+    why:"Mixing in i destroys the correspondence. D′'s output should track the world it is in, and D's output already does that."},
+   {t:"The opposite of what D said",
+    why:"This still distinguishes, with the same magnitude of advantage — but there is no reason to flip, and it makes the accounting read backwards. Convention is to pass the answer through."},
+   {t:"1 if the assembled string had more ones than zeros",
+    why:"That ignores D entirely, so it cannot inherit D's advantage. The reduction exists to convert D's success into D′'s success, which means D has to be listened to."}],
+  hints:["Unlike the encryption reduction, D′ has no secret bit to compare against.",
+         "D was asked 'generated or uniform?'. D′ was asked the same question."] },
+
+{ q:"Put it together. What has D′ achieved?",
+  line:"// advantage = |Pr[D(H_i)] − Pr[D(H_{i+1})]|, averaged over i:  ε/ℓ", lit:"all",
+  opts:[
+   {t:"Advantage ε/ℓ against G, so if ε is non-negligible and ℓ polynomial, G is not a PRG", ok:true},
+   {t:"Advantage ε against G",
+    why:"Only if D′ knew the right link. Guessing i uniformly means it lands on the good link a 1/ℓ fraction of the time, and the advantage is diluted accordingly."},
+   {t:"Advantage ε·ℓ against G",
+    why:"Reductions lose, they do not gain. Spreading one gap across ℓ links can only make each smaller."},
+   {t:"That G_ℓ is secure",
+    why:"Not directly — this proves the contrapositive. Security of G_ℓ follows only because we assumed G was a PRG and derived a contradiction."}],
+  hints:["The gap across the chosen link is at least ε/ℓ for at least one i. How often does a random guess hit it?",
+         "Where does the factor ℓ come from, and why does it force ℓ to be polynomial?"] }
+];
+let BD={step:0,hint:0,wrong:0,order:null,tried:new Set()};
+function bdCode(){
+  const lines=["D′(z):"];
+  for(let i=0;i<BUILD.length;i++){
+    if(i<BD.step) BUILD[i].line.split("\n").forEach(l=>lines.push("  "+l));
+    else if(i===BD.step) lines.push("  ▸ …");
+  }
+  $("bdCode").textContent=lines.join("\n");
+}
+function bdDraw(){
+  bdCode(); $("bdHintText").textContent="";
+  if(BD.step>=BUILD.length){
+    $("bdQ").innerHTML=""; $("bdOpts").innerHTML=""; $("bdHint").disabled=true;
+    $("bdOut").innerHTML=`<span style="color:var(--verdigris)">That is the hybrid reduction.</span> `
+      + `One call to D, one split, one guess at i — polynomial time, with an advantage of ε/ℓ. `
+      + (BD.wrong===0?`You built it without a wrong turn.`:`You took ${BD.wrong} wrong turn${BD.wrong===1?"":"s"}, which is where the content is.`)
+      + ` The walkthrough and the accounting are now below.`;
+    $("afterBuild").hidden=false; dStep=STEPS.length-1; dDraw();
+    return;
+  }
+  const s=BUILD[BD.step];
+  dLight(s.lit);
+  $("bdQ").innerHTML=`<strong>Step ${BD.step+1} of ${BUILD.length}.</strong> ${s.q}`;
+  $("bdHint").disabled=false;
+  const box=$("bdOpts"); box.innerHTML="";
+  if(!BD.order){
+    BD.order=s.opts.map((_,i)=>i);
+    for(let i=BD.order.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1));
+      [BD.order[i],BD.order[j]]=[BD.order[j],BD.order[i]]; }
+  }
+  BD.order.forEach(i=>{
+    const o=s.opts[i], b=document.createElement("button");
+    b.textContent=o.t;
+    if(BD.tried.has(i)){ b.className="bad"; b.disabled=true; }
+    b.onclick=()=>{
+      if(o.ok){ $("bdOut").innerHTML=`<span style="color:var(--verdigris)">Line added.</span>`;
+        BD.step++; BD.hint=0; BD.order=null; BD.tried=new Set(); bdDraw(); }
+      else { BD.wrong++; BD.tried.add(i); b.className="bad"; b.disabled=true;
+        $("bdOut").innerHTML=`<span style="color:var(--oxide)">Not that one.</span> ${o.why}`; }
+    };
+    box.appendChild(b);
+  });
+}
+$("bdHint").onclick=()=>{
+  const s=BUILD[BD.step]; if(!s) return;
+  if(BD.hint<s.hints.length){ $("bdHintText").textContent="Hint: "+s.hints[BD.hint]; BD.hint++; }
+  else $("bdHintText").textContent="No more hints — the wrong answers explain themselves if you try one.";
+};
+$("bdRestart").onclick=()=>{ BD={step:0,hint:0,wrong:0,order:null,tried:new Set()};
+  $("bdOut").textContent=""; $("afterBuild").hidden=true; bdDraw(); };
+$("bdSkip").onclick=()=>{ BD.step=BUILD.length; BD.order=null; bdDraw();
+  $("bdOut").innerHTML=`Worked answer below. Press start over to do the exercise.`; };
+
+/* ---------- init ---------- */
+hDraw(true); nDraw(); bdDraw();
+</script>
+</body>
+</html>

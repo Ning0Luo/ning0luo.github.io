@@ -210,7 +210,7 @@
   <p class="term">Fall 2026 · University of Illinois Urbana–Champaign</p>
 
   <p class="note">
-    <strong>Six browser demos</strong> for weeks 1 and 2 — perfect secrecy and pseudorandomness
+    <strong>Seven browser demos</strong> for weeks 1 and 2 — perfect secrecy and pseudorandomness
     (<a href="https://www.cs.umd.edu/~jkatz/imc.html">Katz &amp; Lindell</a>, chapters 2 and 3). Each
     one runs entirely in your browser — nothing is installed, nothing is uploaded, and reloading the
     page starts over. Every control is keyboard reachable.
@@ -348,6 +348,24 @@
       </p>
     </li>
 
+
+    <li class="demo">
+      <h3><a href="prg-stretch-hybrid.html">One bit of stretch, and the hybrid argument that pays for the rest</a></h3>
+      <p>
+        A generator that adds a single bit looks useless. Iterate it and you get as many bits as you
+        like — but the security proof no longer follows in one step, because the output now comes
+        from many calls while the assumption speaks about one. The hybrid argument is how you cross
+        that gap, and it charges you a factor of ℓ to do it.
+      </p>
+      <ul class="panels">
+        <li>Why the proof is not one line</li><li>The ladder of hybrids</li><li>One link, one call</li>
+      </ul>
+      <p class="meta">
+        <span class="topic">Hybrid argument · increasing the expansion factor</span>
+        <span>Week 2, Tue 9.1 · KL 3.3.2</span>
+        <span class="file">prg-stretch-hybrid.html</span>
+      </p>
+    </li>
   </ul>
 
   <footer>
