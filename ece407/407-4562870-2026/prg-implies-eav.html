@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A pseudorandom generator is already an encryption scheme</title>
+<style>
+:root{
+  --ink:#131e26; --panel:#1a2833; --sunk:#22323e; --edge:#2c414f;
+  --bone:#e7e2d5; --dim:#8ba0ad; --brass:#d8a33f; --oxide:#b8523f; --verdigris:#63a99a;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--ink);color:var(--bone);font-family:var(--serif);font-size:17px;line-height:1.6;padding:32px 20px 72px}
+.wrap{max-width:960px;margin:0 auto}
+h1{font-size:clamp(30px,5vw,50px);line-height:1.04;font-weight:400;letter-spacing:-.015em;margin:0 0 14px;max-width:19ch}
+h1 em{font-style:italic;color:var(--brass)}
+.standfirst{font-size:19px;color:var(--dim);max-width:64ch;margin:0 0 18px}
+.masthead{border-bottom:1px solid var(--edge);padding-bottom:24px}
+
+.scheme{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border:1px solid var(--edge);border-radius:3px;overflow:hidden;margin-top:18px}
+@media(max-width:640px){.scheme{grid-template-columns:1fr}}
+.scheme>div{padding:13px 16px;border-right:1px solid var(--edge)}
+.scheme>div:last-child{border-right:none}
+@media(max-width:640px){.scheme>div{border-right:none;border-bottom:1px solid var(--edge)}}
+.scheme h3{margin:0 0 5px;font-size:13px;font-weight:400;font-family:var(--mono);color:var(--dim)}
+.scheme p{margin:0;font-family:var(--mono);font-size:13.5px;color:var(--bone)}
+
+.stage{border-top:1px solid var(--edge);padding-top:26px;margin-top:34px;display:grid;grid-template-columns:52px minmax(0,1fr);gap:0 20px}
+@media(max-width:640px){.stage{grid-template-columns:1fr}}
+.stage .num{font-family:var(--mono);font-size:13px;color:var(--brass);padding-top:6px}
+.stage h2{grid-column:2;font-size:27px;font-weight:400;margin:0 0 10px;letter-spacing:-.01em}
+@media(max-width:640px){.stage h2,.stage .body{grid-column:1}.stage .num{margin-bottom:6px}}
+.stage .body{grid-column:2}
+.stage p{max-width:66ch}
+
+.def{border-left:2px solid var(--brass);background:rgba(216,163,63,.05);padding:12px 16px;margin:16px 0;border-radius:0 3px 3px 0}
+.def h4{margin:0 0 6px;font-size:13px;font-family:var(--mono);font-weight:400;color:var(--brass)}
+.def p{margin:0 0 8px;font-size:16px}
+.def p:last-child{margin-bottom:0}
+.thm{border-left-color:var(--verdigris);background:rgba(99,169,154,.05)}
+.thm h4{color:var(--verdigris)}
+.warn{border-left-color:var(--oxide);background:rgba(184,82,63,.05)}
+.warn h4{color:var(--oxide)}
+code{font-family:var(--mono);font-size:.86em;color:var(--brass)}
+.def code,.thm code{color:var(--bone)}
+
+.panel{background:var(--panel);border:1px solid var(--edge);border-radius:3px;padding:16px;margin:18px 0}
+.panel .cap{font-family:var(--mono);font-size:11.5px;color:var(--dim);margin:0 0 12px}
+.controls{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+button{font-family:var(--mono);font-size:13px;color:var(--bone);background:transparent;border:1px solid var(--edge);border-radius:2px;padding:8px 13px;cursor:pointer;transition:background .12s,border-color .12s}
+button:hover:not(:disabled){background:var(--sunk);border-color:var(--dim)}
+button:disabled{opacity:.35;cursor:default}
+button:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+button.primary{border-color:var(--brass);color:var(--brass)}
+button.good{border-color:var(--verdigris);color:var(--verdigris)}
+button.bad{border-color:var(--oxide);color:var(--oxide)}
+select,input[type=text]{font-family:var(--mono);font-size:12.5px;background:var(--sunk);color:var(--bone);border:1px solid var(--edge);border-radius:2px;padding:7px 9px}
+label.lbl{font-family:var(--mono);font-size:11.5px;color:var(--dim)}
+
+.bits{display:flex;gap:2px;flex-wrap:wrap;align-items:center}
+.bits i{width:12px;height:19px;background:var(--sunk);border-radius:1px;display:block}
+.bits i.on{background:var(--brass)}
+.bits i.key{background:var(--verdigris)}
+.bits i.ct{background:var(--oxide)}
+.bits .gap{width:10px}
+.strip{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:7px 0}
+.strip .tag{font-family:var(--mono);font-size:11.5px;color:var(--dim);min-width:96px}
+.out{font-family:var(--mono);font-size:12.5px;color:var(--brass);margin-top:10px;line-height:1.7}
+.dimout{font-family:var(--mono);font-size:12px;color:var(--dim);margin-top:6px;line-height:1.7}
+
+/* reduction diagram */
+.diagram{width:100%;height:auto;margin:6px 0}
+.diagram .box{fill:none;stroke:var(--edge);stroke-width:1.5}
+.diagram .box.lit{stroke:var(--brass)}
+.diagram .arrow{stroke:var(--dim);stroke-width:1.5;fill:none;marker-end:url(#ah)}
+.diagram .arrow.lit{stroke:var(--brass);stroke-width:2.5}
+.diagram text{fill:var(--dim);font-family:var(--mono);font-size:12px}
+.diagram text.lbl{fill:var(--bone)}
+.diagram text.big{fill:var(--bone);font-family:var(--serif);font-style:italic;font-size:24px}
+.diagram text.lit{fill:var(--brass)}
+.diagram .node{fill:var(--sunk);stroke:var(--edge);stroke-width:1.5}
+.diagram .node.lit{stroke:var(--brass)}
+.diagram .arrow.lit{marker-end:url(#ahl)}
+.worlds{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:6px}
+@media(max-width:700px){.worlds{grid-template-columns:1fr}}
+.wtitle{font-family:var(--mono);font-size:12px;color:var(--brass);margin:0 0 8px}
+.wrow{font-family:var(--mono);font-size:11px;color:var(--dim);margin:10px 0 4px}
+.hist{display:flex;align-items:flex-end;gap:2px;height:64px;background:var(--sunk);border:1px solid var(--edge);border-radius:2px;padding:4px}
+.hist span{flex:1;background:var(--brass);border-radius:1px 1px 0 0;min-height:1px}
+.hist span.zero{background:var(--edge)}
+
+.code{font-family:var(--mono);font-size:13px;line-height:1.75;background:var(--sunk);border:1px solid var(--edge);
+  border-radius:2px;padding:12px 14px;margin:0;white-space:pre;overflow-x:auto;color:var(--bone)}
+.opts button{text-align:left}
+.tally{display:flex;gap:3px;margin-top:10px;flex-wrap:wrap}
+.tally i{width:11px;height:11px;border-radius:50%;background:var(--sunk);display:block}
+.tally i.r{background:var(--verdigris)}
+.tally i.w{background:var(--oxide)}
+table.t{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px;margin-top:10px}
+table.t th{text-align:left;font-weight:400;color:var(--dim);border-bottom:1px solid var(--edge);padding:6px 10px 6px 0}
+table.t td{padding:5px 10px 5px 0;border-bottom:1px solid rgba(44,65,79,.5)}
+
+.q{border-top:1px solid var(--edge);padding:15px 0}
+.q:first-child{border-top:none}
+.q .prompt{font-size:16.5px;margin:0 0 10px}
+.q .opts{display:flex;gap:8px;flex-wrap:wrap}
+.q .why{font-size:15.5px;color:var(--dim);margin:10px 0 0;max-width:70ch}
+footer{margin-top:44px;border-top:1px solid var(--edge);padding-top:18px;font-size:14.5px;color:var(--dim);max-width:70ch}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <h1>A pseudorandom generator is already an <em>encryption scheme</em>.</h1>
+  <p class="standfirst">Stretch a short key into a long pad, XOR it onto the message, and you have a cipher that no eavesdropper can break — provided the generator is sound. The proof is a reduction: any attacker on the cipher becomes, with a few lines of wrapping, a distinguisher for the generator.</p>
+  <div class="scheme">
+    <div><h3>Gen</h3><p>k ← {0,1}<sup>n</sup></p></div>
+    <div><h3>Enc<sub>k</sub>(m)</h3><p>c = G(k) ⊕ m</p></div>
+    <div><h3>Dec<sub>k</sub>(c)</h3><p>m = G(k) ⊕ c</p></div>
+  </div>
+</header>
+
+<section class="stage">
+  <div class="num">01</div>
+  <h2>The scheme</h2>
+  <div class="body">
+    <p>The one-time pad needs a key as long as the message, which Shannon proved is unavoidable if you want <em>perfect</em> secrecy. Give up perfect secrecy for computational secrecy and the key can be short: use <code>G(k)</code> in place of the pad. Correctness is immediate, since XOR undoes itself.</p>
+
+    <div class="panel">
+      <p class="cap">encrypt and decrypt · n = 16 bit key, ℓ = 32 bit message</p>
+      <div class="controls">
+        <label class="lbl" for="p1msg">message m</label>
+        <select id="p1msg">
+          <option value="zeros">all zeros</option>
+          <option value="ones">all ones</option>
+          <option value="halves" selected>left half 0, right half 1</option>
+          <option value="alt">alternating</option>
+          <option value="rand">random</option>
+        </select>
+        <button id="p1Key">New key</button>
+      </div>
+      <div class="strip"><span class="tag">key k</span><span class="bits" id="p1k"></span><span class="dimout" style="margin:0">16 bits</span></div>
+      <div class="strip"><span class="tag">pad G(k)</span><span class="bits" id="p1g"></span><span class="dimout" style="margin:0">32 bits</span></div>
+      <div class="strip"><span class="tag">message m</span><span class="bits" id="p1m"></span></div>
+      <div class="strip"><span class="tag">ciphertext c</span><span class="bits" id="p1c"></span></div>
+      <div class="strip"><span class="tag">Dec(c)</span><span class="bits" id="p1d"></span></div>
+      <p class="out" id="p1out"></p>
+    </div>
+  </div>
+</section>
+
+<section class="stage">
+  <div class="num">02</div>
+  <h2>What security means here</h2>
+  <div class="body">
+    <p>You cannot ask for "the attacker learns nothing" without saying how they would demonstrate learning something. The eavesdropping experiment makes it concrete: the attacker picks the two messages themselves, so they choose the most revealing pair they can think of, and they still must not be able to tell which was sent.</p>
+
+    <div class="def">
+      <h4>the experiment PrivK<sup>eav</sup><sub>A,Π</sub>(n)</h4>
+      <p>1. <code>A</code> outputs two messages <code>m₀, m₁</code> of equal length.</p>
+      <p>2. A key <code>k ← {0,1}<sup>n</sup></code> and a bit <code>b ← {0,1}</code> are drawn; <code>A</code> is given <code>c = Enc<sub>k</sub>(m<sub>b</sub>)</code>.</p>
+      <p>3. <code>A</code> outputs <code>b′</code>. The experiment is 1 if <code>b′ = b</code>.</p>
+      <p>Π is EAV-secure if every efficient <code>A</code> wins with probability at most <code>1/2 + negligible</code>.</p>
+    </div>
+
+    <p>Play it. You choose the message pair, the page flips <code>b</code> in secret, and you see only the ciphertext. Two generators are offered: one built on SHA-256, and one that simply repeats the key. Against the second there is an attack, and finding it is the point of the exercise.</p>
+
+    <div class="panel">
+      <p class="cap">you are A · pick the pair, then guess which was encrypted</p>
+      <div class="controls">
+        <label class="lbl" for="gvG">generator</label>
+        <select id="gvG">
+          <option value="sha">G(k) = SHA-256(k), truncated (sound)</option>
+          <option value="rep">G(k) = k ‖ k (broken)</option>
+        </select>
+      </div>
+      <div class="controls">
+        <label class="lbl" for="gvM0">m₀</label>
+        <select id="gvM0">
+          <option value="zeros" selected>all zeros</option>
+          <option value="ones">all ones</option>
+          <option value="halves">left half 0, right half 1</option>
+          <option value="alt">alternating</option>
+        </select>
+        <label class="lbl" for="gvM1">m₁</label>
+        <select id="gvM1">
+          <option value="zeros">all zeros</option>
+          <option value="ones">all ones</option>
+          <option value="halves" selected>left half 0, right half 1</option>
+          <option value="alt">alternating</option>
+        </select>
+        <button id="gvDeal" class="primary">Encrypt one of them</button>
+      </div>
+      <div class="strip"><span class="tag">ciphertext c</span><span class="bits" id="gvC"></span></div>
+      <div class="controls" style="margin-top:12px">
+        <button id="gvB0" disabled>It was m₀</button>
+        <button id="gvB1" disabled>It was m₁</button>
+        <button id="gvTest">Are the two halves of c equal?</button>
+        <button id="gvReset">Reset score</button>
+      </div>
+      <p class="out" id="gvOut"></p>
+      <div class="tally" id="gvTally"></div>
+      <p class="dimout" id="gvScore"></p>
+    </div>
+
+    <div class="def warn">
+      <h4>why "k ‖ k" dies</h4>
+      <p>With <code>c = (k ‖ k) ⊕ m</code>, the two halves of <code>c</code> are equal exactly when the two halves of <code>m</code> are equal — the key cancels itself. So the pair <code>m₀</code> = all zeros against <code>m₁</code> = half zeros, half ones is decided by one comparison, with advantage 1/2. Note what the attack never needed: it never recovered <code>k</code>. Breaking encryption is not the same as recovering the key, and the definition is written to catch exactly this.</p>
+    </div>
+  </div>
+</section>
+
+<section class="stage">
+  <div class="num">03</div>
+  <h2>The reduction</h2>
+  <div class="body">
+    <p>Now the theorem. Note the direction: we do not argue that the cipher is secure. We argue that if it is <em>not</em>, then the generator was not a generator.</p>
+
+    <div class="def thm">
+      <h4>theorem</h4>
+      <p>If <code>G</code> is a pseudorandom generator, then <code>Π</code> with <code>Enc<sub>k</sub>(m) = G(k) ⊕ m</code> has indistinguishable encryptions in the presence of an eavesdropper.</p>
+    </div>
+
+    <p>Suppose <code>A</code> wins the experiment with probability <code>1/2 + ε</code>. Build <code>A′</code>, a distinguisher for <code>G</code>. It is handed a string <code>w ∈ {0,1}<sup>ℓ</sup></code> that is either <code>G(k)</code> for a random <code>k</code>, or uniform, and it must say which. Inside, it runs <code>A</code> as a subroutine and simply plays the role of the encryption game.</p>
+
+    <svg class="diagram" id="dia" viewBox="0 0 760 440" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Reduction diagram: A prime wraps A">
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="var(--dim)"/>
+        </marker>
+        <marker id="ahl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="var(--brass)"/>
+        </marker>
+      </defs>
+      <rect class="box" id="dBoxOuter" x="180" y="16" width="470" height="408" rx="22"/>
+      <rect class="box" id="dBoxInner" x="470" y="150" width="150" height="230" rx="16"/>
+      <text class="big" x="206" y="56">A′</text>
+      <text class="big" x="530" y="272">A</text>
+
+      <text class="lbl" id="dT1a" x="8" y="60">challenge w</text>
+      <text id="dT1b" x="8" y="80">G(k) or uniform</text>
+      <path class="arrow" id="dA1" d="M8,96 L176,96"/>
+
+      <rect class="node" id="dNodeB" x="210" y="116" width="140" height="30" rx="4"/>
+      <text id="dTB" x="222" y="136">b ← {0,1}</text>
+
+      <text id="dT0" x="290" y="182">m₀, m₁</text>
+      <path class="arrow" id="dA0" d="M466,192 L215,192"/>
+
+      <text id="dT2" x="222" y="252">c = w ⊕ m_b</text>
+      <path class="arrow" id="dA2" d="M215,264 L466,264"/>
+
+      <text id="dT3" x="296" y="324">guess b′</text>
+      <path class="arrow" id="dA3" d="M466,336 L215,336"/>
+
+      <rect class="node" id="dNodeC" x="210" y="352" width="140" height="30" rx="4"/>
+      <text id="dTC" x="222" y="372">b′ = b ?</text>
+
+      <text class="lbl" id="dT4" x="8" y="392">output 1 iff b′ = b</text>
+      <path class="arrow" id="dA4" d="M176,406 L8,406"/>
+    </svg>
+
+    <div class="panel">
+      <p class="cap">build A′ yourself · each correct choice writes a line</p>
+      <pre class="code" id="bdCode"></pre>
+      <p class="prompt" id="bdQ" style="margin:14px 0 10px;font-size:16.5px"></p>
+      <div class="opts" id="bdOpts" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+      <div class="controls" style="margin-top:12px">
+        <button id="bdHint">Hint</button>
+        <button id="bdRestart">Start over</button>
+        <button id="bdSkip">Skip the exercise and show the worked answer</button>
+      </div>
+      <p class="dimout" id="bdHintText"></p>
+      <p class="out" id="bdOut"></p>
+    </div>
+
+    <div id="afterBuild" hidden>
+    <div class="controls">
+      <button id="dPrev">Back</button>
+      <button id="dNext" class="primary">Step through the reduction</button>
+      <button id="dRestart">Restart</button>
+    </div>
+    <p class="out" id="dOut"></p>
+
+    <div class="def">
+      <h4>the two worlds</h4>
+      <p><strong>If w = G(k).</strong> Then <code>c = G(k) ⊕ m<sub>b</sub></code> is precisely a ciphertext of Π under a uniform key. <code>A</code>'s view is identical to the real experiment, so it guesses correctly with probability <code>1/2 + ε</code>, and <code>A′</code> outputs 1 with that same probability.</p>
+      <p><strong>If w is uniform.</strong> Then <code>c = w ⊕ m<sub>b</sub></code> is a one-time pad encryption with a genuinely random pad, so <code>c</code> is uniform and carries no information about <code>b</code> at all. <code>A</code> cannot do better than chance, and <code>A′</code> outputs 1 with probability exactly <code>1/2</code>.</p>
+      <p>Subtracting, <code>|Pr[A′(G(k)) = 1] − Pr[A′(r) = 1]| = ε</code>. If <code>ε</code> is non-negligible then <code>G</code> is not a pseudorandom generator. The reduction runs <code>A</code> once and does a single XOR, so it is polynomial time — the second bullet on your slide.</p>
+    </div>
+
+    <div class="panel">
+      <p class="cap">measure it · runs the wrapped attacker in both worlds</p>
+      <div class="controls">
+        <label class="lbl" for="rdG">generator inside world 1</label>
+        <select id="rdG">
+          <option value="rep">G(k) = k ‖ k (broken)</option>
+          <option value="sha">G(k) = SHA-256(k), truncated (sound)</option>
+        </select>
+        <button id="rdRun" class="primary">Run 2000 trials in each world</button>
+      </div>
+      <table class="t"><thead><tr><th>world</th><th>what w is</th><th>Pr[A′ outputs 1]</th></tr></thead><tbody id="rdBody"></tbody></table>
+      <p class="out" id="rdOut"></p>
+    </div>
+
+    <div class="panel">
+      <p class="cap">the distributions themselves · what A actually sees in each world</p>
+      <p style="max-width:66ch;font-size:15.5px;margin:0 0 12px">A′'s advantage comes from one place: whether the ciphertext looks different depending on <code>b</code>. Below is the distribution of a four-bit summary of <code>c</code> — the top four bits of (left half ⊕ right half) — measured separately for <code>b = 0</code> and <code>b = 1</code>. If those two rows are the same shape, no attacker can do better than guessing.</p>
+      <div class="controls">
+        <label class="lbl" for="dsG">generator in world 1</label>
+        <select id="dsG">
+          <option value="rep">G(k) = k ‖ k (broken)</option>
+          <option value="sha">G(k) = SHA-256(k), truncated (sound)</option>
+        </select>
+        <button id="dsRun" class="primary">Sample 4000 ciphertexts per row</button>
+      </div>
+      <div class="worlds">
+        <div>
+          <p class="wtitle">world 1 · w = G(k)</p>
+          <p class="wrow">b = 0, so m₀ was encrypted</p><div class="hist" id="dsH10"></div>
+          <p class="wrow">b = 1, so m₁ was encrypted</p><div class="hist" id="dsH11"></div>
+          <p class="dimout" id="dsS1"></p>
+        </div>
+        <div>
+          <p class="wtitle">world 2 · w uniform</p>
+          <p class="wrow">b = 0, so m₀ was encrypted</p><div class="hist" id="dsH20"></div>
+          <p class="wrow">b = 1, so m₁ was encrypted</p><div class="hist" id="dsH21"></div>
+          <p class="dimout" id="dsS2"></p>
+        </div>
+      </div>
+      <p class="out" id="dsOut"></p>
+    </div>
+    </div>
+  </div>
+</section>
+
+
+
+<footer>
+  Brass cells are 1, dark cells are 0. Keys are 16 bits and messages 32 bits so that everything fits on screen. Both are far too short to be secure against an attacker willing to try all 65,536 keys; the theorem is a statement about efficient attackers, and it inherits that qualifier from the generator it is built on. The SHA-256 implementation is included in this file, so the page runs offline.
+</footer>
+
+</div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const N_KEY = 16, L_MSG = 32;
+
+/* ---------- SHA-256 ---------- */
+const K256=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+function sha256(bytes){
+  const rr=(x,n)=>(x>>>n)|(x<<(32-n));
+  const p=new Uint8Array(((bytes.length+9+63)>>6)<<6);
+  p.set(bytes); p[bytes.length]=0x80;
+  const dv=new DataView(p.buffer); dv.setUint32(p.length-4, (bytes.length*8)>>>0);
+  let h=[0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+  const w=new Uint32Array(64);
+  for(let off=0;off<p.length;off+=64){
+    for(let i=0;i<16;i++) w[i]=dv.getUint32(off+i*4);
+    for(let i=16;i<64;i++){
+      const s0=rr(w[i-15],7)^rr(w[i-15],18)^(w[i-15]>>>3);
+      const s1=rr(w[i-2],17)^rr(w[i-2],19)^(w[i-2]>>>10);
+      w[i]=(w[i-16]+s0+w[i-7]+s1)>>>0;
+    }
+    let [a,b,c,d,e,f,g,hh]=h;
+    for(let i=0;i<64;i++){
+      const S1=rr(e,6)^rr(e,11)^rr(e,25), ch=(e&f)^(~e&g);
+      const t1=(hh+S1+ch+K256[i]+w[i])>>>0;
+      const S0=rr(a,2)^rr(a,13)^rr(a,22), maj=(a&b)^(a&c)^(b&c);
+      const t2=(S0+maj)>>>0;
+      hh=g;g=f;f=e;e=(d+t1)>>>0;d=c;c=b;b=a;a=(t1+t2)>>>0;
+    }
+    h=[h[0]+a,h[1]+b,h[2]+c,h[3]+d,h[4]+e,h[5]+f,h[6]+g,h[7]+hh].map(x=>x>>>0);
+  }
+  const out=new Uint8Array(32);
+  h.forEach((x,i)=>{out[i*4]=x>>>24;out[i*4+1]=(x>>>16)&255;out[i*4+2]=(x>>>8)&255;out[i*4+3]=x&255;});
+  return out;
+}
+
+/* ---------- bit helpers ---------- */
+const rndInt = m => Math.floor(Math.random()*m);
+function bitsOfInt(v,w){ const a=new Uint8Array(w); for(let i=0;i<w;i++) a[i]=(v>>>(w-1-i))&1; return a; }
+function xorBits(a,b){ const o=new Uint8Array(a.length); for(let i=0;i<a.length;i++) o[i]=a[i]^b[i]; return o; }
+function randBits(n){ const a=new Uint8Array(n); for(let i=0;i<n;i++) a[i]=Math.random()<0.5?1:0; return a; }
+function eq(a,b){ for(let i=0;i<a.length;i++) if(a[i]!==b[i]) return false; return true; }
+function paint(el,bits,cls){
+  el.innerHTML="";
+  bits.forEach((b,i)=>{
+    const e=document.createElement("i");
+    e.className=(b?"on":"")+(cls?" "+cls:"");
+    el.appendChild(e);
+  });
+}
+function paintSplit(el,bits,cls){   /* with a gap at the halfway point */
+  el.innerHTML="";
+  bits.forEach((b,i)=>{
+    if(i===bits.length/2){ const g=document.createElement("span"); g.className="gap"; el.appendChild(g); }
+    const e=document.createElement("i");
+    e.className=(b?"on":"")+(cls?" "+cls:"");
+    el.appendChild(e);
+  });
+}
+
+/* ---------- the generators ---------- */
+function G_sha(keyBits){
+  let v=0; keyBits.forEach(b=>v=(v<<1)|b);
+  const d=sha256(new Uint8Array([v&255,(v>>>8)&255]));
+  const out=new Uint8Array(L_MSG);
+  for(let i=0;i<L_MSG;i++) out[i]=(d[i>>3]>>>(7-(i&7)))&1;
+  return out;
+}
+function G_rep(keyBits){
+  const out=new Uint8Array(L_MSG);
+  for(let i=0;i<L_MSG;i++) out[i]=keyBits[i%N_KEY];
+  return out;
+}
+const GEN = { sha:G_sha, rep:G_rep };
+
+/* ---------- message presets ---------- */
+function msg(kind){
+  const a=new Uint8Array(L_MSG);
+  if(kind==="ones") a.fill(1);
+  else if(kind==="halves"){ for(let i=L_MSG/2;i<L_MSG;i++) a[i]=1; }
+  else if(kind==="alt"){ for(let i=0;i<L_MSG;i++) a[i]=i&1; }
+  else if(kind==="rand"){ for(let i=0;i<L_MSG;i++) a[i]=Math.random()<0.5?1:0; }
+  return a;
+}
+
+/* ---------- 01 encrypt / decrypt ---------- */
+let P1key=randBits(N_KEY);
+function p1(){
+  const m=msg($("p1msg").value), g=G_sha(P1key), c=xorBits(g,m), d=xorBits(g,c);
+  paint($("p1k"),P1key,"key"); paint($("p1g"),g,"key");
+  paint($("p1m"),m); paint($("p1c"),c,"ct"); paint($("p1d"),d);
+  $("p1out").innerHTML = `Dec(Enc(m)) = m: <strong>${eq(d,m)?"yes":"no"}</strong> &nbsp;·&nbsp; `
+    + `the key is ${N_KEY} bits and the pad is ${L_MSG}, so the generator is doing the work a ${L_MSG}-bit one-time pad key would have done. `
+    + `Change the message and the ciphertext changes; change the key and it changes just as completely.`;
+}
+$("p1msg").onchange=p1;
+$("p1Key").onclick=()=>{ P1key=randBits(N_KEY); p1(); };
+
+/* ---------- 02 play the experiment ---------- */
+let GV={c:null,b:null,hist:[],live:false};
+function gvDeal(){
+  const g=GEN[$("gvG").value];
+  const m0=msg($("gvM0").value), m1=msg($("gvM1").value);
+  GV.b=Math.random()<0.5?0:1;
+  const k=randBits(N_KEY);
+  GV.c=xorBits(g(k), GV.b?m1:m0);
+  GV.live=true;
+  paintSplit($("gvC"),GV.c,"ct");
+  $("gvB0").disabled=false; $("gvB1").disabled=false;
+  $("gvOut").textContent="A key and a bit b were drawn. Which message was encrypted?";
+}
+function gvGuess(g){
+  if(!GV.live) return;
+  GV.live=false;
+  const right = g===GV.b;
+  GV.hist.push(right);
+  $("gvB0").disabled=true; $("gvB1").disabled=true;
+  const same = $("gvM0").value===$("gvM1").value;
+  $("gvOut").innerHTML=(right?`<span style="color:var(--verdigris)">Correct.</span> `:`<span style="color:var(--oxide)">Wrong.</span> `)
+    + `b was ${GV.b}, so it was m<sub>${GV.b}</sub>.`
+    + (same?` Note you chose m₀ = m₁, which makes the experiment unwinnable by construction — the ciphertext cannot depend on b.`:``);
+  gvScore();
+}
+function gvScore(){
+  const n=GV.hist.length, r=GV.hist.filter(Boolean).length;
+  const t=$("gvTally"); t.innerHTML="";
+  GV.hist.slice(-40).forEach(v=>{ const e=document.createElement("i"); e.className=v?"r":"w"; t.appendChild(e); });
+  $("gvScore").innerHTML = n===0 ? "" :
+    `${r} of ${n} correct · advantage ${Math.abs(2*r/n-1).toFixed(2)} `
+    + (n<10 ? `· play more rounds before trusting the number.`
+      : Math.abs(2*r/n-1)>0.4 ? `· that is a break. Whatever rule you are using is a distinguisher for G.`
+      : `· indistinguishable from guessing, which is what the theorem predicts for a sound G.`);
+}
+$("gvDeal").onclick=gvDeal;
+$("gvB0").onclick=()=>gvGuess(0);
+$("gvB1").onclick=()=>gvGuess(1);
+$("gvReset").onclick=()=>{ GV.hist=[]; gvScore(); $("gvOut").textContent=""; };
+$("gvTest").onclick=()=>{
+  if(!GV.c){ $("gvOut").textContent="Encrypt something first."; return; }
+  const h=L_MSG/2; let same=true;
+  for(let i=0;i<h;i++) if(GV.c[i]!==GV.c[h+i]) same=false;
+  $("gvOut").innerHTML=`The two halves of c are <strong>${same?"equal":"different"}</strong>. `
+    + `With a pad that repeats the key, the halves of c match exactly when the halves of the message match — so this one comparison names the message. With a sound pad it tells you nothing.`;
+};
+$("gvG").onchange=()=>{ GV.hist=[]; gvScore(); GV.live=false; GV.c=null;
+  $("gvC").innerHTML=""; $("gvOut").textContent="Generator changed, score cleared."; };
+
+/* ---------- 03 the diagram ---------- */
+const DIA_IDS=["dBoxOuter","dBoxInner","dA1","dT1a","dT1b","dNodeB","dTB",
+               "dA0","dT0","dA2","dT2","dA3","dT3","dNodeC","dTC","dA4","dT4"];
+function dLight(ids){
+  DIA_IDS.forEach(id=>$(id).classList.remove("lit"));
+  ids.forEach(id=>{ const e=$(id); if(e) e.classList.add("lit"); });
+}
+const STEPS=[
+ { lit:["dBoxOuter"], text:`A′ is the machine we are building. It must solve the hard problem — telling G(k) from uniform — and its only resource is A, an attacker that breaks the encryption scheme.` },
+ { lit:["dA1","dT1a","dT1b"], text:`A′ receives the challenge: a string w of ℓ bits, either G(k) for a uniform key k, or uniform. A′ does not know which, and that is what it must decide.` },
+ { lit:["dBoxInner","dA0","dT0"], text:`A′ starts A and takes the message pair A names. It must be A's pair, because A's advantage is only promised there.` },
+ { lit:["dNodeB","dTB","dA2","dT2"], text:`A′ flips its own bit b, keeps it secret, and hands A the ciphertext c = w ⊕ m_b. The challenge itself plays the role of the pad — A′ never needs a key, or even to know whether one exists.` },
+ { lit:["dA3","dT3"], text:`A returns its guess b′. This is the "break" arrow on the slide: whatever advantage A has, it has to spend it here.` },
+ { lit:["dNodeC","dTC","dA4","dT4"], text:`A′ compares b′ against the b only it knows, and outputs 1 on a match. One call to A and one XOR, so the reduction runs in polynomial time.` },
+ { lit:DIA_IDS, text:`Accounting: if w = G(k), A sees a real ciphertext and is right with probability 1/2 + ε, so A′ says 1 with probability 1/2 + ε. If w is uniform, c is a true one-time pad and hides b perfectly, so A′ says 1 with probability exactly 1/2. The difference is ε — A′'s distinguishing advantage is precisely A's advantage.` }
+];
+let dStep=0;
+function dDraw(){
+  const s=STEPS[dStep];
+  dLight(s.lit);
+  $("dOut").innerHTML=`<strong>${dStep+1} of ${STEPS.length}.</strong> ${s.text}`;
+  $("dPrev").disabled=dStep===0;
+  $("dNext").disabled=dStep===STEPS.length-1;
+}
+$("dNext").onclick=()=>{ if(dStep<STEPS.length-1) dStep++; dDraw(); };
+$("dPrev").onclick=()=>{ if(dStep>0) dStep--; dDraw(); };
+$("dRestart").onclick=()=>{ dStep=0; dDraw(); };
+
+/* ---------- 03b measure the reduction ---------- */
+/* the wrapped attacker: the halves test, i.e. exactly the break from stage 02 */
+function attackerHalves(c){
+  const h=L_MSG/2;
+  for(let i=0;i<h;i++) if(c[i]!==c[h+i]) return 1;   /* halves differ -> guess m1 */
+  return 0;                                          /* halves equal -> guess m0 */
+}
+function runWorld(wSource, trials){
+  const m0=msg("zeros"), m1=msg("halves");
+  let ones=0;
+  for(let t=0;t<trials;t++){
+    const w=wSource();
+    const b=Math.random()<0.5?0:1;
+    const c=xorBits(w, b?m1:m0);
+    if(attackerHalves(c)===b) ones++;
+  }
+  return ones/trials;
+}
+$("rdRun").onclick=()=>{
+  const g=GEN[$("rdG").value], T=2000;
+  const p1v=runWorld(()=>g(randBits(N_KEY)), T);
+  const p2v=runWorld(()=>randBits(L_MSG), T);
+  $("rdBody").innerHTML=
+    `<tr><td>world 1</td><td>w = G(k), k uniform</td><td style="color:var(--brass)">${p1v.toFixed(3)}</td></tr>`
+  + `<tr><td>world 2</td><td>w uniform</td><td style="color:var(--brass)">${p2v.toFixed(3)}</td></tr>`;
+  const adv=Math.abs(p1v-p2v);
+  $("rdOut").innerHTML=`Distinguishing advantage = |${p1v.toFixed(3)} − ${p2v.toFixed(3)}| = <strong>${adv.toFixed(3)}</strong>. `
+    + (adv>0.2
+       ? `The wrapped attacker is a working distinguisher for G, so this G is not a pseudorandom generator. The reduction ran in the direction the slide describes: a break of Π became a solution to the hard problem.`
+       : `No usable advantage. World 2 sits at 1/2 by the one-time-pad argument — always, for every attacker — and world 1 matches it, so A gained nothing from the pad being generated rather than random.`)
+    + ` &nbsp;·&nbsp; ${T.toLocaleString()} trials per world; the standard error on this difference is about ${(Math.SQRT2*0.5/Math.sqrt(T)).toFixed(3)}.`;
+};
+
+/* ---------- 03c the distributions in each world ---------- */
+/* summary statistic: top 4 bits of (left half of c) XOR (right half of c) -> 16 bins */
+function statOf(c){
+  const h=L_MSG/2; let v=0;
+  for(let i=0;i<4;i++) v=(v<<1)|(c[i]^c[h+i]);
+  return v;
+}
+function sampleHist(wSource, m, trials){
+  const bins=new Array(16).fill(0);
+  for(let t=0;t<trials;t++) bins[statOf(xorBits(wSource(), m))]++;
+  return bins;
+}
+function drawHist(el, bins, trials){
+  el.innerHTML="";
+  const max=Math.max(...bins,1);
+  bins.forEach(v=>{
+    const s=document.createElement("span");
+    s.style.height=Math.max(1, Math.round(56*v/max))+"px";
+    if(v===0) s.className="zero";
+    s.title=`${v} of ${trials}`;
+    el.appendChild(s);
+  });
+}
+const tvDist=(a,b,n)=>{ let d=0; for(let i=0;i<a.length;i++) d+=Math.abs(a[i]-b[i]); return d/(2*n); };
+function dsDraw(res){
+  if(!res){
+    [["dsH10"],["dsH11"],["dsH20"],["dsH21"]].forEach(([id])=>drawHist($(id), new Array(16).fill(0), 1));
+    $("dsOut").textContent="Press the button to sample.";
+    return;
+  }
+  const {b10,b11,b20,b21,T,advA,advB}=res;
+  /* expected |TV| between two identical 16-bin multinomials, purely from sampling */
+  const floor = 8*Math.sqrt(2/Math.PI)*Math.sqrt(2*(1/16)*(15/16)/T);
+  drawHist($("dsH10"),b10,T); drawHist($("dsH11"),b11,T);
+  drawHist($("dsH20"),b20,T); drawHist($("dsH21"),b21,T);
+  $("dsS1").innerHTML=`total variation between the two rows: <span style="color:var(--brass)">${advA.toFixed(3)}</span>`;
+  $("dsS2").innerHTML=`total variation between the two rows: <span style="color:var(--brass)">${advB.toFixed(3)}</span>`;
+  const broken=$("dsG").value==="rep";
+  $("dsOut").innerHTML = broken
+    ? `In world 1 the two rows are single spikes in different bins. With c = (k ‖ k) ⊕ m<sub>b</sub>, the left and right halves of c differ by exactly m<sub>b,left</sub> ⊕ m<sub>b,right</sub> — the key cancels, so the statistic is a constant fixed by b. Seeing which spike you are in <em>is</em> reading b. World 2 is two flat, identical rows.<br><br>`
+      + `Total variation is the whole story: for two equally likely hypotheses the best attacker succeeds with probability 1/2 + TV/2, so TV bounds any attacker's advantage. World 1 gives about ${advA.toFixed(2)}. World 2 gives ${advB.toFixed(3)}, against a pure-sampling floor of ${floor.toFixed(3)} at this many trials — its true value is zero, because a uniform pad makes the two distributions genuinely identical.`
+    : `Both worlds now show four rows of the same flat shape. Nothing in this statistic separates b = 0 from b = 1 in either world, which is what a sound generator buys you: world 1 has been dragged into looking like world 2.<br><br>`
+      + `Total variation ${advA.toFixed(3)} and ${advB.toFixed(3)}, against a pure-sampling floor of ${floor.toFixed(3)} — two identical distributions would still read about that much at ${T.toLocaleString()} trials, so neither number is evidence of a gap. Careful though: this measures one four-bit statistic, so it is a <em>lower</em> bound on the true distance. It cannot certify security, only fail to refute it, which is the most any experiment on this page can do.`;
+}
+$("dsRun").onclick=()=>{
+  const g=GEN[$("dsG").value], T=4000;
+  const m0=msg("zeros"), m1=msg("halves");
+  const w1=()=>g(randBits(N_KEY)), w2=()=>randBits(L_MSG);
+  const b10=sampleHist(w1,m0,T), b11=sampleHist(w1,m1,T);
+  const b20=sampleHist(w2,m0,T), b21=sampleHist(w2,m1,T);
+  dsDraw({b10,b11,b20,b21,T, advA:tvDist(b10,b11,T), advB:tvDist(b20,b21,T)});
+};
+$("dsG").onchange=()=>dsDraw(null);
+
+/* ---------- build the reduction yourself ---------- */
+const BUILD=[
+{ q:"A′ has been handed the challenge w. What is its first move?",
+  line:"(m₀, m₁) ← A()", lit:["dBoxOuter","dBoxInner","dA0","dT0"],
+  opts:[
+   {t:"Run A and take the message pair A chooses", ok:true},
+   {t:"Choose m₀ and m₁ itself, then hand them to A",
+    why:"A's advantage is only promised on the pair A itself selects — it may have none at all on a pair you invent. And A is waiting to be asked; it will not accept a ciphertext for messages it never named."},
+   {t:"Recover k from w",
+    why:"If A′ could invert G it would not need A in the first place, and the whole reduction would be pointless. Worse: in the world where w is uniform there is no k to recover, so the step is not even well defined."},
+   {t:"Compute G(w) to expand the challenge",
+    why:"w is the ℓ-bit challenge string, not a key. Feeding it back through G discards the very thing A′ is being asked about, and both worlds would then look identical to A."}],
+  hints:["A is a subroutine with a fixed contract: it names a message pair, then expects a ciphertext in return. What has to happen first for that contract to start?",
+         "Whose choice of messages does the assumed advantage ε apply to?"] },
+
+{ q:"A′ needs a bit b saying which message to encrypt. Where does b come from?",
+  line:"b ← {0,1}      // A′'s own coin, kept secret from A", lit:["dNodeB","dTB"],
+  opts:[
+   {t:"A′ flips it itself, uniformly, and does not tell A", ok:true},
+   {t:"Ask A which message it would like encrypted",
+    why:"Then A knows b and answers correctly every time, in both worlds. Pr[A′ = 1] becomes 1 on each side and the difference is zero — you would have built a distinguisher with no advantage."},
+   {t:"Take b to be the first bit of w",
+    why:"Now b is a function of the challenge rather than independent of it. The anchor at exactly 1/2 in the uniform world depends on b being independent of everything A sees, and this destroys that."},
+   {t:"Fix b = 0 for every run",
+    why:"Then A′ is measuring whether A says 0, not whether A is right. An attacker that always answers 0 would make Pr[A′ = 1] equal 1 in both worlds. You need A′ to know a truth that A does not."}],
+  hints:["A′ has to be able to check A's answer afterwards. That means A′ must know something A does not.",
+         "For the uniform world to sit at exactly 1/2, b must be independent of everything A is shown."] },
+
+{ q:"Now build the ciphertext to hand A. What is c?",
+  line:"c ← w ⊕ m_b\nb′ ← A(c)", lit:["dA1","dT1a","dA2","dT2","dA3","dT3"],
+  opts:[
+   {t:"c = w ⊕ m_b — use the challenge itself as the pad", ok:true},
+   {t:"c = G(k) ⊕ m_b for a fresh key k that A′ draws",
+    why:"This never touches w. A′'s behaviour would be identical whichever world it is in, so its distinguishing advantage is exactly zero no matter how good A is."},
+   {t:"c = w, sending the challenge unmodified",
+    why:"That ciphertext carries no message, so A learns nothing about b and answers at chance in both worlds. The message pair has to enter somewhere."},
+   {t:"c = w ⊕ m₀ ⊕ m₁",
+    why:"This is not an encryption of either message, so A's view no longer matches the experiment it was built to attack. The reduction only works when A's view is exactly the game A expects."}],
+  hints:["The challenge is ℓ bits and so is the pad the scheme needs. That is not a coincidence.",
+         "In the real experiment the pad is G(k). What should play that role here so the two worlds line up?"] },
+
+{ q:"A has returned its guess b′. What does A′ output?",
+  line:"return 1 if b′ = b, else 0", lit:["dNodeC","dTC","dA4","dT4"],
+  opts:[
+   {t:"1 if b′ = b, and 0 otherwise", ok:true},
+   {t:"b′ itself",
+    why:"A′ must output a verdict about w, not a guess about b. On its own b′ carries no signal about which world A′ is in — it is A's opinion about a bit A′ chose."},
+   {t:"1 if b′ = 0",
+    why:"That measures A's bias, not A's accuracy. A perfectly good attacker might answer 0 half the time in both worlds, and this would report nothing."},
+   {t:"1 if c has more ones than zeros",
+    why:"This ignores A entirely, so it cannot inherit A's advantage. The reduction exists to convert A's success rate into a distinguishing rate, which means A's answer has to be read."}],
+  hints:["A′ knows b. A does not. What is the one comparison A′ can make that A cannot?",
+         "A′ should output 1 exactly when the experiment it simulated came out a win for A."] },
+
+{ q:"The construction is complete. In world 1, where w = G(k) for uniform k, what is Pr[A′ outputs 1]?",
+  line:"// world 1:  Pr[A′ = 1] = 1/2 + ε", lit:["dA1","dT1a","dBoxInner","dA4","dT4"],
+  opts:[
+   {t:"1/2 + ε", ok:true},
+   {t:"exactly 1/2",
+    why:"That is the uniform world. Here c = G(k) ⊕ m_b is a genuine ciphertext of Π under a uniform key, so A is playing the real experiment and wins at the rate it was assumed to win: 1/2 + ε."},
+   {t:"1, since A always succeeds",
+    why:"A was only assumed to have advantage ε over guessing, not to be always right. If it were always right the theorem would still hold, but this is the special case, not the statement."},
+   {t:"ε",
+    why:"ε is the advantage over chance, not the success probability. An attacker with zero advantage still succeeds half the time."}],
+  hints:["Compare what A sees here against the definition of the experiment in stage 02. Is there any difference at all?",
+         "If A's view is identical to the real game, its success rate is whatever it was assumed to be."] },
+
+{ q:"In world 2, where w is a uniform ℓ-bit string, what is Pr[A′ outputs 1]?",
+  line:"// world 2:  Pr[A′ = 1] = 1/2 exactly", lit:["dA1","dT1b","dA2","dT2"],
+  opts:[
+   {t:"Exactly 1/2, for every A whatsoever", ok:true},
+   {t:"1/2 + ε again",
+    why:"That would make the advantage zero and prove nothing. The point of this world is that the pad is genuinely random, which is a stronger situation than the scheme ever offers."},
+   {t:"Something negligible",
+    why:"A′ still outputs 1 whenever A happens to guess b correctly, and A guesses right half the time by luck alone. The value is 1/2, not near zero."},
+   {t:"It depends on how strong A is",
+    why:"It does not, and that is exactly what makes the argument work. With a uniform pad, c is uniform and independent of b, so no attacker — however powerful, however unbounded — beats 1/2. This is Shannon, not an assumption."}],
+  hints:["With w uniform, c = w ⊕ m_b is a one-time pad encryption. What did Shannon prove about those?",
+         "Is the distribution of c any different depending on whether b was 0 or 1?"] },
+
+{ q:"Put the two worlds together. What have you shown?", lit:"all",
+  line:"// |Pr[A′(G(k)) = 1] − Pr[A′(r) = 1]| = |(1/2 + ε) − 1/2| = ε",
+  opts:[
+   {t:"A′ distinguishes G's output from uniform with advantage ε, so if ε is non-negligible then G is not a PRG", ok:true},
+   {t:"Π is secure, which is what we wanted",
+    why:"Not directly. The reduction proves the contrapositive: any A that breaks Π yields an A′ that breaks G. Security of Π follows only because we assumed G was sound."},
+   {t:"A′ recovers the key k with probability ε",
+    why:"A′ never learns k and never tries to. Distinguishing is a strictly weaker goal than key recovery, which is what makes the reduction so cheap."},
+   {t:"ε must be zero",
+    why:"Nothing forces ε to vanish; the argument says that if ε were non-negligible, G would fail to be a generator. Given that G is one, ε must be negligible."}],
+  hints:["Subtract the two probabilities you just established.",
+         "The theorem is stated as an implication. Which direction did you just prove?"] }
+];
+let BD={step:0, hint:0, wrong:0, done:false, order:null, tried:new Set()};
+function bdCode(){
+  const lines=[];
+  lines.push("A′(w):");
+  for(let i=0;i<BUILD.length;i++){
+    if(i<BD.step) BUILD[i].line.split("\n").forEach(l=>lines.push("  "+l));
+    else if(i===BD.step) lines.push("  ▸ …");
+  }
+  $("bdCode").textContent=lines.join("\n");
+}
+function bdDraw(){
+  bdCode();
+  $("bdHintText").textContent="";
+  if(BD.step>=BUILD.length){
+    BD.done=true;
+    $("bdQ").innerHTML="";
+    $("bdOpts").innerHTML="";
+    $("bdHint").disabled=true;
+    $("bdOut").innerHTML=`<span style="color:var(--verdigris)">That is the whole reduction.</span> `
+      + `One call to A, one XOR, one comparison — polynomial time, as the slide requires — and a distinguishing advantage equal to A's own. `
+      + (BD.wrong===0 ? `You built it without a single wrong turn.` : `You took ${BD.wrong} wrong turn${BD.wrong===1?"":"s"} on the way, which is where most of the content is.`)
+      + ` The worked walkthrough and the live measurement are now below.`;
+    $("afterBuild").hidden=false;
+    dStep=STEPS.length-1; dDraw();
+    return;
+  }
+  const s=BUILD[BD.step];
+  dLight(s.lit==="all"?DIA_IDS:(s.lit||[]));
+  $("bdQ").innerHTML=`<strong>Step ${BD.step+1} of ${BUILD.length}.</strong> ${s.q}`;
+  $("bdHint").disabled=false;
+  const box=$("bdOpts"); box.innerHTML="";
+  if(!BD.order){
+    BD.order=s.opts.map((_,i)=>i);
+    for(let i=BD.order.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1));
+      [BD.order[i],BD.order[j]]=[BD.order[j],BD.order[i]]; }
+  }
+  BD.order.forEach(i=>{
+    const o=s.opts[i];
+    const b=document.createElement("button");
+    b.textContent=o.t;
+    b.style.textAlign="left";
+    if(BD.tried && BD.tried.has(i)){ b.className="bad"; b.disabled=true; }
+    b.onclick=()=>{
+      if(o.ok){
+        $("bdOut").innerHTML=`<span style="color:var(--verdigris)">Line added.</span>`;
+        BD.step++; BD.hint=0; BD.order=null; BD.tried=new Set(); bdDraw();
+      } else {
+        BD.wrong++;
+        if(!BD.tried) BD.tried=new Set();
+        BD.tried.add(i);
+        b.className="bad"; b.disabled=true;
+        $("bdOut").innerHTML=`<span style="color:var(--oxide)">Not that one.</span> ${o.why}`;
+      }
+    };
+    box.appendChild(b);
+  });
+}
+$("bdHint").onclick=()=>{
+  const s=BUILD[BD.step]; if(!s) return;
+  if(BD.hint<s.hints.length){ $("bdHintText").textContent="Hint: "+s.hints[BD.hint]; BD.hint++; }
+  else $("bdHintText").textContent="No more hints for this step — the wrong answers explain themselves if you try one.";
+};
+$("bdRestart").onclick=()=>{ BD={step:0,hint:0,wrong:0,done:false,order:null,tried:new Set()}; $("bdOut").textContent=""; $("afterBuild").hidden=true; bdDraw(); };
+$("bdSkip").onclick=()=>{ BD.step=BUILD.length; BD.order=null; bdDraw();
+  $("bdOut").innerHTML=`Worked answer shown below. The exercise is still there if you want it — press start over.`; };
+
+p1(); gvScore(); dDraw(); bdDraw(); dsDraw(null);
+</script>
+</body>
+</html>

@@ -190,7 +190,8 @@
 
   function reset(){
     S.N=1<<S.n; S.m0&=S.N-1; S.m1&=S.N-1;
-    $('k').max=String(S.n); if(S.k>S.n) S.k=S.n;
+    $('k').max=String(S.n); if(S.k>S.n) S.k=S.n; $('k').value=String(S.k);
+    acc=0; prev=0; worstHTML=null;
     buildKey();
     S.c0=new Array(S.N).fill(0); S.c1=new Array(S.N).fill(0);
     S.rounds=0; S.wins=0; S.hist=[]; S.nextRec=1; S.pending=null;
@@ -221,7 +222,10 @@
       S.nextRec=Math.max(S.rounds+1, Math.ceil(S.rounds*1.06));
     }
   }
-  function autoRound(){ const ch=newChallenge(); record(ch, guessBy(ch.c)); return ch; }
+  function autoRound(){ const ch=newChallenge(); ch.g=guessBy(ch.c); record(ch,ch.g); return ch; }
+  function autoVerdict(ch){ const right = ch.g===ch.b;
+    $('verdict').innerHTML = `Guessed <b>${ch.g}</b>, coin was <b>${ch.b}</b> — `
+      + `<b style="color:${right?'var(--good)':'var(--rose)'}">${right?'correct':'wrong'}</b>.`; }
 
   function hist(svg,counts,total,theory,color){
     const W=300,H=140,L=6,R=6,T=10,B=20, iw=W-L-R, ih=H-T-B, t=total||1;
@@ -274,6 +278,7 @@
     }
   }
 
+  let worstHTML=null;
   function draw(){
     hist($('s-c0'),S.c0,S.c0.reduce((a,b)=>a+b,0),P0,'var(--blue)');
     hist($('s-c1'),S.c1,S.c1.reduce((a,b)=>a+b,0),P1,'var(--rose)');
@@ -300,14 +305,15 @@
 
     const wd=worstDelta();
     const cur=(S.m0^S.m1)&(S.N-1);
-    $('worst').innerHTML = tv<1e-12 && wd.v<1e-12
+    const wh = tv<1e-12 && wd.v<1e-12
       ? 'Every pair of messages gives distance 0, so no adversary can do better than guessing. That is perfect indistinguishability.'
       : `Worst pair for this scheme differs by <b>${bits(wd.d,S.n)}</b>, giving distance <b>${wd.v.toFixed(4)}</b> `
         + `and a success rate of <b>${((0.5+wd.v/2)*100).toFixed(2)}%</b>. `
         + `Your pair differs by <b>${bits(cur,S.n)}</b>. `
         + `<button id="useworst" style="margin-left:6px">Use the worst pair</button>`;
-    const uw=$('useworst');
-    if(uw) uw.onclick=()=>{ S.m1=(S.m0^wd.d)&(S.N-1); reset(); };
+    if(wh!==worstHTML){ worstHTML=wh; $('worst').innerHTML=wh;
+      const uw=$('useworst');
+      if(uw) uw.onclick=()=>{ S.m1=(S.m0^wd.d)&(S.N-1); reset(); }; }
     chart();
   }
 
@@ -338,7 +344,8 @@
     const dt=Math.min(0.1,(ts-prev)/1000); prev=ts;
     acc+=dt*rateOf(); let k=Math.min(Math.floor(acc),20000); acc-=k;
     let last=null; while(k-->0) last=autoRound();
-    S.pending=last; draw(); S.pending=null;
+    if(last){ S.pending=last; autoVerdict(last); }
+    draw(); S.pending=null;
     requestAnimationFrame(frame);
   }
 
@@ -349,8 +356,7 @@
     if(S.adv==='you'){ S.pending=newChallenge();
       $('verdict').textContent='Which message does this encrypt?'; draw(); }
     else { const ch=autoRound(); S.pending=ch;
-      $('verdict').innerHTML=`Guessed <b>${guessBy(ch.c)}</b>, coin was <b>${ch.b}</b>.`;
-      draw(); S.pending=null; }
+      autoVerdict(ch); draw(); S.pending=null; }
   };
   $('g0').onclick=()=>humanGuess(0);
   $('g1').onclick=()=>humanGuess(1);
