@@ -81,9 +81,33 @@ label.lbl{font-family:var(--mono);font-size:11.5px;color:var(--dim)}
 .diagram text.lbl{fill:var(--bone)}
 .diagram text.big{fill:var(--bone);font-family:var(--serif);font-style:italic;font-size:24px}
 .diagram text.lit{fill:var(--brass)}
+.diagram .lead{stroke:var(--edge);stroke-width:1;stroke-dasharray:3 4}
+.diagram .thframe{fill:var(--sunk);stroke:var(--edge);stroke-width:1}
+.diagram .thlabel{fill:var(--dim);font-family:var(--mono);font-size:11px}
 .diagram .node{fill:var(--sunk);stroke:var(--edge);stroke-width:1.5}
 .diagram .node.lit{stroke:var(--brass)}
 .diagram .arrow.lit{marker-end:url(#ahl)}
+.chart{width:100%;height:auto;margin-top:6px}
+.chart .axis{stroke:var(--edge);stroke-width:1}
+.chart .grid{stroke:rgba(44,65,79,.6);stroke-width:1}
+.chart .cap{stroke:var(--oxide);stroke-width:1;stroke-dasharray:4 4}
+.chart .line{fill:none;stroke-width:2}
+.chart .line.prg{stroke:var(--brass)}
+.chart .line.otp{stroke:var(--verdigris)}
+.chart text{fill:var(--dim);font-family:var(--mono);font-size:10px}
+.wgrid{display:grid;grid-template-columns:120px 1fr 1fr;gap:10px 14px;align-items:center;margin-top:8px}
+@media(max-width:640px){.wgrid{grid-template-columns:78px 1fr 1fr;gap:8px}}
+.wcol{font-family:var(--mono);font-size:12px;color:var(--brass);text-align:center}
+.wlabel{font-family:var(--mono);font-size:11.5px;color:var(--dim);line-height:1.4}
+.wnum{font-family:var(--mono);font-size:15px;color:var(--brass);text-align:center}
+.map.sm{max-width:200px;margin:0 auto}
+.maps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:6px}
+@media(max-width:860px){.maps{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.maps{grid-template-columns:1fr}}
+.mapfixed{font-family:var(--mono);font-size:12.5px;color:var(--verdigris);background:var(--sunk);
+  border:1px solid var(--edge);border-radius:2px;padding:7px 9px;margin:0 0 8px}
+.mapsel{width:100%;margin-bottom:8px}
+.map{width:100%;height:auto;background:var(--sunk);border:1px solid var(--edge);border-radius:2px;display:block;image-rendering:pixelated}
 .worlds{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:6px}
 @media(max-width:700px){.worlds{grid-template-columns:1fr}}
 .wtitle{font-family:var(--mono);font-size:12px;color:var(--brass);margin:0 0 8px}
@@ -228,7 +252,7 @@ footer{margin-top:44px;border-top:1px solid var(--edge);padding-top:18px;font-si
 
     <p>Suppose <code>A</code> wins the experiment with probability <code>1/2 + ε</code>. Build <code>A′</code>, a distinguisher for <code>G</code>. It is handed a string <code>w ∈ {0,1}<sup>ℓ</sup></code> that is either <code>G(k)</code> for a random <code>k</code>, or uniform, and it must say which. Inside, it runs <code>A</code> as a subroutine and simply plays the role of the encryption game.</p>
 
-    <svg class="diagram" id="dia" viewBox="0 0 760 440" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Reduction diagram: A prime wraps A">
+    <svg class="diagram" id="dia" viewBox="0 0 960 470" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Reduction diagram: A prime wraps A">
       <defs>
         <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
           <path d="M0,0 L10,5 L0,10 z" fill="var(--dim)"/>
@@ -263,7 +287,40 @@ footer{margin-top:44px;border-top:1px solid var(--edge);padding-top:18px;font-si
 
       <text class="lbl" id="dT4" x="8" y="392">output 1 iff b′ = b</text>
       <path class="arrow" id="dA4" d="M176,406 L8,406"/>
+
+      <line class="lead" x1="176" y1="96"  x2="668" y2="72"/>
+      <line class="lead" x1="466" y1="264" x2="668" y2="224"/>
+      <line class="lead" x1="466" y1="264" x2="668" y2="376"/>
+
+      <text class="thlabel" x="668" y="46">the challenge w</text>
+      <rect class="thframe" x="668" y="54" width="96" height="96"/>
+      <svg id="dThW" x="670" y="56" width="92" height="92" viewBox="0 0 64 64"></svg>
+
+      <text class="thlabel" x="668" y="198">c = w ⊕ m₀</text>
+      <rect class="thframe" x="668" y="206" width="96" height="96"/>
+      <svg id="dThC0" x="670" y="208" width="92" height="92" viewBox="0 0 64 64"></svg>
+
+      <text class="thlabel" x="668" y="350">c = w ⊕ m₁</text>
+      <rect class="thframe" x="668" y="358" width="96" height="96"/>
+      <svg id="dThC1" x="670" y="360" width="92" height="92" viewBox="0 0 64 64"></svg>
     </svg>
+
+    <div class="controls" style="margin-top:10px">
+      <label class="lbl" for="diaWorld">wires show</label>
+      <select id="diaWorld">
+        <option value="w1" selected>world 1 · w = G(k)</option>
+        <option value="w2">world 2 · w uniform</option>
+      </select>
+      <label class="lbl" for="diaGen">with G =</label>
+      <select id="diaGen">
+        <option value="rep" selected>k ‖ k (broken)</option>
+        <option value="biased">biased bits (broken)</option>
+        <option value="lowzero">low bits zeroed (broken)</option>
+        <option value="sha">SHA-256 (sound)</option>
+      </select>
+      <button id="diaSample">Sample the wires</button>
+    </div>
+    <p class="out" id="diaOut"></p>
 
     <div class="panel">
       <p class="cap">build A′ yourself · each correct choice writes a line</p>
@@ -309,29 +366,43 @@ footer{margin-top:44px;border-top:1px solid var(--edge);padding-top:18px;font-si
     </div>
 
     <div class="panel">
-      <p class="cap">the distributions themselves · what A actually sees in each world</p>
-      <p style="max-width:66ch;font-size:15.5px;margin:0 0 12px">A′'s advantage comes from one place: whether the ciphertext looks different depending on <code>b</code>. Below is the distribution of a four-bit summary of <code>c</code> — the top four bits of (left half ⊕ right half) — measured separately for <code>b = 0</code> and <code>b = 1</code>. If those two rows are the same shape, no attacker can do better than guessing.</p>
+      <p class="cap">the two worlds, as distributions</p>
+      <p style="max-width:66ch;font-size:15.5px;margin:0 0 12px">The same grid as the maps further down: six bits pick the column, six pick the row. The top row is the challenge <code>w</code> itself; the two below are the ciphertext <code>c = w ⊕ m<sub>b</sub></code> that A is handed, for each value of <code>b</code>. Read down a column and you see what the reduction is doing to A.</p>
       <div class="controls">
-        <label class="lbl" for="dsG">generator in world 1</label>
+        <label class="lbl" for="dsG">world 1 uses</label>
         <select id="dsG">
-          <option value="rep">G(k) = k ‖ k (broken)</option>
-          <option value="sha">G(k) = SHA-256(k), truncated (sound)</option>
+          <option value="rep" selected>G(k) = k ‖ k (broken)</option>
+          <option value="biased">σ biased to 1 three times in four (broken)</option>
+          <option value="lowzero">last 3 bits of each half always 0 (broken)</option>
+          <option value="sha">SHA-256 counter mode (sound)</option>
         </select>
-        <button id="dsRun" class="primary">Sample 4000 ciphertexts per row</button>
+        <label class="lbl" for="dsBits">bit window</label>
+        <select id="dsBits">
+          <option value="top" selected>top 6 of each half</option>
+          <option value="bottom">bottom 6 of each half</option>
+        </select>
+        <button id="dsRun" class="primary">Sample 20,000 challenges per map</button>
       </div>
-      <div class="worlds">
-        <div>
-          <p class="wtitle">world 1 · w = G(k)</p>
-          <p class="wrow">b = 0, so m₀ was encrypted</p><div class="hist" id="dsH10"></div>
-          <p class="wrow">b = 1, so m₁ was encrypted</p><div class="hist" id="dsH11"></div>
-          <p class="dimout" id="dsS1"></p>
-        </div>
-        <div>
-          <p class="wtitle">world 2 · w uniform</p>
-          <p class="wrow">b = 0, so m₀ was encrypted</p><div class="hist" id="dsH20"></div>
-          <p class="wrow">b = 1, so m₁ was encrypted</p><div class="hist" id="dsH21"></div>
-          <p class="dimout" id="dsS2"></p>
-        </div>
+      <div class="wgrid">
+        <div class="wlabel"></div>
+        <div class="wcol">world 1 · w = G(k)</div>
+        <div class="wcol">world 2 · w uniform</div>
+
+        <div class="wlabel">the challenge w</div>
+        <div><svg class="map sm" id="dsW1" viewBox="0 0 64 64"></svg></div>
+        <div><svg class="map sm" id="dsW2" viewBox="0 0 64 64"></svg></div>
+
+        <div class="wlabel">c = w ⊕ m₀</div>
+        <div><svg class="map sm" id="dsC10" viewBox="0 0 64 64"></svg></div>
+        <div><svg class="map sm" id="dsC20" viewBox="0 0 64 64"></svg></div>
+
+        <div class="wlabel">c = w ⊕ m₁</div>
+        <div><svg class="map sm" id="dsC11" viewBox="0 0 64 64"></svg></div>
+        <div><svg class="map sm" id="dsC21" viewBox="0 0 64 64"></svg></div>
+
+        <div class="wlabel">distance between<br>the two ciphertext rows</div>
+        <div class="wnum" id="dsT1"></div>
+        <div class="wnum" id="dsT2"></div>
       </div>
       <p class="out" id="dsOut"></p>
     </div>
@@ -340,6 +411,93 @@ footer{margin-top:44px;border-top:1px solid var(--edge);padding-top:18px;font-si
 </section>
 
 
+
+
+
+<section class="stage">
+  <div class="num">04</div>
+  <h2>Look at the distributions</h2>
+  <div class="body">
+    <p>The reduction says the scheme is exactly as good as its pad. So look at the pads. Draw a key at random, run the generator, and plot where the output lands; do it twenty thousand times and the shape of the distribution appears.</p>
+
+    <p>Thirty-two bits is 4.3 billion possible outputs, far too many to plot one per point. So the grid is a <em>projection</em>: six bits pick the column, six pick the row, and the other twenty are discarded. Each of the 4,096 cells therefore stands for 2<sup>20</sup> different strings, and the picture shows how the samples spread across those buckets rather than across the full space.</p>
+
+    <div class="def warn">
+      <h4>what a projection can and cannot tell you</h4>
+      <p>The logic runs one way only. If the projected picture is uneven, the real distribution is uneven — a projection of a uniform distribution is uniform, so any structure you can see is genuinely there. That direction is sound, and it is what makes the broken generators below convincing.</p>
+      <p>The reverse fails. An even picture proves nothing, because structure living entirely in the twenty discarded bits projects away to nothing. The bit-window control lets you change which six bits you look at, and one of the generators below is built to be invisible in one window and obvious in another.</p>
+    </div>
+
+    <div class="panel">
+      <p class="cap">two generators, same experiment</p>
+      <div class="controls">
+        <label class="lbl" for="dpPlot">plot</label>
+        <select id="dpPlot">
+          <option value="pad" selected>the pad G(k)</option>
+          <option value="ct">the ciphertext c = G(k) ⊕ m</option>
+        </select>
+        <label class="lbl" for="dpMsg">message m</label>
+        <select id="dpMsg">
+          <option value="zeros">all zeros</option>
+          <option value="halves" selected>left half 0, right half 1</option>
+          <option value="alt">alternating</option>
+          <option value="rand">random, fixed for the run</option>
+        </select>
+        <label class="lbl" for="dpKeys">keys</label>
+        <select id="dpKeys">
+          <option value="iid" selected>independent, as the scheme draws them</option>
+          <option value="distinct">forced distinct</option>
+        </select>
+        <label class="lbl" for="dpBits">bit window</label>
+        <select id="dpBits">
+          <option value="top" selected>top 6 bits of each half</option>
+          <option value="bottom">bottom 6 bits of each half</option>
+        </select>
+        <button id="dpRun" class="primary">Draw 20,000 keys</button>
+      </div>
+      <div class="maps">
+        <div>
+          <select id="dpA" class="mapsel">
+            <option value="sha" selected>SHA-256 counter mode (sound)</option>
+            <option value="rep">G(k) = k ‖ k (broken)</option>
+            <option value="biased">σ biased to 1 three times in four (broken)</option>
+            <option value="lowzero">last 3 bits of each half always 0 (broken)</option>
+          </select>
+          <svg class="map" id="dpMapA" viewBox="0 0 64 64" preserveAspectRatio="xMidYMid meet"></svg>
+          <p class="dimout" id="dpOutA"></p>
+        </div>
+        <div>
+          <select id="dpB" class="mapsel">
+            <option value="sha">SHA-256 counter mode (sound)</option>
+            <option value="rep" selected>G(k) = k ‖ k (broken)</option>
+            <option value="biased">σ biased to 1 three times in four (broken)</option>
+            <option value="lowzero">last 3 bits of each half always 0 (broken)</option>
+          </select>
+          <svg class="map" id="dpMapB" viewBox="0 0 64 64" preserveAspectRatio="xMidYMid meet"></svg>
+          <p class="dimout" id="dpOutB"></p>
+        </div>
+        <div>
+          <p class="mapfixed">fair coins — the control</p>
+          <svg class="map" id="dpMapC" viewBox="0 0 64 64" preserveAspectRatio="xMidYMid meet"></svg>
+          <p class="dimout" id="dpOutC"></p>
+        </div>
+      </div>
+      <table class="t" id="dpTable"></table>
+      <p class="dimout" id="dpDist"></p>
+      <p class="out" id="dpOut"></p>
+    </div>
+
+    <div class="def">
+      <h4>what each failure looks like</h4>
+      <p><strong>k ‖ k.</strong> The two halves of the pad are equal, so every point satisfies row = column and the whole distribution collapses onto the diagonal. Out of 4,096 cells it can reach 64. Switch to the ciphertext and the line moves — it becomes row = column ⊕ (top bits of m<sub>left</sub> ⊕ m<sub>right</sub>) — but it is still a line. The message shifts the structure; it never destroys it.</p>
+      <p><strong>Biased bits.</strong> No line, but the cloud is dragged toward the high corner, because strings with more ones are larger numbers. The structure here is uneven density rather than missing support, so a test that only hunts for repeats or collapsed dimensions would walk straight past it, while counting ones catches it at once. Different failures need different tests — which is why the definition quantifies over all of them.</p>
+      <p><strong>SHA-256.</strong> An even wash across all 4,096 cells, with the cell-to-cell variation you would expect from throwing 20,000 balls into 4,096 boxes.</p>
+      <p><strong>Low bits zeroed.</strong> In the top-bit window this reaches about 4,040 cells with a busiest cell around 15 — numbers indistinguishable from SHA-256's. It is nonetheless badly broken: three bits of every half are always zero, so seven eighths of the output space is unreachable. Switch the bit window to the bottom six and it collapses to a 64-cell lattice. The generator did not change; only the six bits you chose to look at did.</p>
+    </div>
+
+    <p>Now switch the plot to the ciphertext. The sound generator's picture does not change at all: XOR by a fixed message permutes a uniform distribution into another uniform one. The broken pictures move but keep their shape, and that is the whole content of the theorem in one image — the ciphertext distribution is the pad distribution, relabelled. A pad that is not uniform produces a ciphertext that is not uniform, and that is exactly what an eavesdropper is looking for.</p>
+  </div>
+</section>
 
 <footer>
   Brass cells are 1, dark cells are 0. Keys are 16 bits and messages 32 bits so that everything fits on screen. Both are far too short to be secure against an attacker willing to try all 65,536 keys; the theorem is a statement about efficient attackers, and it inherits that qualifier from the generator it is built on. The SHA-256 implementation is included in this file, so the page runs offline.
@@ -562,59 +720,172 @@ $("rdRun").onclick=()=>{
     + ` &nbsp;·&nbsp; ${T.toLocaleString()} trials per world; the standard error on this difference is about ${(Math.SQRT2*0.5/Math.sqrt(T)).toFixed(3)}.`;
 };
 
-/* ---------- 03c the distributions in each world ---------- */
-/* summary statistic: top 4 bits of (left half of c) XOR (right half of c) -> 16 bins */
-function statOf(c){
-  const h=L_MSG/2; let v=0;
-  for(let i=0;i<4;i++) v=(v<<1)|(c[i]^c[h+i]);
-  return v;
+/* ---------- the distributions on the diagram's wires ---------- */
+function diaSample(){
+  const which=$("diaGen").value, world=$("diaWorld").value, T=20000;
+  const src = world==="w2" ? "coins" : which;
+  const m0=msg("zeros"), m1=msg("halves");
+  const w  = densityMap(src,"pad",m0,T,"top","distinct");
+  const c0 = densityMap(src,"ct", m0,T,"top","distinct");
+  const c1 = densityMap(src,"ct", m1,T,"top","distinct");
+  drawMap($("dThW"),w); drawMap($("dThC0"),c0); drawMap($("dThC1"),c1);
+  const dist=tvCells(c0,c1,T);
+  const floor=0.5*Math.sqrt(2*4096/(Math.PI*T))*Math.SQRT2;
+  const flat = dist < floor*1.25;
+  $("diaOut").innerHTML =
+      (world==="w2"
+        ? `World 2: the challenge is uniform, so the top thumbnail is an even wash and both ciphertext thumbnails inherit it. `
+        : `World 1: the challenge is G(k) for the generator above, so the top thumbnail is that generator's own distribution and the two below are it, shifted by each message. `)
+    + `Distance between the two ciphertext thumbnails: <strong>${dist.toFixed(3)}</strong>, against ${floor.toFixed(3)} for two identically distributed samples.<br>`
+    + (flat
+       ? (world==="w2"
+          ? `Identical, as they must be — a uniform pad hides b perfectly, so whatever A does inside the box it is guessing, and A′ outputs 1 exactly half the time. This is the anchor the proof subtracts.`
+          : `Indistinguishable in this projection, so A gains nothing here either and A′ inherits no advantage. Note this is the top six bits only; a generator broken in the other bits would look exactly like this.`)
+       : `The two ciphertext thumbnails are different pictures, so A reads b off the ciphertext and wins in world 1 while still guessing in world 2. The gap between the worlds is A′'s advantage against G — the proof is just bookkeeping on these two numbers.`);
 }
-function sampleHist(wSource, m, trials){
-  const bins=new Array(16).fill(0);
-  for(let t=0;t<trials;t++) bins[statOf(xorBits(wSource(), m))]++;
-  return bins;
-}
-function drawHist(el, bins, trials){
-  el.innerHTML="";
-  const max=Math.max(...bins,1);
-  bins.forEach(v=>{
-    const s=document.createElement("span");
-    s.style.height=Math.max(1, Math.round(56*v/max))+"px";
-    if(v===0) s.className="zero";
-    s.title=`${v} of ${trials}`;
-    el.appendChild(s);
-  });
-}
-const tvDist=(a,b,n)=>{ let d=0; for(let i=0;i<a.length;i++) d+=Math.abs(a[i]-b[i]); return d/(2*n); };
-function dsDraw(res){
-  if(!res){
-    [["dsH10"],["dsH11"],["dsH20"],["dsH21"]].forEach(([id])=>drawHist($(id), new Array(16).fill(0), 1));
-    $("dsOut").textContent="Press the button to sample.";
-    return;
-  }
-  const {b10,b11,b20,b21,T,advA,advB}=res;
-  /* expected |TV| between two identical 16-bin multinomials, purely from sampling */
-  const floor = 8*Math.sqrt(2/Math.PI)*Math.sqrt(2*(1/16)*(15/16)/T);
-  drawHist($("dsH10"),b10,T); drawHist($("dsH11"),b11,T);
-  drawHist($("dsH20"),b20,T); drawHist($("dsH21"),b21,T);
-  $("dsS1").innerHTML=`total variation between the two rows: <span style="color:var(--brass)">${advA.toFixed(3)}</span>`;
-  $("dsS2").innerHTML=`total variation between the two rows: <span style="color:var(--brass)">${advB.toFixed(3)}</span>`;
-  const broken=$("dsG").value==="rep";
-  $("dsOut").innerHTML = broken
-    ? `In world 1 the two rows are single spikes in different bins. With c = (k ‖ k) ⊕ m<sub>b</sub>, the left and right halves of c differ by exactly m<sub>b,left</sub> ⊕ m<sub>b,right</sub> — the key cancels, so the statistic is a constant fixed by b. Seeing which spike you are in <em>is</em> reading b. World 2 is two flat, identical rows.<br><br>`
-      + `Total variation is the whole story: for two equally likely hypotheses the best attacker succeeds with probability 1/2 + TV/2, so TV bounds any attacker's advantage. World 1 gives about ${advA.toFixed(2)}. World 2 gives ${advB.toFixed(3)}, against a pure-sampling floor of ${floor.toFixed(3)} at this many trials — its true value is zero, because a uniform pad makes the two distributions genuinely identical.`
-    : `Both worlds now show four rows of the same flat shape. Nothing in this statistic separates b = 0 from b = 1 in either world, which is what a sound generator buys you: world 1 has been dragged into looking like world 2.<br><br>`
-      + `Total variation ${advA.toFixed(3)} and ${advB.toFixed(3)}, against a pure-sampling floor of ${floor.toFixed(3)} — two identical distributions would still read about that much at ${T.toLocaleString()} trials, so neither number is evidence of a gap. Careful though: this measures one four-bit statistic, so it is a <em>lower</em> bound on the true distance. It cannot certify security, only fail to refute it, which is the most any experiment on this page can do.`;
+$("diaSample").onclick=diaSample;
+$("diaWorld").onchange=()=>{ ["dThW","dThC0","dThC1"].forEach(i=>$(i).innerHTML=""); $("diaOut").textContent="Sample again to redraw the wires."; };
+$("diaGen").onchange=()=>$("diaWorld").onchange();
+
+/* ---------- 03c the two worlds, as distributions ---------- */
+/* uses densityMap / drawMap from section 04 (function declarations, so hoisted) */
+const tvCells=(a,b,T)=>{ let s=0; for(let i=0;i<a.length;i++) s+=Math.abs(a[i]/T-b[i]/T); return s/2; };
+function dsBlank(){
+  ["dsW1","dsW2","dsC10","dsC11","dsC20","dsC21"].forEach(id=>$(id).innerHTML="");
+  $("dsT1").textContent="—"; $("dsT2").textContent="—";
+  $("dsOut").textContent="Press the button to sample.";
 }
 $("dsRun").onclick=()=>{
-  const g=GEN[$("dsG").value], T=4000;
+  const which=$("dsG").value, win=$("dsBits").value, T=20000;
   const m0=msg("zeros"), m1=msg("halves");
-  const w1=()=>g(randBits(N_KEY)), w2=()=>randBits(L_MSG);
-  const b10=sampleHist(w1,m0,T), b11=sampleHist(w1,m1,T);
-  const b20=sampleHist(w2,m0,T), b21=sampleHist(w2,m1,T);
-  dsDraw({b10,b11,b20,b21,T, advA:tvDist(b10,b11,T), advB:tvDist(b20,b21,T)});
+  const KM="distinct";   /* distinct keys: keeps the 16-bit key's birthday clumping out of the comparison */
+  const w1=densityMap(which,"pad",m0,T,win,KM);
+  const w2=densityMap("coins","pad",m0,T,win,KM);
+  const c10=densityMap(which,"ct",m0,T,win,KM), c11=densityMap(which,"ct",m1,T,win,KM);
+  const c20=densityMap("coins","ct",m0,T,win,KM), c21=densityMap("coins","ct",m1,T,win,KM);
+  drawMap($("dsW1"),w1);  drawMap($("dsW2"),w2);
+  drawMap($("dsC10"),c10); drawMap($("dsC11"),c11);
+  drawMap($("dsC20"),c20); drawMap($("dsC21"),c21);
+  const t1=tvCells(c10,c11,T), t2=tvCells(c20,c21,T);
+  const floor=0.5*Math.sqrt(2*4096/(Math.PI*T))*Math.SQRT2;   /* two sampled maps, not one */
+  $("dsT1").textContent=t1.toFixed(3); $("dsT2").textContent=t2.toFixed(3);
+  const isSound = which==="sha";
+  const hidden = !isSound && t1 < floor*1.25;
+  $("dsOut").innerHTML =
+      `The number at the foot of each column is the distance between that world's two ciphertext maps — how far apart the b = 0 and b = 1 pictures are. `
+    + `It bounds every attacker at once: the best possible success probability is ½ + distance/2. Two identical distributions still measure about ${floor.toFixed(3)} at ${T.toLocaleString()} samples, so read against that.<br><br>`
+    + `<strong>World 2 reads ${t2.toFixed(3)}.</strong> It always does, whatever you put in world 1, because a uniform pad makes c uniform regardless of b — this is the anchor at exactly ½ that the reduction subtracts from.<br>`
+    + (isSound
+       ? `<strong>World 1 reads ${t1.toFixed(3)}</strong>, sitting on the same floor. Every map in the grid looks alike, so A has nothing to work with in either world and A′ inherits nothing. That is the theorem: a sound pad drags world 1 into looking like world 2.`
+       : hidden
+       ? `<strong>World 1 reads ${t1.toFixed(3)}</strong>, also on the floor — and that reading is wrong. This generator is broken; the six bits you are looking at simply cannot see how. Its pad has bits pinned to fixed values, so those positions of c equal those positions of m<sub>b</sub> outright, and an attacker reads b straight off them. Switch the bit window and the distance jumps to 1. A projection can only ever prove a generator bad, never good, and this is what that limitation looks like in practice.`
+       : `<strong>World 1 reads ${t1.toFixed(3)}.</strong> Look at its two ciphertext maps — they are different pictures, so telling b from c is easy, and A wins there while still guessing in world 2. That difference <em>is</em> A′'s advantage against G. The reduction does not create it; it just relabels it.`);
 };
-$("dsG").onchange=()=>dsDraw(null);
+$("dsG").onchange=dsBlank; $("dsBits").onchange=dsBlank;
+
+/* ---------- 04 the distributions, side by side ---------- */
+/* a third broken generator: every output bit independently 1 with probability 3/4 */
+function G_biased(keyBits){
+  let v=0; keyBits.forEach(b=>v=(v<<1)|b);
+  const d=sha256(new Uint8Array([v&255,(v>>>8)&255,0x1d]));
+  const out=new Uint8Array(L_MSG);
+  for(let i=0;i<L_MSG;i++){
+    const pair=(d[i>>2] >>> (2*(3-(i&3)))) & 3;
+    out[i]= pair===0 ? 0 : 1;
+  }
+  return out;
+}
+GEN.biased = G_biased;
+/* broken in a way the top-bit window cannot see */
+function G_lowzero(keyBits){
+  const b=G_sha(keyBits).slice();
+  for(const i of [13,14,15,29,30,31]) b[i]=0;
+  return b;
+}
+GEN.lowzero = G_lowzero;
+/* the control: a genuine one-time pad, fresh randomness every draw */
+GEN.coins = () => randBits(L_MSG);
+
+const packBits = b => b.reduce((a,v)=>((a<<1)|v)>>>0, 0)>>>0;
+function distinctKeys(trials){
+  const set=new Set();
+  while(set.size<Math.min(trials, 1<<N_KEY)) set.add(rndInt(1<<N_KEY));
+  return [...set];
+}
+function densityMap(which, plot, m, trials, win, keyMode){
+  const g=GEN[which], cells=new Uint32Array(4096);
+  const keys = keyMode==="distinct" ? distinctKeys(trials) : null;
+  for(let t=0;t<trials;t++){
+    let v=packBits(g(keys ? bitsOfInt(keys[t], N_KEY) : randBits(N_KEY)));
+    if(plot==="ct") v=(v ^ packBits(m))>>>0;
+    /* six bits from each half; which six is the bit window */
+    const col = win==="bottom" ? (v>>>16)&63 : (v>>>26)&63;
+    const row = win==="bottom" ? v&63        : (v>>>10)&63;
+    cells[row*64+col]++;
+  }
+  return cells;
+}
+function drawMap(el, cells){
+  const max=Math.max(...cells,1);
+  let s="";
+  for(let r=0;r<64;r++) for(let c=0;c<64;c++){
+    const v=cells[r*64+c]; if(!v) continue;
+    const o=Math.min(1, 0.18+0.82*Math.sqrt(v/max));
+    s+=`<rect x="${c}" y="${r}" width="1" height="1" fill="var(--brass)" opacity="${o.toFixed(3)}"/>`;
+  }
+  el.innerHTML=s;
+}
+function describeMap(which, cells, trials, win){
+  const hit=cells.reduce((a,v)=>a+(v?1:0),0);
+  const max=Math.max(...cells);
+  const exp=trials/4096;
+  const name={sha:"SHA-256",rep:"k ‖ k",biased:"biased bits",lowzero:"low bits zeroed",coins:"fair coins"}[which];
+  const verdictText = which==="coins"
+    ? `${hit} of 4,096 cells reached, busiest ${max} against ${exp.toFixed(1)} expected. This is what real randomness looks like at this sample size — not perfectly flat, and that unevenness is the baseline everything else should be judged against.`
+    : which==="lowzero"
+    ? (win==="bottom"
+       ? `${hit} of 4,096 cells reached — a lattice, because three low bits of each half are pinned to zero.`
+       : `${hit} of 4,096 cells reached, busiest ${max} against ${exp.toFixed(1)} — looks perfectly even, and is not. Switch the bit window to the bottom six.`)
+    : which==="rep"
+    ? `${hit} of 4,096 cells reached. The halves are equal, so only a diagonal is possible.`
+    : which==="biased"
+    ? `${hit} of 4,096 cells reached, but the weight is piled toward the high corner: busiest cell ${max}, against ${exp.toFixed(1)} if it were even.`
+    : `${hit} of 4,096 cells reached, busiest ${max}, against ${exp.toFixed(1)} expected — ordinary scatter for ${trials.toLocaleString()} draws.`;
+  return `<strong>${name}</strong> · ${verdictText}`;
+}
+$("dpRun").onclick=()=>{
+  const plot=$("dpPlot").value, T=20000, m=msg($("dpMsg").value), win=$("dpBits").value;
+  const A=$("dpA").value, B=$("dpB").value;
+  const km=$("dpKeys").value;
+  const ca=densityMap(A,plot,m,T,win,km), cb=densityMap(B,plot,m,T,win,km), cc=densityMap("coins",plot,m,T,win,km);
+  drawMap($("dpMapA"),ca); drawMap($("dpMapB"),cb); drawMap($("dpMapC"),cc);
+  $("dpOutA").innerHTML=describeMap(A,ca,T,win);
+  $("dpOutB").innerHTML=describeMap(B,cb,T,win);
+  $("dpOutC").innerHTML=describeMap("coins",cc,T,win);
+  const NAME={sha:"SHA-256",rep:"k ‖ k",biased:"biased bits",lowzero:"low bits zeroed",coins:"fair coins"};
+  /* total variation between the observed cell distribution and uniform over the 4,096 cells */
+  const stat=c=>{ const hit=c.reduce((a,v)=>a+(v?1:0),0), max=Math.max(...c);
+    let tv=0; c.forEach(v=>tv+=Math.abs(v/T - 1/4096)); return {hit,max,tv:tv/2}; };
+  const floor=0.5*Math.sqrt(2*4096/(Math.PI*T));
+  const rows=[[A,ca],[B,cb],["coins",cc]].map(([k,c])=>{
+    const t=stat(c);
+    return `<tr><td>${NAME[k]}</td><td>${t.hit.toLocaleString()}</td><td>${t.max}</td><td>${t.tv.toFixed(4)}</td></tr>`;
+  }).join("");
+  $("dpTable").innerHTML=`<thead><tr><th>source</th><th>cells reached, of 4,096</th><th>busiest cell</th><th>distance from uniform · a true source reads about ${floor.toFixed(3)}</th></tr></thead><tbody>${rows}</tbody>`;
+  const dupExp=Math.round(T*T/(2*Math.pow(2,N_KEY)));
+  $("dpDist").innerHTML = `The last column is total variation distance: half the sum over all 4,096 cells of how far the observed share is from 1/4,096. `
+    + `It cannot read zero from a finite sample — ${T.toLocaleString()} draws from a genuinely uniform source land near <strong>${floor.toFixed(4)}</strong>, which is what the coins row is there to confirm. Read every other row against that, not against zero.<br><br>`
+    + (km==="iid"
+       ? `Note the sound generator sits a little above the coins here. Drawing ${T.toLocaleString()} keys independently from a space of only ${Math.pow(2,N_KEY).toLocaleString()} repeats a key about ${dupExp.toLocaleString()} times, and a repeated key means a repeated pad, which clumps the samples slightly. That is the 16-bit key showing through, not structure in the pads — switch the key control to “forced distinct” and it drops onto the coins, while k ‖ k does not move at all.`
+       : `Keys are forced distinct, so the finite key space contributes nothing and the column measures the pad distribution alone. SHA-256 should now sit on the coins. A broken generator has nowhere left to hide: k ‖ k reads 0.9844, which is exactly the algebra — 64 reachable cells out of 4,096 gives ½(64·(1/64 − 1/4096) + 4032/4096).`);
+  const hitA=ca.reduce((a,v)=>a+(v?1:0),0), hitB=cb.reduce((a,v)=>a+(v?1:0),0);
+  const winTxt = win==="bottom" ? "bottom six bits of each half" : "top six bits of each half";
+  $("dpOut").innerHTML = `Window: ${winTxt}. ` + (plot==="pad"
+    ? `Pads only, no message involved yet. Left reaches ${hitA.toLocaleString()} cells, right reaches ${hitB.toLocaleString()}. `
+      + `Switch the plot to the ciphertext and watch which picture changes.`
+    : `Ciphertexts of the chosen message. Left reaches ${hitA.toLocaleString()} cells, right reaches ${hitB.toLocaleString()}. `
+      + `A sound pad gives the same even wash whatever the message is, because XOR by a constant is a bijection on a uniform distribution. A broken pad's structure survives the XOR — it only moves.`);
+};
 
 /* ---------- build the reduction yourself ---------- */
 const BUILD=[
@@ -662,7 +933,7 @@ const BUILD=[
   opts:[
    {t:"1 if b′ = b, and 0 otherwise", ok:true},
    {t:"b′ itself",
-    why:"A′ must output a verdict about w, not a guess about b. On its own b′ carries no signal about which world A′ is in — it is A's opinion about a bit A′ chose."},
+    why:"A′ must output a single bit about w, not a guess about b. On its own b′ carries no signal about which world A′ is in — it is A's opinion about a bit A′ chose."},
    {t:"1 if b′ = 0",
     why:"That measures A's bias, not A's accuracy. A perfectly good attacker might answer 0 half the time in both worlds, and this would report nothing."},
    {t:"1 if c has more ones than zeros",
@@ -775,7 +1046,7 @@ $("bdRestart").onclick=()=>{ BD={step:0,hint:0,wrong:0,done:false,order:null,tri
 $("bdSkip").onclick=()=>{ BD.step=BUILD.length; BD.order=null; bdDraw();
   $("bdOut").innerHTML=`Worked answer shown below. The exercise is still there if you want it — press start over.`; };
 
-p1(); gvScore(); dDraw(); bdDraw(); dsDraw(null);
+p1(); gvScore(); dDraw(); bdDraw(); dsBlank(); $("diaOut").textContent="Press sample to draw the distribution on each wire.";
 </script>
 </body>
 </html>
