@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="ECE 407: an interactive demo of simulation-based security — one slider sets what a simulator may know, and the point where its output becomes indistinguishable from real ciphertexts is exactly the scheme's leakage.">
+<title>What the Simulator Knows</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chivo:wght@600;700;900&family=JetBrains+Mono:wght@400;500;700&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap">
+<style>
+:root{
+  --bg:#EDEFEE;
+  --panel:#F7F8F7;
+  --sunk:#E2E5E3;
+  --ink:#14181A;
+  --ink-2:#4E585C;
+  --ink-3:#7C868A;
+  --rule:#C8CDCA;
+  --rule-2:#9BA4A2;
+  --iron:#2B4E6F;
+  --iron-soft:#DCE4EC;
+  --amber:#A75A21;
+  --amber-soft:#F5E3D6;
+  --teal:#0E7C6E;
+  --teal-soft:#D3E9E4;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F1214;--panel:#171B1E;--sunk:#1F2427;--ink:#E7EAE8;--ink-2:#A6B0B3;--ink-3:#788387;
+    --rule:#2C3336;--rule-2:#465054;--iron:#7FA8CE;--iron-soft:#1B2833;
+    --amber:#E09155;--amber-soft:#31220F;--teal:#4FC2AF;--teal-soft:#0E2A27;color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F1214;--panel:#171B1E;--sunk:#1F2427;--ink:#E7EAE8;--ink-2:#A6B0B3;--ink-3:#788387;
+  --rule:#2C3336;--rule-2:#465054;--iron:#7FA8CE;--iron-soft:#1B2833;
+  --amber:#E09155;--amber-soft:#31220F;--teal:#4FC2AF;--teal-soft:#0E2A27;color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);margin:0;padding:0 20px 64px;
+  font-family:"Newsreader",Georgia,serif;font-size:17px;line-height:1.55}
+.wrap{max-width:1000px;margin:0 auto}
+h1,h2,h3,.ui{font-family:"Chivo","Helvetica Neue",Arial,sans-serif;margin:0;text-wrap:balance}
+h1{font-weight:900;font-size:clamp(29px,4.6vw,46px);line-height:1.02;letter-spacing:-.02em}
+h2{font-weight:700;font-size:19px;letter-spacing:.01em}
+h3{font-weight:700;font-size:12px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3)}
+p{margin:0 0 .8em}p:last-child{margin-bottom:0}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+.lede{font-size:19px;color:var(--ink-2);max-width:64ch}
+
+header{padding:34px 0 20px;border-bottom:2px solid var(--ink)}
+.tag{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--iron);margin-bottom:10px}
+
+.panel{background:var(--panel);border:1px solid var(--rule);padding:18px 20px}
+.stack{display:grid;gap:18px;margin-top:22px}
+.row{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.spread{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+
+/* scheme switch */
+.seg{display:inline-flex;border:1px solid var(--rule-2)}
+.seg button{font-family:"Chivo",sans-serif;font-weight:600;font-size:13px;letter-spacing:.02em;
+  background:transparent;color:var(--ink-2);border:0;border-right:1px solid var(--rule-2);padding:7px 14px;cursor:pointer}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.seg button:focus-visible,.btn:focus-visible,input:focus-visible{outline:2.5px solid var(--iron);outline-offset:2px}
+.btn{font-family:"Chivo",sans-serif;font-weight:600;font-size:13px;letter-spacing:.02em;
+  background:transparent;color:var(--ink);border:1px solid var(--rule-2);padding:7px 13px;cursor:pointer}
+.btn:hover{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+
+/* the slider */
+.dial{background:var(--panel);border:1px solid var(--rule);padding:22px 24px 16px}
+.dial h3{margin-bottom:14px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;background:transparent;margin:0;display:block}
+input[type=range]::-webkit-slider-runnable-track{height:6px;background:var(--sunk);border:1px solid var(--rule-2)}
+input[type=range]::-moz-range-track{height:6px;background:var(--sunk);border:1px solid var(--rule-2)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:26px;background:var(--ink);border:0;margin-top:-11px;cursor:grab}
+input[type=range]::-moz-range-thumb{width:20px;height:26px;background:var(--ink);border:0;border-radius:0;cursor:grab}
+.ticks{display:grid;grid-template-columns:repeat(5,1fr);margin-top:9px;gap:4px}
+.tick{font-family:"JetBrains Mono",monospace;font-size:10.5px;line-height:1.35;color:var(--ink-3);
+  border:0;border-top:1px solid var(--rule-2);padding:6px 0 0;cursor:pointer;background:none;
+  width:100%;text-align:left;display:block}
+.tick.on{color:var(--ink);border-top:2px solid var(--ink);padding-top:5px}
+.tick.past{color:var(--ink-2)}
+.tick b{display:block;font-family:"Chivo",sans-serif;font-size:12px;letter-spacing:.02em;text-transform:uppercase}
+.tick.leak{border-top-color:var(--teal);color:var(--teal)}
+.tick.leak b{color:var(--teal)}
+.leakflag{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--teal);margin-top:3px;display:block}
+
+/* worlds table */
+.tblwrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{font-family:"Chivo",sans-serif;font-size:11.5px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;
+  text-align:left;color:var(--ink-3);padding:0 10px 7px;border-bottom:1px solid var(--rule-2)}
+th.wall,td.wall{border-left:2px dashed var(--rule-2)}
+td{padding:9px 10px;border-bottom:1px solid var(--rule);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+.msg{font-family:"JetBrains Mono",monospace;font-size:12.5px;letter-spacing:.03em}
+.ctx{font-family:"JetBrains Mono",monospace;font-size:12.5px;display:flex;gap:5px;flex-wrap:wrap}
+.g{background:var(--sunk);padding:2px 5px}
+.g.rep{background:var(--iron-soft);color:var(--iron);box-shadow:inset 0 0 0 1px var(--iron)}
+tr.flag td{background:var(--amber-soft)}
+tr.flag .g{background:transparent;box-shadow:inset 0 0 0 1px var(--amber);color:var(--amber)}
+.absent{color:var(--ink-3);font-style:italic;font-size:13px}
+
+/* verdict */
+.gauge{border:1px solid var(--rule-2);height:30px;background:var(--sunk);position:relative;overflow:hidden}
+.gauge .fill{height:100%;background:var(--amber);opacity:.62;transition:width .35s ease}
+.gauge .lab{position:absolute;inset:0;display:flex;align-items:center;padding-left:11px;
+  font-family:"JetBrains Mono",monospace;font-size:12px;font-weight:500;letter-spacing:.04em}
+.gauge.zero .fill{background:var(--teal)}
+.scale{display:flex;justify-content:space-between;font-family:"JetBrains Mono",monospace;
+  font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);margin-top:5px}
+.verdict{border-left:3px solid var(--amber);background:var(--amber-soft);padding:13px 16px;margin-top:14px;font-size:16px}
+.verdict.ok{border-left-color:var(--teal);background:var(--teal-soft)}
+.verdict b{font-family:"Chivo",sans-serif;font-weight:700}
+.formal{font-family:"JetBrains Mono",monospace;font-size:13px;line-height:1.8;background:var(--sunk);
+  border:1px solid var(--rule);padding:15px 17px;overflow-x:auto}
+.note{font-size:15px;color:var(--ink-2)}
+.foot{border-top:1px solid var(--rule);margin-top:30px;padding-top:14px;font-size:15px;color:var(--ink-2)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (max-width:620px){.ticks{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="tag">Semantic security · the simulation paradigm</div>
+  <h1>What the Simulator Knows</h1>
+  <p class="lede" style="margin-top:12px">A simulator is a forger who has never seen the messages. Give it a short list of facts and let it invent the ciphertexts. The <b>leftmost setting where nobody can tell its output from the real thing</b> is exactly what the encryption leaks — and everything to the right of that point is information the scheme never revealed.</p>
+</header>
+
+<div class="stack">
+  <div class="panel">
+    <div class="spread">
+      <h2>The encryption scheme</h2>
+      <div class="row">
+        <div class="seg" id="seg">
+          <button data-s="rand" aria-pressed="true">Randomized</button>
+          <button data-s="det" aria-pressed="false">Deterministic per word</button>
+        </div>
+        <button class="btn" id="newmsg">New messages</button>
+      </div>
+    </div>
+    <p class="note" id="schemeNote"></p>
+  </div>
+
+  <div class="dial">
+    <h3>Slide right: what the simulator is allowed to know</h3>
+    <input type="range" id="slider" min="0" max="4" step="1" value="0" aria-label="What the simulator is allowed to know">
+    <div class="ticks" id="ticks"></div>
+  </div>
+
+  <div class="panel">
+    <div class="spread">
+      <h2>Two worlds, same messages</h2>
+      <span class="mono" style="font-size:11px;letter-spacing:.09em;color:var(--ink-3)">the simulator never sees the left column</span>
+    </div>
+    <div class="tblwrap"><table>
+      <thead><tr><th style="width:32%">Message sent</th><th style="width:34%">Real · Enc(m)</th><th class="wall" style="width:34%">Simulated · S(L)</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table></div>
+  </div>
+
+  <div class="panel">
+    <div class="spread"><h2>Can an observer tell which world she is in?</h2>
+      <span class="mono" style="font-size:11px;letter-spacing:.09em;color:var(--ink-3)" id="trials"></span></div>
+    <div class="gauge" id="gauge"><div class="fill" id="fill"></div><div class="lab" id="glab"></div></div>
+    <div class="scale"><span>0% · perfectly hidden</span><span>100% · always caught</span></div>
+    <div class="verdict" id="verdict"></div>
+  </div>
+
+  <div class="panel">
+    <h2 style="margin-bottom:10px">The implication</h2>
+    <p>If such a simulator exists, then everything an observer could possibly extract from a real ciphertext, she could equally have extracted from a transcript produced <i>without the message</i> — from the list of facts alone. So no other information was ever there to extract.</p>
+    <div class="formal" style="margin-top:12px">a scheme leaks nothing beyond L if, for every efficient observer A,<br>there is an efficient simulator S with, for all messages m,<br><br>&nbsp;&nbsp;{ A sees Enc<sub>k</sub>(m) } &nbsp;≈<sub>c</sub>&nbsp; { A sees S( L(m) ) }<br><br>semantic security is the case &nbsp;L(m) = |m|</div>
+    <p class="note" style="margin-top:12px">The slider is that L. Finding where indistinguishability begins is not a proof technique — it <i>is</i> the definition of how much leaks.</p>
+  </div>
+</div>
+
+<div class="foot">Ciphertexts, simulator and observer on this page are real and run in your browser: the gauge is measured over 240 fresh trials each time you move the slider, not asserted.</div>
+</div>
+
+<script>
+/* ---------- primitives ---------- */
+var KEY='k'+Math.floor(Math.random()*1e9);
+function fnv(s){var h=0x811c9dc5;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,0x01000193)>>>0;}return h>>>0;}
+function h6(s){return (fnv(KEY+'|'+s)&0xffffff).toString(16).padStart(6,'0');}
+function r6(){return Math.floor(Math.random()*16777216).toString(16).padStart(6,'0');}
+
+var VOCAB=['SEND','GOLD','HOLD','BURN','IRON','WAIT','SHIP','COIN','DAWN','NORTH'];
+function newMessages(){
+  var p=function(){return VOCAB[Math.floor(Math.random()*VOCAB.length)];};
+  var a=[p(),p(),p()], b=[p()];
+  return [a, b, a.slice(), [p(),a[1],p()]];
+}
+
+/* real encryption */
+function enc(m,scheme){
+  if(scheme==='det') return {groups:m.map(function(w){return h6(w);})};
+  return {groups:m.map(function(){return r6();})};
+}
+
+/* the simulator: knows only what the slider allows */
+var LEVELS=[
+ {b:'Nothing',d:'no facts at all'},
+ {b:'How many',d:'the number of messages'},
+ {b:'+ each length',d:'how many words each holds'},
+ {b:'+ repeats',d:'which words are equal to which'},
+ {b:'The messages',d:'the full plaintext'}
+];
+function sim(msgs,lvl,scheme){
+  if(lvl>=4) return msgs.map(function(m){return enc(m,scheme);});
+  var n = lvl>=1 ? msgs.length : 1+Math.floor(Math.random()*5);
+  var cls={},out=[],i,s,L,g;
+  for(i=0;i<n;i++){
+    L = (lvl>=2 && msgs[i]) ? msgs[i].length : 1+Math.floor(Math.random()*3);
+    g=[];
+    for(s=0;s<L;s++){
+      if(scheme==='det' && lvl>=3 && msgs[i] && msgs[i][s]!==undefined){
+        var k='w:'+msgs[i][s];
+        if(!cls[k]) cls[k]=r6();
+        g.push(cls[k]);
+      } else g.push(r6());
+    }
+    out.push({groups:g});
+  }
+  return out;
+}
+
+/* the observer: knows the messages and the scheme, sees one transcript */
+function betrays(msgs,led,scheme){
+  if(led.length!==msgs.length) return {row:-1,why:'The transcript holds '+led.length+' ciphertexts; '+msgs.length+' messages were sent.'};
+  for(var i=0;i<msgs.length;i++)
+    if(led[i].groups.length!==msgs[i].length)
+      return {row:i,why:'Row '+(i+1)+' shows '+led[i].groups.length+' groups for a '+msgs[i].length+'-word message. Length always shows through.'};
+  var flat=[];
+  led.forEach(function(it,ii){it.groups.forEach(function(g,s){flat.push({i:ii,s:s,g:g,w:msgs[ii][s]});});});
+  for(var a=0;a<flat.length;a++) for(var b=a+1;b<flat.length;b++){
+    var same=flat[a].g===flat[b].g;
+    var should=(scheme==='det') && flat[a].w!==undefined && flat[a].w===flat[b].w;
+    if(same&&!should) return {row:flat[a].i,why:'Two groups match that must not. Fresh randomness never repeats itself.'};
+    if(!same&&should) return {row:flat[a].i,why:(flat[a].i===flat[b].i
+        ? 'Row '+(flat[a].i+1)+' contains '+flat[a].w+' twice, but the two groups differ.'
+        : 'Rows '+(flat[a].i+1)+' and '+(flat[b].i+1)+' both contain '+flat[a].w+', but their groups differ.')+' This scheme seals equal words identically, every time.'};
+  }
+  return null;
+}
+
+function measure(msgs,lvl,scheme,n){
+  var hits=0;
+  for(var t=0;t<n;t++){
+    var real=Math.random()<0.5;
+    var led=real?msgs.map(function(m){return enc(m,scheme);}):sim(msgs,lvl,scheme);
+    var caught=!!betrays(msgs,led,scheme);
+    if((!caught)===real) hits++;
+  }
+  return Math.max(0,2*(hits/n)-0.5*2);
+}
+
+/* ---------- state + render ---------- */
+var st={scheme:'rand',lvl:0,msgs:newMessages(),leakPoint:null,found:{rand:null,det:null}};
+
+function findLeakPoint(){
+  for(var l=0;l<=4;l++){
+    var acc=0;
+    for(var r=0;r<3;r++) acc+=measure(st.msgs,l,st.scheme,120);
+    if(acc/3<0.10) return l;
+  }
+  return 4;
+}
+function groupsHTML(it,scheme,msgs,idx){
+  var counts={};
+  if(it) it.groups.forEach(function(g){counts[g]=(counts[g]||0)+1;});
+  var all={};
+  return '<div class="ctx">'+it.groups.map(function(g){
+    var rep=false;
+    if(scheme==='det'){ rep = st.dupset && st.dupset[g]; }
+    return '<span class="g'+(rep?' rep':'')+'">'+g+'</span>';
+  }).join('')+'</div>';
+}
+function render(){
+  var scheme=st.scheme,lvl=st.lvl,msgs=st.msgs;
+  document.getElementById('schemeNote').innerHTML = scheme==='rand'
+    ? 'Every word is sealed with fresh randomness, so the same message sealed twice gives two unrelated ciphertexts. This is what a textbook secure cipher does.'
+    : 'Each word is sealed on its own with no randomness, so identical words always produce identical groups. This is what makes an encrypted index searchable — and it is the whole ECB-penguin story.';
+
+  /* worlds */
+  var real=msgs.map(function(m){return enc(m,scheme);});
+  var simd=sim(msgs,lvl,scheme);
+  st.dupset={};
+  var seen={};
+  real.concat(simd).forEach(function(it){it.groups.forEach(function(g){seen[g]=(seen[g]||0)+1;});});
+  Object.keys(seen).forEach(function(g){if(seen[g]>1)st.dupset[g]=1;});
+
+  var rows='',n=Math.max(msgs.length,simd.length),fl=betrays(msgs,simd,scheme);
+  for(var i=0;i<n;i++){
+    var flag = fl && (fl.row===i || (fl.row===-1 && i>=msgs.length));
+    rows+='<tr class="'+(flag?'flag':'')+'">'+
+      '<td class="msg">'+(msgs[i]?msgs[i].join(' '):'<span class="absent">— no message —</span>')+'</td>'+
+      '<td>'+(real[i]?groupsHTML(real[i],scheme):'<span class="absent">—</span>')+'</td>'+
+      '<td class="wall">'+(simd[i]?groupsHTML(simd[i],scheme):'<span class="absent">— nothing sent —</span>')+'</td></tr>';
+  }
+  document.getElementById('rows').innerHTML=rows;
+
+  /* gauge */
+  var adv=0;for(var r=0;r<2;r++) adv+=measure(msgs,lvl,scheme,120);
+  adv=adv/2; var pct=Math.round(adv*100);
+  document.getElementById('fill').style.width=pct+'%';
+  document.getElementById('gauge').className='gauge'+(pct<10?' zero':'');
+  document.getElementById('glab').textContent='Observer’s advantage over guessing: '+pct+'%';
+  document.getElementById('trials').textContent='240 trials';
+
+  var lp=st.found[scheme];
+  var v=document.getElementById('verdict');
+  if(pct<10){
+    v.className='verdict ok';
+    var extra = (lp!==null && lvl>lp);
+    v.innerHTML='<b>Indistinguishable.</b> The observer does no better than a coin flip, even knowing every message and the scheme itself. '+
+      ((extra&&lvl<4)
+        ? 'You are giving the simulator more than it needs — it already succeeded at <b>'+LEVELS[lp].b.toLowerCase()+'</b>. Facts to the right of that point are not leaked by this scheme; they are just facts you happen to know.'
+        : (lvl>=4 ? 'But this setting is empty of content: handing the simulator the messages proves only that the messages determine the ciphertexts. The honest question is the <i>leftmost</i> setting that works.'
+                  : 'This is the leftmost setting that works, so <b>L(m) = '+LEVELS[lvl].d+'</b> is exactly what this scheme leaks. Nothing else survives encryption, because a forger without it produced the same thing.'));
+  } else {
+    v.className='verdict';
+    v.innerHTML='<b>Caught.</b> '+(fl?fl.why:'')+' The simulator is working from too little, so the real world contains something its list does not mention — and that something is leakage this setting fails to account for.';
+  }
+
+  /* ticks */
+  var ti='';
+  for(var l=0;l<5;l++){
+    var cls='tick'+(l===lvl?' on':(l<lvl?' past':''))+((lp!==null&&l===lp)?' leak':'');
+    ti+='<button class="'+cls+'" data-l="'+l+'" style="text-align:left;background:none">'+
+        '<b>'+LEVELS[l].b+'</b>'+LEVELS[l].d+
+        ((lp!==null&&l===lp)?'<span class="leakflag">↑ the leakage</span>':'')+'</button>';
+  }
+  document.getElementById('ticks').innerHTML=ti;
+  document.getElementById('slider').value=lvl;
+}
+
+function recompute(){ st.found[st.scheme]=findLeakPoint(); }
+
+document.getElementById('slider').addEventListener('input',function(e){st.lvl=+e.target.value;render();});
+document.getElementById('ticks').addEventListener('click',function(e){
+  var b=e.target.closest('[data-l]'); if(!b)return; st.lvl=+b.getAttribute('data-l'); render();
+});
+document.getElementById('seg').addEventListener('click',function(e){
+  var b=e.target.closest('[data-s]'); if(!b)return;
+  st.scheme=b.getAttribute('data-s');
+  Array.prototype.forEach.call(this.querySelectorAll('button'),function(x){
+    x.setAttribute('aria-pressed', x===b?'true':'false');});
+  recompute();render();
+});
+document.getElementById('newmsg').addEventListener('click',function(){
+  st.msgs=newMessages();st.found={rand:null,det:null};recompute();render();
+});
+
+recompute();
+render();
+</script>
+</body>
+</html>
