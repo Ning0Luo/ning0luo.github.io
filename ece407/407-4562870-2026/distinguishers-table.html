@@ -1,0 +1,1136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="A round-based game in which you play the distinguisher against the PRG challenger, using an encryption adversary as your only weapon — the reduction proving PRG security implies EAV security of Enc(k,m) = G(k) XOR m.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2304070f'/%3E%3Ctext y='25' x='16' text-anchor='middle' font-size='22' fill='%23e3bd6b'%3E%E2%97%86%3C/text%3E%3C/svg%3E">
+<title>The Distinguisher's Table</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Spectral:ital,wght@0,300;0,400;0,500;1,300&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --void:#04070f; --night:#0b1322; --night-2:#111c33;
+  --mist:#22304e; --gold:#e3bd6b; --gold-hot:#ffe0a3; --gold-dim:#7d6432; --gold-ink:rgba(227,189,107,.14);
+  --parch:#f3ecdd; --parch-2:#bdb6a5; --muted:#7f8aa3;
+  --amber:#c2831f; --teal:#3d9cc8; --amber-lit:#f0b64a; --teal-lit:#68c8ee;
+  --rose:#e0607a; --jade:#7fd4a8;
+  --f-disp:"Cinzel",Georgia,serif; --f-body:"Spectral",Georgia,serif; --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0; background:var(--void); color:var(--parch); font-family:var(--f-body); font-size:15.5px; line-height:1.65; font-weight:300; overflow-x:hidden}
+.sky{position:fixed; inset:0; z-index:0; pointer-events:none;
+  background:radial-gradient(120% 70% at 50% 0%, #1b2c4d 0%, transparent 62%),
+             radial-gradient(80% 50% at 50% 100%, #2a1c3a 0%, transparent 60%),
+             linear-gradient(180deg,#070c17 0%,#04070f 100%)}
+#motes{position:fixed; inset:0; z-index:1; pointer-events:none}
+.vig{position:fixed; inset:0; z-index:2; pointer-events:none;
+  background:radial-gradient(115% 85% at 50% 42%, transparent 40%, rgba(2,4,9,.75) 100%)}
+
+/* ── chrome ── */
+.hud{position:fixed; top:0; left:0; right:0; z-index:14; display:flex; align-items:center; gap:18px; flex-wrap:wrap;
+  padding:9px 22px; background:linear-gradient(180deg,rgba(4,7,15,.97),rgba(4,7,15,.78));
+  border-bottom:1px solid var(--gold-ink); backdrop-filter:blur(6px)}
+.hud .mark{font-family:var(--f-disp); font-size:12px; font-weight:600; letter-spacing:.16em; color:var(--gold); white-space:nowrap}
+.hud .st{font-family:var(--f-mono); font-size:11px; letter-spacing:.05em; color:var(--muted); white-space:nowrap}
+.hud .st b{color:var(--parch); font-weight:500; font-variant-numeric:tabular-nums}
+.hud .st.low b{color:var(--rose)}
+.hud .right{margin-left:auto; display:flex; gap:7px}
+.hud[hidden]{display:none}
+
+.stage{position:relative; z-index:3; max-width:1080px; margin:0 auto; padding:64px 22px 34px;
+  min-height:100vh; display:flex; flex-direction:column; justify-content:center}
+.screen{display:none; animation:in .45s ease}
+.screen.on{display:block}
+@keyframes in{from{opacity:0; transform:translateY(10px)}}
+
+.btn{font-family:var(--f-disp); font-size:11.5px; font-weight:600; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--parch-2); background:linear-gradient(180deg,rgba(26,40,68,.92),rgba(10,17,31,.92));
+  border:1px solid var(--gold-dim); padding:10px 18px; cursor:pointer}
+.btn:hover:not(:disabled){color:var(--gold-hot); border-color:var(--gold); box-shadow:0 0 20px rgba(227,189,107,.24)}
+.btn:disabled{opacity:.3; cursor:default}
+.btn:focus-visible{outline:1px solid var(--gold); outline-offset:2px}
+.btn.sm{font-size:10px; padding:6px 12px; letter-spacing:.14em}
+.btn.big{font-size:13px; padding:14px 30px; color:var(--gold-hot); border-color:var(--gold)}
+.btn.big:hover:not(:disabled){background:linear-gradient(180deg,rgba(88,66,22,.9),rgba(30,22,8,.92)); box-shadow:0 0 30px rgba(227,189,107,.34)}
+.btn.dmg{color:var(--rose); border-color:#7a3547}
+.btn.dmg:hover:not(:disabled){color:#ffc0cc; border-color:var(--rose); box-shadow:0 0 20px rgba(224,96,122,.3)}
+
+/* ── titles ── */
+.eyebrow{font-family:var(--f-disp); font-size:10px; letter-spacing:.4em; text-transform:uppercase; color:var(--gold-dim); text-align:center}
+h1.grand{margin:16px 0 0; font-family:var(--f-disp); font-size:clamp(32px,6.4vw,68px); font-weight:400; letter-spacing:.07em;
+  text-align:center; line-height:1.1; color:var(--parch); text-shadow:0 0 40px rgba(227,189,107,.36), 0 2px 0 rgba(0,0,0,.7)}
+h1.grand em{font-style:normal; color:var(--gold); text-shadow:0 0 36px rgba(227,189,107,.65)}
+.rule{display:flex; align-items:center; justify-content:center; gap:12px; margin:18px auto; max-width:520px; color:var(--gold-dim)}
+.rule i{flex:1; height:1px; background:linear-gradient(90deg,transparent,var(--gold-dim),transparent)}
+.rule b{font-size:9px; letter-spacing:.3em}
+h2.chap{margin:0; font-family:var(--f-disp); font-size:clamp(22px,3.6vw,34px); font-weight:400; letter-spacing:.06em; text-align:center;
+  text-shadow:0 0 30px rgba(227,189,107,.3)}
+.lede{margin:0 auto; max-width:66ch; text-align:center; color:var(--parch-2); font-size:16.5px; line-height:1.75}
+.lede + .lede{margin-top:14px}
+.lede b{color:var(--parch); font-weight:400}
+code{font-family:var(--f-mono); font-size:.88em; color:var(--gold-hot); background:rgba(227,189,107,.09); padding:1px 5px}
+.center{text-align:center}
+.mt{margin-top:30px} .mt2{margin-top:18px}
+
+/* ── press start ── */
+.press{margin-top:38px; text-align:center; font-family:var(--f-disp); font-size:12px; letter-spacing:.34em;
+  text-transform:uppercase; color:var(--gold); animation:pulse 1.9s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.28}}
+
+/* ── arena ── */
+.arena{position:relative; height:212px; margin:0 0 4px; overflow:hidden; border:1px solid var(--gold-ink);
+  background:linear-gradient(180deg,#0a1425 0%,#060a14 62%,#04070f 100%)}
+.arena .far{position:absolute; inset:0; filter:blur(3.5px)}
+.arena .far::before{content:""; position:absolute; left:50%; top:12%; width:520px; height:190px; transform:translateX(-50%);
+  background:radial-gradient(closest-side, rgba(120,150,220,.2), transparent 72%)}
+.arena .fog{position:absolute; left:0; right:0; bottom:0; height:80px; filter:blur(7px);
+  background:linear-gradient(180deg,transparent,rgba(140,170,225,.1) 60%,rgba(180,200,240,.14))}
+.actor{position:absolute; bottom:26px; display:flex; flex-direction:column; align-items:center; gap:6px; z-index:2}
+.actor svg,.actor .tag{position:relative; z-index:1}
+.actor .ring{position:absolute; bottom:17px; left:50%; transform:translateX(-50%); width:78px; height:19px;
+  border:1px solid rgba(227,189,107,.28); border-radius:50%; box-shadow:0 0 22px rgba(227,189,107,.16) inset; z-index:0}
+.actor .tag{font-family:var(--f-disp); font-size:9px; letter-spacing:.22em; text-transform:uppercase; color:var(--gold-dim)}
+.actor.foe .tag{color:#a35267}
+.actor.hero{left:8%}
+.actor.foe{left:33%; opacity:0; transition:opacity .6s}
+.actor.foe.on{opacity:1}
+.actor svg{filter:drop-shadow(0 0 9px rgba(140,170,235,.42))}
+.actor.foe svg{filter:drop-shadow(0 0 11px rgba(224,96,122,.44))}
+.actor.jolt svg{animation:jolt .34s}
+@keyframes jolt{25%{transform:translateX(-7px)}60%{transform:translateX(5px)}}
+.gate{position:absolute; right:6%; bottom:20px; text-align:center; z-index:2}
+.gate svg{display:block; margin:0 auto; filter:drop-shadow(0 0 16px rgba(120,170,230,.45)); transition:filter .3s}
+.gate.lit svg{filter:drop-shadow(0 0 34px rgba(180,220,255,.95))}
+.gate .tag{font-family:var(--f-disp); font-size:9px; letter-spacing:.22em; text-transform:uppercase; color:var(--muted); margin-top:5px}
+.stream{position:absolute; left:12%; right:20%; top:64%; z-index:0; font-family:var(--f-mono); font-size:11px; letter-spacing:.2em;
+  color:rgba(140,190,240,.5); white-space:nowrap; overflow:hidden; text-align:center; text-shadow:0 0 10px rgba(90,160,230,.55);
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 16%,#000 84%,transparent);
+  mask-image:linear-gradient(90deg,transparent,#000 16%,#000 84%,transparent)}
+.stream.flash{animation:sflash .5s}
+@keyframes sflash{0%{color:var(--gold-hot); text-shadow:0 0 18px rgba(255,224,163,.95)}}
+.bubble{position:absolute; z-index:4; padding:5px 11px; font-family:var(--f-mono); font-size:12px; white-space:nowrap;
+  background:rgba(8,14,26,.94); border:1px solid var(--gold-dim); color:var(--gold-hot); opacity:0; transition:opacity .2s}
+.bubble.on{opacity:1}
+.bubble.foe{left:31%; bottom:150px; border-color:#7a3547; color:#f5aab8}
+.bubble.hero{left:6%; bottom:150px}
+.dmg{position:absolute; left:22%; bottom:96px; z-index:5; font-family:var(--f-disp); font-weight:700; font-size:30px;
+  opacity:0; pointer-events:none; text-shadow:0 0 26px currentColor}
+.dmg.pop{animation:dmg 1.1s ease-out}
+@keyframes dmg{0%{opacity:0; transform:translateY(14px) scale(.8)}22%{opacity:1; transform:translateY(-4px) scale(1.1)}
+  70%{opacity:1; transform:translateY(-16px) scale(1)}100%{opacity:0; transform:translateY(-34px) scale(1)}}
+.brk{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:6; pointer-events:none; opacity:0}
+.brk b{font-family:var(--f-disp); font-size:46px; font-weight:700; letter-spacing:.28em; color:var(--gold-hot);
+  text-shadow:0 0 44px rgba(255,224,163,.95),0 0 90px rgba(227,189,107,.6)}
+.brk.on{animation:brk 1.35s ease-out}
+@keyframes brk{0%{opacity:0; transform:scale(.72)}16%{opacity:1; transform:scale(1.05)}72%{opacity:1; transform:scale(1)}100%{opacity:0; transform:scale(1.12)}}
+
+/* ── break meter ── */
+.meter{border:1px solid var(--gold-ink); border-top:none; background:rgba(6,11,22,.72); padding:13px 18px 15px}
+.mlab{display:flex; justify-content:space-between; font-family:var(--f-disp); font-size:9.5px; letter-spacing:.2em;
+  text-transform:uppercase; margin-bottom:8px}
+.mlab .l{color:var(--teal-lit)} .mlab .c{color:var(--muted)} .mlab .r{color:var(--amber-lit)}
+.track{position:relative; height:16px; background:linear-gradient(90deg,rgba(61,156,200,.12),rgba(10,16,30,.5) 50%,rgba(194,131,31,.12));
+  border:1px solid var(--mist)}
+.track .mid{position:absolute; left:50%; top:-3px; bottom:-3px; width:1px; background:rgba(227,189,107,.5)}
+.track .brkline{position:absolute; top:-4px; bottom:-4px; width:2px; background:var(--gold); box-shadow:0 0 10px var(--gold)}
+.track .brkline.l{left:6%} .track .brkline.r{right:6%}
+.track .fill{position:absolute; top:0; bottom:0; transition:all .55s cubic-bezier(.2,.8,.3,1)}
+.track .fill.prg{left:50%; background:linear-gradient(90deg,rgba(194,131,31,.25),var(--amber))}
+.track .fill.unif{right:50%; background:linear-gradient(270deg,rgba(61,156,200,.25),var(--teal))}
+.track .head{position:absolute; top:50%; width:13px; height:13px; margin:-6.5px 0 0 -6.5px; transform:rotate(45deg);
+  background:var(--gold-hot); box-shadow:0 0 16px var(--gold); transition:left .55s cubic-bezier(.2,.8,.3,1)}
+.mfoot{display:flex; justify-content:space-between; gap:14px; margin-top:9px; font-family:var(--f-mono); font-size:11px; color:var(--muted); flex-wrap:wrap}
+.mfoot b{color:var(--parch); font-weight:500}
+.mfoot .prg{color:var(--amber-lit)} .mfoot .unif{color:var(--teal-lit)}
+
+/* ── round report ── */
+.report{border:1px solid var(--gold-dim); background:linear-gradient(180deg,rgba(14,24,44,.94),rgba(5,10,20,.96));
+  padding:17px 20px 16px; margin-top:14px; position:relative; min-height:96px}
+.report::before{content:""; position:absolute; inset:4px; border:1px solid rgba(227,189,107,.14); pointer-events:none}
+.report .tab{position:absolute; top:-11px; left:20px; padding:2px 13px; background:linear-gradient(180deg,#2a2110,#14100a);
+  border:1px solid var(--gold-dim); font-family:var(--f-disp); font-size:10px; font-weight:600; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--gold-hot)}
+.report p{margin:0; font-size:15.5px; line-height:1.7; max-width:80ch}
+.report p+p{margin-top:9px}
+.report.good{border-color:#3f6b54} .report.good .tab{color:#8fe0b6; border-color:#3f6b54; background:linear-gradient(180deg,#122a1f,#08160f)}
+.report.bad{border-color:#7a3547} .report.bad .tab{color:#f2a1b0; border-color:#7a3547; background:linear-gradient(180deg,#2a1219,#16080d)}
+
+/* ── command bar ── */
+.cmd{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:14px}
+.cmd .bp{display:flex; gap:5px; align-items:center; margin-right:6px; font-family:var(--f-disp); font-size:9.5px;
+  letter-spacing:.18em; text-transform:uppercase; color:var(--muted)}
+.pip{width:10px; height:10px; transform:rotate(45deg); border:1px solid var(--gold-dim)}
+.pip.on{background:var(--gold); border-color:var(--gold-hot); box-shadow:0 0 12px rgba(227,189,107,.8)}
+.cmd .spacer{flex:1}
+
+/* ── sparkline strip ── */
+.spark{border:1px solid var(--gold-ink); background:rgba(4,8,16,.5); padding:9px 12px 5px; margin-top:14px}
+.spark .h{font-family:var(--f-disp); font-size:9.5px; letter-spacing:.2em; text-transform:uppercase; color:var(--muted); margin-bottom:4px}
+.spark svg{width:100%; height:auto; display:block}
+
+/* ── assembly ── */
+.part{display:grid; gap:9px; max-width:760px; margin:22px auto 0}
+.opt{display:grid; grid-template-columns:16px 1fr; gap:11px; text-align:left; font-family:var(--f-body); font-size:15px;
+  font-weight:300; line-height:1.55; color:var(--parch); background:linear-gradient(90deg,rgba(18,30,54,.7),rgba(8,14,26,.6));
+  border:1px solid var(--mist); border-left:2px solid var(--mist); padding:13px 16px; cursor:pointer}
+.opt .cur{color:transparent; font-size:9px; line-height:2}
+.opt:hover:not(.blocked),.opt:focus-visible{border-color:var(--gold-dim); border-left-color:var(--gold);
+  background:linear-gradient(90deg,rgba(40,58,96,.75),rgba(12,20,36,.6)); outline:none}
+.opt:hover .cur,.opt:focus-visible .cur{color:var(--gold-hot)}
+.opt.blocked{border-left-color:#5c3a44; border-left-style:dashed; opacity:.72}
+.opt .note{display:block; font-size:13px; color:var(--muted); margin-top:4px; line-height:1.5}
+.opt.blocked .note{color:#b2707f}
+.steps{display:flex; gap:7px; justify-content:center; margin-top:6px}
+.step{width:34px; height:2px; background:var(--mist)}
+.step.on{background:var(--gold); box-shadow:0 0 10px rgba(227,189,107,.7)}
+.step.done{background:var(--gold-dim)}
+
+/* ── chapter list & result ── */
+.tables{display:grid; gap:6px; max-width:560px; margin:24px auto 0}
+.tb{display:grid; grid-template-columns:32px 1fr auto; gap:12px; align-items:baseline; padding:9px 14px;
+  border-left:2px solid var(--mist); font-size:14.5px; color:var(--parch-2); background:rgba(10,17,31,.45)}
+.tb .n{font-family:var(--f-disp); font-size:10.5px; letter-spacing:.1em; color:var(--muted)}
+.tb .e{font-family:var(--f-mono); font-size:11.5px; color:var(--muted)}
+.tb.now{border-left-color:var(--gold); color:var(--gold-hot); background:linear-gradient(90deg,rgba(74,58,20,.45),rgba(10,17,31,.45))}
+.tb.now .n,.tb.now .e{color:var(--gold)}
+.tb.won{border-left-color:#3f6b54; color:var(--muted)}
+
+.bigchart{border:1px solid var(--gold-ink); background:rgba(4,8,16,.55); padding:14px 14px 8px; margin:22px 0 0}
+.bigchart svg{width:100%; height:auto; display:block}
+.readout{font-family:var(--f-mono); font-size:11px; color:var(--muted); min-height:1.4em; margin-top:5px}
+
+/* ── finale ── */
+.final{max-width:820px; margin:0 auto; padding:32px 34px 34px; position:relative;
+  background:linear-gradient(180deg,rgba(20,32,56,.94),rgba(5,10,20,.96)); border:1px solid var(--gold);
+  box-shadow:inset 0 1px 0 rgba(227,189,107,.2), 0 0 70px rgba(227,189,107,.13)}
+.final::before{content:""; position:absolute; inset:5px; border:1px solid rgba(227,189,107,.2); pointer-events:none}
+.final h4{margin:26px 0 9px; font-family:var(--f-disp); font-size:10.5px; letter-spacing:.22em; text-transform:uppercase; color:var(--gold)}
+.final p{margin:0 0 12px; max-width:74ch; font-size:15.5px}
+.final ul{margin:0 0 12px; padding-left:20px; max-width:74ch; font-size:15.5px}
+.final li{margin-bottom:9px} .final li::marker{color:var(--gold)}
+.pre{font-family:var(--f-mono); font-size:12.5px; line-height:1.75; white-space:pre-wrap; color:var(--parch);
+  background:rgba(4,8,16,.72); border:1px solid var(--gold-ink); border-left:2px solid var(--gold-dim);
+  padding:13px 15px; margin:0 0 13px; overflow-x:auto; text-align:left}
+
+/* ── manual ── */
+.scrim{position:fixed; inset:0; z-index:40; background:rgba(2,4,9,.88); display:flex; padding:24px; overflow:auto; backdrop-filter:blur(3px)}
+.scrim[hidden]{display:none}
+.sheet{margin:auto; max-width:740px; width:100%; padding:28px 30px 32px; position:relative; text-align:left;
+  background:linear-gradient(180deg,rgba(17,28,51,.97),rgba(5,10,20,.98)); border:1px solid var(--gold-dim)}
+.sheet::before{content:""; position:absolute; inset:5px; border:1px solid rgba(227,189,107,.16); pointer-events:none}
+.sheet h3{margin:0 0 18px; font-family:var(--f-disp); font-size:20px; font-weight:400; letter-spacing:.12em; color:var(--gold)}
+.sheet h4{margin:22px 0 8px; font-family:var(--f-disp); font-size:10px; letter-spacing:.22em; text-transform:uppercase; color:var(--gold)}
+.sheet h4:first-of-type{margin-top:0}
+.sheet p{margin:0 0 11px; max-width:70ch; font-size:14.5px; color:var(--parch-2)}
+.sheet .close{float:right; margin-left:14px}
+figure.d2{margin:0} figure.d2 svg{width:100%; height:auto; display:block; color:var(--parch-2)}
+figure.d2 figcaption{margin-top:9px; font-size:13px; color:var(--muted); line-height:1.55}
+@media (prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important}}
+@media (max-width:620px){.arena{height:180px} .actor.foe{left:38%} .dmg{left:30%}}
+</style>
+</head>
+<body>
+<div class="sky"></div><canvas id="motes"></canvas><div class="vig"></div>
+
+<div class="hud" id="hud" hidden>
+  <span class="mark">THE DISTINGUISHER'S TABLE</span>
+  <span class="st">TABLE <b id="hTable">I</b>/IV</span>
+  <span class="st">ROUND <b id="hRound">1</b></span>
+  <span class="st">ε = <b id="hEps">0.25</b></span>
+  <span class="st" id="hAllowWrap">ALLOWANCE <b id="hAllow">500</b></span>
+  <span class="right">
+    <button class="btn sm" id="muteBtn" aria-pressed="false">♪ Music on</button>
+    <button class="btn sm" id="manualBtn">Manual</button>
+    <button class="btn sm" id="resetBtn">Restart</button>
+  </span>
+</div>
+
+<div class="stage">
+
+  <!-- ══ TITLE ══ -->
+  <section class="screen on" id="scTitle">
+    <div class="eyebrow">A game of one reduction</div>
+    <h1 class="grand">The Distinguisher's<br><em>Table</em></h1>
+    <div class="rule"><i></i><b>◆</b><i></i></div>
+    <p class="lede">Proving that PRG security implies EAV security — by playing the reduction, one round at a time.</p>
+    <div class="press" id="pressStart">▸ &nbsp;Press start&nbsp; ◂</div>
+    <p class="lede" style="margin-top:22px; font-size:12.5px; color:var(--gold-dim)">Music begins when you start · ♪ in the top bar mutes it</p>
+  </section>
+
+  <!-- ══ BRIEFING ══ -->
+  <section class="screen" id="scBrief">
+    <div class="eyebrow">Briefing</div>
+    <h2 class="chap">You are the distinguisher</h2>
+    <div class="rule"><i></i><b>◆</b><i></i></div>
+    <p class="lede">The challenger deals you a string <b>w</b> from one of two sources, and will not say which. Either <b>w = G(k)</b> for a hidden seed, or <b>w</b> is uniformly random. Tell them apart and you have broken <b>G</b> — which nobody has ever done.</p>
+    <p class="lede">You cannot read <b>w</b>. It is noise either way. What you <i>can</i> do is hire <b>Ā</b>, an eavesdropper who breaks <code>Enc(k,m) = G(k) ⊕ m</code> with advantage ε — and turn Ā's talent into an answer about <b>w</b>.</p>
+    <div class="center mt"><button class="btn big" id="toAssembly">Assemble your machine ▸</button></div>
+  </section>
+
+  <!-- ══ ASSEMBLY ══ -->
+  <section class="screen" id="scAssembly">
+    <div class="eyebrow" id="asmEyebrow">Assembly · Part I of IV</div>
+    <h2 class="chap" id="asmTitle">What the challenger hands you</h2>
+    <div class="steps" id="asmSteps"></div>
+    <div class="part" id="asmOpts"></div>
+    <div class="report" id="asmReport" style="display:none">
+      <span class="tab" id="asmTab">Rejected</span>
+      <p id="asmMsg"></p>
+    </div>
+  </section>
+
+  <!-- ══ TABLE INTRO ══ -->
+  <section class="screen" id="scIntro">
+    <div class="eyebrow" id="introEyebrow">Table I</div>
+    <h2 class="chap" id="introTitle">The Braggart</h2>
+    <div class="rule"><i></i><b>◆</b><i></i></div>
+    <p class="lede" id="introText"></p>
+    <div class="tables" id="introTables"></div>
+    <div class="center mt"><button class="btn big" id="toBattle">Take your seat ▸</button></div>
+  </section>
+
+  <!-- ══ BATTLE ══ -->
+  <section class="screen" id="scBattle">
+    <div class="arena" id="arena">
+      <div class="far"></div><div class="fog"></div>
+      <div class="actor hero" id="heroActor"><span class="ring"></span><span id="spScholar"></span><span class="tag">D · you</span></div>
+      <div class="actor foe" id="foeActor"><span class="ring"></span><span id="spFoe"></span><span class="tag">Ā · under contract</span></div>
+      <div class="gate" id="gate">
+        <svg width="128" height="112" viewBox="0 0 60 54" role="img" aria-label="The challenger's gate: a stone arch with a glowing core that deals the challenge string.">
+          <defs><radialGradient id="core2"><stop offset="0%" stop-color="#eaf4ff"/><stop offset="50%" stop-color="#6aa8e6" stop-opacity=".8"/><stop offset="100%" stop-color="#1b3a66" stop-opacity="0"/></radialGradient></defs>
+          <path d="M8 52 L8 20 A22 22 0 0 1 52 20 L52 52" fill="none" stroke="#2a3f66" stroke-width="4"/>
+          <path d="M8 52 L8 20 A22 22 0 0 1 52 20 L52 52" fill="none" stroke="#4b6b9e" stroke-width="1.4"/>
+          <ellipse cx="30" cy="30" rx="17" ry="21" fill="url(#core2)" opacity=".92"/>
+          <path d="M4 52 h52" stroke="#e3bd6b" stroke-width="1" opacity=".45"/>
+        </svg>
+        <div class="tag">the challenger</div>
+      </div>
+      <div class="stream" id="bits">the challenger waits</div>
+      <div class="bubble foe" id="bubFoe"></div>
+      <div class="bubble hero" id="bubHero"></div>
+      <div class="dmg" id="dmg"></div>
+      <div class="brk" id="brkFlash"><b>BREAK</b></div>
+    </div>
+
+    <div class="meter">
+      <div class="mlab"><span class="l">◂ uniform</span><span class="c">evidence</span><span class="r">pseudorandom ▸</span></div>
+      <div class="track">
+        <div class="fill unif" id="fillU" style="width:0"></div>
+        <div class="fill prg" id="fillP" style="width:0"></div>
+        <div class="brkline l"></div><div class="brkline r"></div>
+        <div class="mid"></div>
+        <div class="head" id="head" style="left:50%"></div>
+      </div>
+      <div class="mfoot">
+        <span>hands dealt <b id="mN">0</b> · matched <b id="mK">0</b> · rate <b id="mR">—</b></span>
+        <span>odds <b id="mOdds">1 : 1</b> <span id="mToward"></span></span>
+      </div>
+    </div>
+
+    <div class="report" id="report"><span class="tab" id="repTab">Round 1</span><p id="repBody"></p></div>
+
+    <div class="cmd" id="cmdBar">
+      <span class="bp">BP <span id="bpPips" style="display:flex;gap:5px;margin-left:5px"></span></span>
+      <button class="btn" id="deal1">Deal ×1</button>
+      <button class="btn" id="boost10">Boost ×10 · 1BP</button>
+      <button class="btn" id="boost100">Boost ×100 · 2BP</button>
+      <button class="btn" id="boost1000">Boost ×1,000 · 3BP</button>
+      <span class="spacer"></span>
+      <button class="btn big" id="callBtn" disabled>Call the source</button>
+      <button class="btn dmg" id="concede" hidden>Concede — this is impossible</button>
+    </div>
+
+    <div class="spark">
+      <div class="h">Observed rate · the two hypotheses</div>
+      <svg id="spark" viewBox="0 0 720 118" role="img" aria-label="Observed rate at which your machine outputs 1, against the pseudorandom and uniform hypothesis lines."></svg>
+    </div>
+  </section>
+
+  <!-- ══ CALL ══ -->
+  <section class="screen" id="scCall">
+    <div class="eyebrow">The call</div>
+    <h2 class="chap">Which source is dealing?</h2>
+    <div class="rule"><i></i><b>◆</b><i></i></div>
+    <p class="lede" id="callLede"></p>
+    <div class="center mt" style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+      <button class="btn big" id="callPrg">It is pseudorandom</button>
+      <button class="btn big" id="callUnif">It is uniform</button>
+      <button class="btn" id="callBack">Go back and gather more</button>
+    </div>
+  </section>
+
+  <!-- ══ RESULT ══ -->
+  <section class="screen" id="scResult">
+    <div class="eyebrow" id="resEyebrow">Result</div>
+    <h2 class="chap" id="resTitle"></h2>
+    <div class="rule"><i></i><b>◆</b><i></i></div>
+    <p class="lede" id="resText"></p>
+    <div class="bigchart"><svg id="chart" viewBox="0 0 720 250" role="img" aria-label="The full record of this table: observed rate against trial count on a logarithmic axis, with the two hypothesis lines."></svg>
+      <div class="readout" id="readout">Hover the plot to read a point.</div></div>
+    <div class="center mt"><button class="btn big" id="resNext">Continue ▸</button></div>
+  </section>
+
+  <!-- ══ FINALE ══ -->
+  <section class="screen" id="scFinale">
+    <div class="eyebrow">◆ &nbsp;The theorem&nbsp; ◆</div>
+    <h2 class="chap" id="finTitle">An adversary you cannot use is an adversary that cannot hurt you.</h2>
+    <div class="rule"><i></i><b>◆</b><i></i></div>
+    <div class="final" id="finalBody"></div>
+    <div class="center mt"><button class="btn" id="finRestart">Play again from the title</button></div>
+  </section>
+</div>
+
+<div class="scrim" id="scrim" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-label="Field manual">
+    <button class="btn sm close" id="closeManual">Close</button>
+    <h3>Field Manual</h3>
+    <h4>The scheme Ā attacks</h4>
+    <div class="pre">G : {0,1}ⁿ → {0,1}^ℓ(n),  ℓ(n) &gt; n
+
+Gen(1ⁿ)   :  k ← {0,1}ⁿ
+Enc(k, m) :  G(k) ⊕ m      for m ∈ {0,1}^ℓ(n)
+Dec(k, c) :  G(k) ⊕ c</div>
+    <h4>The game you are playing</h4>
+    <div class="pre">G is a PRG if ℓ(n) &gt; n and for every probabilistic
+polynomial-time D there is a negligible negl with
+
+  | Pr[ D(G(k)) = 1 ] − Pr[ D(w) = 1 ] | ≤ negl(n)
+
+for uniform k ← {0,1}ⁿ and uniform w ← {0,1}^ℓ(n).
+
+You are D. The two probabilities are the two lines on
+the strip. Your job is to pull them apart.</div>
+    <h4>The game Ā wins</h4>
+    <div class="pre">PrivK^eav_{A,Π}(n):
+  1. A(1ⁿ) outputs m₀, m₁ with |m₀| = |m₁|
+  2. k ← Gen(1ⁿ);  b ← {0,1};  c ← Enc(k, m_b)
+  3. A(c) outputs b′
+  4. the experiment outputs 1 iff b′ = b
+
+Ā's contract says Pr[b′ = b] = 1/2 + ε.</div>
+    <h4>Rounds, BP and Break</h4>
+    <div class="pre">Each round you deal hands and gain 1 BP (max 5).
+Boost spends BP to deal many hands at once.
+Every hand tilts the evidence meter. When it reaches
+either BREAK line the odds are 20:1 and you may call.
+
+Allowance is your polynomial budget of hands. It is
+finite, on purpose.</div>
+    <h4>Negligible</h4>
+    <div class="pre">f is negligible if for every polynomial p there is N
+with f(n) &lt; 1/p(n) for all n &gt; N.
+
+Table IV uses ε = 2⁻⁶⁴. That is what negligible feels
+like from your side of the table.</div>
+    <h4>The machine you assembled</h4>
+    <figure class="d2">
+    <svg viewBox="0 0 680 300" role="img" aria-label="The distinguisher D receives a string w, runs the adversary A as a black box inside itself by sending it w XOR m-sub-b, and outputs 1 exactly when A's guess matches D's own coin.">
+      <defs>
+        <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="currentColor"/></marker>
+        <marker id="arb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#68c8ee"/></marker>
+      </defs>
+      <g font-family="IBM Plex Mono, monospace" font-size="12.5" fill="currentColor">
+        <text x="6" y="112" font-size="12">w = G(k)   or   w ← {0,1}^ℓ(n)</text>
+        <line x1="6" y1="144" x2="64" y2="144" stroke="#68c8ee" stroke-width="1.5" marker-end="url(#arb)"/>
+        <text x="6" y="134" fill="#68c8ee">w</text>
+        <rect x="70" y="36" width="470" height="230" rx="3" fill="none" stroke="#68c8ee" stroke-width="1.6"/>
+        <text x="84" y="58" fill="#68c8ee" font-size="13">D — you (polynomial time)</text>
+        <rect x="110" y="114" width="62" height="60" rx="2" fill="none" stroke="currentColor" stroke-width="1"/>
+        <text x="141" y="149" text-anchor="middle">w ⊕ ·</text>
+        <text x="141" y="196" text-anchor="middle" font-size="11.5">b ← {0,1}</text>
+        <rect x="250" y="96" width="130" height="106" rx="2" fill="none" stroke="#e0607a" stroke-width="1.6"/>
+        <text x="315" y="142" text-anchor="middle" fill="#e0607a" font-size="17">Ā</text>
+        <text x="315" y="164" text-anchor="middle" fill="#e0607a" font-size="10.5">black box, run once</text>
+        <line x1="248" y1="120" x2="174" y2="120" stroke="currentColor" stroke-width="1.2" marker-end="url(#ar)"/>
+        <text x="211" y="110" text-anchor="middle" font-size="11.5">(m₀, m₁)</text>
+        <line x1="174" y1="178" x2="248" y2="178" stroke="currentColor" stroke-width="1.2" marker-end="url(#ar)"/>
+        <text x="211" y="195" text-anchor="middle" font-size="11.5">c = w ⊕ m_b</text>
+        <line x1="382" y1="144" x2="426" y2="144" stroke="currentColor" stroke-width="1.2" marker-end="url(#ar)"/>
+        <text x="404" y="134" text-anchor="middle" font-size="11.5">b′</text>
+        <rect x="430" y="120" width="88" height="46" rx="2" fill="none" stroke="currentColor" stroke-width="1"/>
+        <text x="474" y="148" text-anchor="middle">b′ = b ?</text>
+        <path d="M141 206 Q 303 252 462 172" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="4 4" opacity=".65"/>
+        <text x="303" y="242" text-anchor="middle" font-size="11" opacity=".8">the same b</text>
+        <line x1="518" y1="144" x2="596" y2="144" stroke="#68c8ee" stroke-width="1.5" marker-end="url(#arb)"/>
+        <text x="524" y="134" fill="#68c8ee" font-size="11.5">1 if yes, else 0</text>
+      </g>
+    </svg>
+    <figcaption>Ā never learns it is inside anything: every ciphertext it sees has the shape it was promised. The one thing you add is the coin <b>b</b>, kept outside Ā's view — which is why you can grade Ā's answer and Ā cannot.</figcaption>
+    </figure>
+    <p style="margin-top:14px">Standard construction and proof: J. Katz &amp; Y. Lindell, <i>Introduction to Modern Cryptography</i>, Theorem 3.18 (§3.3.3).</p>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+const $ = id => document.getElementById(id);
+const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const ROMAN = ["I","II","III","IV"];
+const BREAK = Math.log(20);            /* 20 : 1 odds = break */
+
+/* ═══════════════════════════════════════════════════════════
+   SOUND — everything below is synthesised at runtime with Web
+   Audio. No asset files, so the page stays self-contained.
+   D aeolian throughout: i – VI – III – VII (Dm – B♭ – F – C).
+   ═══════════════════════════════════════════════════════════ */
+const Snd = (function(){
+  let ctx, master, busA, busB, dry, verb, timer=null;
+  let tempo=66, step=0, nextT=0, mode="ambient", on=false, muted=false;
+
+  try{ muted = localStorage.getItem("dt-mute")==="1"; }catch(e){}
+
+  const f = m => 440*Math.pow(2,(m-69)/12);
+  /* Dm  B♭  F  C — voiced low so the pad sits under the arpeggio */
+  const PROG = [[50,53,57,62],[46,50,53,58],[41,45,48,53],[48,52,55,60]];
+  const ARP  = [0,1,2,3,2,1,3,2];
+  /* sparse melodies, keyed by step within the loop */
+  const MEL_A = {8:69, 12:67, 24:65, 32:62, 40:60, 44:62, 56:65};
+  const MEL_B = {4:74, 6:72, 12:69, 20:70, 24:74, 28:72, 36:77, 44:74, 52:70, 60:69};
+
+  function ir(sec, decay){
+    const n = Math.floor(ctx.sampleRate*sec), b = ctx.createBuffer(2,n,ctx.sampleRate);
+    for(let c=0;c<2;c++){ const d=b.getChannelData(c);
+      for(let i=0;i<n;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/n,decay); }
+    return b;
+  }
+  function init(){
+    if(ctx) return;
+    const AC = window.AudioContext || window.webkitAudioContext; if(!AC) return;
+    ctx = new AC();
+    master = ctx.createGain(); master.gain.value = muted ? 0 : .5; master.connect(ctx.destination);
+    verb = ctx.createConvolver(); verb.buffer = ir(2.6, 2.4);
+    const wet = ctx.createGain(); wet.gain.value = .55; verb.connect(wet); wet.connect(master);
+    dry = ctx.createGain(); dry.gain.value = .9; dry.connect(master);
+    busA = ctx.createGain(); busA.gain.value = .9; busA.connect(dry); busA.connect(verb);  /* plucks, bells */
+    busB = ctx.createGain(); busB.gain.value = .5; busB.connect(dry); busB.connect(verb);  /* pads */
+  }
+
+  function pluck(m,t,dur,g,type){
+    const o=ctx.createOscillator(), gn=ctx.createGain(), lp=ctx.createBiquadFilter();
+    o.type=type||"triangle"; o.frequency.value=f(m);
+    lp.type="lowpass"; lp.frequency.setValueAtTime(4600,t); lp.frequency.exponentialRampToValueAtTime(620,t+dur);
+    gn.gain.setValueAtTime(0.0001,t); gn.gain.linearRampToValueAtTime(g,t+.012);
+    gn.gain.exponentialRampToValueAtTime(.0001,t+dur);
+    o.connect(lp); lp.connect(gn); gn.connect(busA);
+    o.start(t); o.stop(t+dur+.05);
+  }
+  function pad(ms,t,dur,g){
+    ms.forEach(m=>{
+      const o=ctx.createOscillator(), o2=ctx.createOscillator(), gn=ctx.createGain(), lp=ctx.createBiquadFilter();
+      o.type="sine"; o2.type="triangle"; o.frequency.value=f(m); o2.frequency.value=f(m)*1.005;
+      lp.type="lowpass"; lp.frequency.value=820;
+      gn.gain.setValueAtTime(.0001,t); gn.gain.linearRampToValueAtTime(g,t+.9);
+      gn.gain.setValueAtTime(g,t+Math.max(1,dur-1.1)); gn.gain.linearRampToValueAtTime(.0001,t+dur);
+      o.connect(lp); o2.connect(lp); lp.connect(gn); gn.connect(busB);
+      o.start(t); o2.start(t); o.stop(t+dur+.1); o2.stop(t+dur+.1);
+    });
+  }
+  function bell(m,t,g,dur){
+    dur = dur||1.6;
+    const c=ctx.createOscillator(), mo=ctx.createOscillator(), mg=ctx.createGain(), gn=ctx.createGain();
+    c.type="sine"; c.frequency.value=f(m);
+    mo.type="sine"; mo.frequency.value=f(m)*2.76;
+    mg.gain.setValueAtTime(f(m)*2.2,t); mg.gain.exponentialRampToValueAtTime(1,t+dur*.7);
+    mo.connect(mg); mg.connect(c.frequency);
+    gn.gain.setValueAtTime(.0001,t); gn.gain.linearRampToValueAtTime(g,t+.006);
+    gn.gain.exponentialRampToValueAtTime(.0001,t+dur);
+    c.connect(gn); gn.connect(busA);
+    c.start(t); mo.start(t); c.stop(t+dur+.05); mo.stop(t+dur+.05);
+  }
+  function noise(t,dur,g,hz,q){
+    const n=Math.max(1,Math.ceil(ctx.sampleRate*dur)), b=ctx.createBuffer(1,n,ctx.sampleRate), d=b.getChannelData(0);
+    for(let i=0;i<n;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/n,1.8);
+    const s=ctx.createBufferSource(); s.buffer=b;
+    const bp=ctx.createBiquadFilter(); bp.type="bandpass"; bp.frequency.value=hz||2200; bp.Q.value=q||.9;
+    const gn=ctx.createGain(); gn.gain.value=g;
+    s.connect(bp); bp.connect(gn); gn.connect(busA); s.start(t);
+  }
+  function kick(t,g){
+    const o=ctx.createOscillator(), gn=ctx.createGain();
+    o.type="sine"; o.frequency.setValueAtTime(124,t); o.frequency.exponentialRampToValueAtTime(41,t+.15);
+    gn.gain.setValueAtTime(g,t); gn.gain.exponentialRampToValueAtTime(.0001,t+.32);
+    o.connect(gn); gn.connect(dry); o.start(t); o.stop(t+.36);
+  }
+
+  function playStep(i,t){
+    if(mode==="ambient" || mode==="calm"){
+      const soft = mode==="calm" ? .62 : 1;
+      const ci = Math.floor(i/16)%4, ch = PROG[ci];
+      if(i%16===0) pad(ch.slice(0,3), t, (60/tempo)*8, .085*soft);
+      if(i%2===0)  pluck(ch[ARP[i%8]]+12, t, 1.5, .105*soft);
+      if(MEL_A[i] !== undefined) bell(MEL_A[i], t, .085*soft, 2.4);
+    } else {
+      const ci = Math.floor(i/8)%4, ch = PROG[ci];
+      if(i%8===0){ pad(ch.slice(0,3), t, (60/tempo)*4, .07); kick(t,.30); }
+      if(i%8===4) kick(t,.17);
+      pluck(ch[ARP[i%8]]+12, t, .78, .085);
+      if(i%4===2) noise(t,.06,.020,5200,1.6);
+      if(MEL_B[i] !== undefined) bell(MEL_B[i], t, .075, 1.5);
+    }
+  }
+  function tick(){
+    const spb = 60/tempo/2;                       /* eighth notes */
+    while(nextT < ctx.currentTime + .14){
+      playStep(step%64, nextT); nextT += spb; step++;
+    }
+  }
+
+  function start(){
+    init(); if(!ctx) return;
+    if(ctx.state==="suspended") ctx.resume();
+    if(on) return;
+    on = true; step = 0; nextT = ctx.currentTime + .08;
+    timer = setInterval(tick, 25);
+  }
+  function setMode(m){
+    if(m===mode) return;
+    mode = m; tempo = (m==="battle") ? 96 : (m==="calm" ? 58 : 66);
+    step = 0; if(ctx) nextT = ctx.currentTime + .08;
+  }
+  function toggle(){
+    muted = !muted;
+    if(master) master.gain.linearRampToValueAtTime(muted?0:.5, ctx.currentTime+.25);
+    try{ localStorage.setItem("dt-mute", muted?"1":"0"); }catch(e){}
+    return muted;
+  }
+  function isMuted(){ return muted; }
+
+  /* ── one-shot cues ── */
+  function cue(name){
+    if(!ctx || muted) return;
+    const t = ctx.currentTime;
+    if(name==="deal"){ noise(t,.16,.05,1500,.7); pluck(62,t,.5,.10,"sine"); }
+    else if(name==="answer"){ pluck(38,t,.34,.13,"square"); noise(t,.05,.025,900,2); }
+    else if(name==="match"){ bell(81,t,.10,1.1); bell(88,t+.055,.055,.9); }
+    else if(name==="miss"){ pluck(45,t,.42,.10,"triangle"); pluck(44,t+.06,.42,.06,"triangle"); }
+    else if(name==="break"){
+      noise(t,.7,.075,3200,.5);
+      [74,77,81,86].forEach((m,i)=>bell(m,t+i*.075,.115,2.4));
+      pad([50,57,62],t,2.6,.10);
+    }
+    else if(name==="win"){
+      [62,65,69,74].forEach((m,i)=>pluck(m,t+i*.1,1.3,.13));
+      bell(78,t+.42,.12,2.8); bell(86,t+.56,.09,2.8);
+      pad([50,57,62,66],t+.4,3.4,.10);
+    }
+    else if(name==="fail"){
+      [65,63,60,58].forEach((m,i)=>pluck(m,t+i*.13,.9,.11,"triangle"));
+      pad([46,53,58],t,2.2,.075);
+    }
+    else if(name==="pick"){ pluck(69,t,.4,.075,"sine"); }
+    else if(name==="refuse"){ pluck(49,t,.5,.10,"square"); pluck(48,t+.07,.5,.07,"square"); }
+  }
+  return {start, setMode, cue, toggle, isMuted};
+})();
+
+/* ═══════════ motes ═══════════ */
+(function(){
+  const c = $("motes"), x = c.getContext("2d"); let W,H,ps=[];
+  function size(){ W=c.width=innerWidth; H=c.height=innerHeight; } size(); addEventListener("resize",size);
+  for(let i=0;i<64;i++) ps.push({x:Math.random(),y:Math.random(),r:Math.random()*1.7+.5,
+    v:Math.random()*.00016+.00004,a:Math.random()*.5+.14,p:Math.random()*6.28});
+  function frame(t){ x.clearRect(0,0,W,H);
+    for(const p of ps){ p.y-=p.v; if(p.y<-.02){p.y=1.02;p.x=Math.random();}
+      const px=(p.x*W)+Math.sin(t/2600+p.p)*13, py=p.y*H;
+      const g=x.createRadialGradient(px,py,0,px,py,p.r*5.5);
+      g.addColorStop(0,"rgba(240,214,150,"+p.a+")"); g.addColorStop(1,"rgba(240,214,150,0)");
+      x.fillStyle=g; x.beginPath(); x.arc(px,py,p.r*5.5,0,6.29); x.fill(); }
+    requestAnimationFrame(frame); }
+  if(!REDUCED) requestAnimationFrame(frame);
+})();
+
+/* ═══════════ sprites ═══════════ */
+const SCHOLAR=['................','.....111111.....','....12222221....','...1222222221...',
+ '...1223333221...','...1223333221...','...1222222221...','...1255555521...','..122222222221..',
+ '.12222222222221.','.12222222222221.','.12266666662221.','.12222222222221.','..122222222221..',
+ '..122222222221..','..111111111111..','................','................'];
+const FOE=['................','.....111111.....','....12222221....','...1222222221...',
+ '...1224444221...','...1224774221...','...1222222221...','...1255555521...','..122222222221..',
+ '.12222222222221.','.12222222222221.','.12222222222221.','.12222222222221.','..122222222221..',
+ '..122222222221..','..1.1.1..1.1.1..','................','................'];
+const PS={1:"#04060c",2:"#2d4173",3:"#e9cca4",5:"#e3bd6b",6:"#3f5a99"};
+const PF={1:"#04060c",2:"#2a2033",4:"#150f1c",5:"#8d3552",7:"#ff7a92"};
+function sprite(grid,pal,s){ let r="";
+  grid.forEach((row,y)=>{for(let x=0;x<row.length;x++){const c=pal[row[x]];
+    if(c) r+='<rect x="'+x+'" y="'+y+'" width="1" height="1" fill="'+c+'"/>';}});
+  return '<svg width="'+(16*s)+'" height="'+(18*s)+'" viewBox="0 0 16 18" shape-rendering="crispEdges" aria-hidden="true">'+r+'</svg>'; }
+$("spScholar").innerHTML = sprite(SCHOLAR,PS,4.6);
+$("spFoe").innerHTML = sprite(FOE,PF,4.6);
+
+/* ═══════════ content ═══════════ */
+const LEVELS=[
+ {name:"The Braggart",eps:0.25,allow:500,epsLabel:"0.25",
+  intro:"Ā is loud and expensive, and claims to beat the encryption three times in four. If a machine like that existed, how many hands would you need to see before you knew which source was dealing?"},
+ {name:"The Journeyman",eps:0.08,allow:3000,epsLabel:"0.08",
+  intro:"A quieter Ā: right 58% of the time. The gap you are measuring just shrank by a factor of three, and the hands you need grow like 1/ε². Same machine, more patience — and Boost is how you buy patience."},
+ {name:"The Whisper",eps:0.02,allow:30000,epsLabel:"0.02",
+  intro:"Right 52% of the time. Ā barely beats a coin, and it is still a catastrophe for the scheme, because you can still find it. You will need thousands of hands. Hoard your BP."},
+ {name:"The Ghost",eps:Math.pow(2,-64),allow:30000,epsLabel:"2⁻⁶⁴",
+  intro:"Ā's advantage is 2⁻⁶⁴ ≈ 0.000000000000000000054. This is the last table, and it is the one that matters. Play it exactly as you played the others, and watch what the meter does."}];
+
+const SLOTS=[
+ {id:"input",title:"What the challenger hands you",opts:[
+  {v:"w",t:"The challenge string <code>w</code>",n:"Either G(k) or uniform — you are not told which.",
+   ok:"Bound. That is exactly the PRG game: you are never told which world you stand in, and you are required to say. Everything you achieve must be squeezed out of that one string."},
+  {v:"k",blocked:true,t:"The seed <code>k</code>",n:"The challenger never hands out the seed.",
+   msg:"Refused. Holding k you would compute G(k) and win by inspection — which is exactly why the game withholds it. A distinguisher that needs the seed is built for a game nobody is playing."},
+  {v:"c",blocked:true,t:"The ciphertext <code>c</code>",n:"That is Ā's input, not yours.",
+   msg:"Refused. You have the nesting inverted: you are the outer machine, and you are the one who manufactures c. Ā receives it from you."}]},
+ {id:"invoke",title:"How you use Ā",opts:[
+  {v:"call",t:"Run Ā and take its two messages",n:"Ā returns m₀, m₁ of equal length. You never read its code.",
+   ok:"Bound. Ā is invoked, never inspected — and because your machine was built knowing nothing about Ā's method, the same machine works against every efficient adversary at once."},
+  {v:"image",blocked:true,t:"Search <code>w</code> for G's image",n:"Works perfectly. Costs 2ⁿ.",
+   msg:"Refused — and note carefully that it <i>works</i>. G's image holds at most 2ⁿ of the 2^ℓ(n) strings, a vanishing fraction, so this test distinguishes with overwhelming probability. That is the point: an unbounded observer always wins. Pseudorandomness binds only <i>efficient</i> observers, and your allowance is polynomial."},
+  {v:"bare",broken:"bare",t:"Show Ā the bare string <code>w</code>",n:"Ā is off-contract here. Buildable — try it and see.",
+   ok:"Bound, though Ā looked at you strangely."}]},
+ {id:"pad",title:"How you build the ciphertext",opts:[
+  {v:"xor",t:"Flip your own <code>b</code>, send <code>c = w ⊕ m_b</code>",n:"Your challenge string becomes the pad. No key needed.",
+   ok:"The keystone. Your challenge string <i>becomes the pad</i>. No key was ever required, because in this scheme the key is only ever used through G(k) — and w stands exactly in that place. The coin b stays on your side, which is what will let you grade Ā's answer while Ā cannot."},
+  {v:"regen",blocked:true,t:"Send <code>c = G(w) ⊕ m_b</code>",n:"G eats n-bit seeds; w is ℓ(n) bits.",
+   msg:"Refused. It does not even type — and forced through, the second application would produce a pad the real scheme never generates. Ā would be looking at a game it never agreed to play."},
+  {v:"fixed",broken:"fixed",t:"Send <code>c = w ⊕ m₀</code>, always",n:"No hidden bit for Ā to be right about. Buildable — try it and see.",
+   ok:"Bound. Simple, at least."}]},
+ {id:"gate",title:"What you output",opts:[
+  {v:"match",t:"<code>1</code> if <code>b′ = b</code>, else <code>0</code>",n:"Say “pseudorandom” exactly when Ā guessed right.",
+   ok:"The machine is complete. You report “pseudorandom” exactly when your captive guessed right — Ā's skill has become a measurement of w, which is the only question you were ever asked."},
+  {v:"mismatch",alt:true,t:"<code>1</code> if <code>b′ ≠ b</code>, else <code>0</code>",n:"Mirrored. Valid — the definition takes an absolute value.",
+   ok:"The machine is complete, mirrored. Your gap will be −ε where the other form's is +ε, and the PRG definition takes the absolute value, so it breaks G exactly as well. Your rate will run <i>below</i> 1/2 in the pseudorandom world — read the meter accordingly."},
+  {v:"relay",broken:"relay",t:"Output <code>b′</code>, whatever Ā said",n:"Buildable — try it and see.",ok:"Bound."},
+  {v:"const",broken:"const",t:"Output <code>1</code>, always",n:"Buildable — try it and see.",ok:"Bound. Very confident."}]}];
+
+const FLAWS={
+ bare:"You handed Ā a bare pad instead of a ciphertext, so Ā is outside the game it contracted for. Off-contract its guarantee is worth nothing and it answers at random — in <i>both</i> worlds. The lesson is not that Ā is fragile: it is that a reduction only works if it shows the adversary <b>exactly</b> the view it was promised.",
+ fixed:"You always encrypt m₀, so there is no hidden bit for Ā to be right or wrong about. Your coin b is independent of everything Ā sees, so it matches Ā's answer half the time no matter which source is dealing. A machine whose output ignores its input distinguishes nothing.",
+ relay:"You are reporting Ā's guess about a <i>message</i> when you were asked a question about a <i>string</i>. On its own b′ is near a coin flip in both worlds — the information was never in b′, it was in whether b′ <b>matched</b> your b.",
+ "const":"Your machine outputs 1 with probability exactly 1 in both worlds, so the difference between them is exactly 0. Perfect confidence, no information. Distinguishing is about a <i>gap</i>, never about a high number."};
+
+/* ═══════════ state ═══════════ */
+let load, S, asmIdx, busy = false;
+function newTable(lv){
+  const L = LEVELS[lv];
+  return {lv, eps:L.eps, allow:L.allow, world:(Math.random()<.5?"prg":"unif"),
+          round:1, bp:1, n:0, k:0, llr:0, series:[], mark:1, broke:false, flawWarned:false, done:false};
+}
+function rates(){
+  const f = flaw();
+  if(f==="const") return {prg:1,unif:1,flaw:f};
+  if(f) return {prg:.5,unif:.5,flaw:f};
+  return {prg:.5 + (load.gate==="mismatch"?-1:1)*S.eps, unif:.5, flaw:null};
+}
+function flaw(){ for(const s of SLOTS){ const o=s.opts.find(o=>o.v===load[s.id]); if(o&&o.broken) return o.broken; } return null; }
+
+/* ═══════════ screens ═══════════ */
+const SCREENS=["scTitle","scBrief","scAssembly","scIntro","scBattle","scCall","scResult","scFinale"];
+function show(id){
+  SCREENS.forEach(s=>$(s).classList.toggle("on", s===id));
+  $("hud").hidden = (id==="scTitle"||id==="scBrief");
+  window.scrollTo({top:0,behavior:"instant"});
+}
+
+/* ═══════════ assembly ═══════════ */
+function renderAssembly(){
+  const s = SLOTS[asmIdx];
+  $("asmEyebrow").textContent = "Assembly · Part "+ROMAN[asmIdx]+" of IV";
+  $("asmTitle").textContent = s.title;
+  $("asmSteps").innerHTML = SLOTS.map((_,i)=>'<span class="step'+(i<asmIdx?" done":i===asmIdx?" on":"")+'"></span>').join("");
+  $("asmOpts").innerHTML = s.opts.map(o=>
+    '<button class="opt'+(o.blocked?" blocked":"")+'" data-v="'+o.v+'"><span class="cur">◆</span>'
+    +'<span>'+o.t+'<span class="note">'+o.n+'</span></span></button>').join("");
+  $("asmOpts").querySelectorAll(".opt").forEach(b=>b.onclick=()=>pickPart(b.dataset.v));
+  $("asmReport").style.display = "none";
+}
+function pickPart(v){
+  const s = SLOTS[asmIdx], o = s.opts.find(x=>x.v===v);
+  if(o.blocked){
+    Snd.cue("refuse");
+    $("asmReport").style.display=""; $("asmReport").className="report bad";
+    $("asmTab").textContent="Refused"; $("asmMsg").innerHTML=o.msg;
+    return;
+  }
+  Snd.cue(o.broken ? "miss" : "pick");
+  load[s.id]=v;
+  $("asmReport").style.display=""; $("asmReport").className="report"+(o.broken?" bad":" good");
+  $("asmTab").textContent = o.broken ? "Bound, with a flaw" : "Bound";
+  $("asmMsg").innerHTML = o.ok + (asmIdx<3 ? "" : "");
+  setTimeout(()=>{
+    asmIdx++;
+    if(asmIdx<4){ renderAssembly(); }
+    else { $("foeActor").classList.add("on"); startTable(S ? S.lv : 0, true); }
+  }, o.broken ? 1500 : 1700);
+}
+
+/* ═══════════ table flow ═══════════ */
+function startTable(lv, firstTime){
+  const won = S ? S.wonLevels||0 : 0;
+  S = newTable(lv); S.wonLevels = Math.max(won, lv);
+  const L = LEVELS[lv];
+  $("introEyebrow").textContent = "Table "+ROMAN[lv];
+  $("introTitle").textContent = L.name;
+  $("introText").innerHTML = L.intro;
+  $("introTables").innerHTML = LEVELS.map((x,i)=>{
+    const cls = i<lv ? "tb won" : (i===lv ? "tb now" : "tb");
+    return '<div class="'+cls+'"><span class="n">'+ROMAN[i]+'</span><span>'+x.name+'</span><span class="e">ε = '+x.epsLabel+'</span></div>';
+  }).join("");
+  Snd.setMode("ambient");
+  show("scIntro");
+  renderHud();
+}
+function enterBattle(){
+  Snd.setMode("battle");
+  $("bits").textContent = "the challenger waits";
+  report("Round 1", "The challenger seals the table and waits. Deal a hand to begin — or spend BP to boost and deal many at once. Each hand tilts the meter toward the source that better explains it.", "");
+  renderBattle(); show("scBattle");
+}
+
+function renderHud(){
+  $("hTable").textContent = ROMAN[S.lv];
+  $("hRound").textContent = S.round;
+  $("hEps").textContent = LEVELS[S.lv].epsLabel;
+  $("hAllow").textContent = (S.allow - S.n).toLocaleString();
+  $("hAllowWrap").classList.toggle("low", (S.allow-S.n) <= S.allow*.15);
+}
+function report(tab, html, tone){
+  $("report").className = "report"+(tone?" "+tone:"");
+  $("repTab").textContent = tab; $("repBody").innerHTML = html;
+}
+function renderBattle(){
+  renderHud();
+  const left = S.allow - S.n;
+  $("bpPips").innerHTML = [0,1,2,3,4].map(i=>'<span class="pip'+(i<S.bp?" on":"")+'"></span>').join("");
+  const can = c => !busy && !S.done && left>0;
+  $("deal1").disabled    = !can();
+  $("boost10").disabled  = !can() || S.bp<1 || left<10;
+  $("boost100").disabled = !can() || S.bp<2 || left<100;
+  $("boost1000").disabled= !can() || S.bp<3 || left<1000;
+  $("callBtn").disabled  = !S.broke || busy || S.done;
+  $("callBtn").textContent = S.broke ? "Call the source ▸" : "Call the source (locked until BREAK)";
+  $("concede").hidden = !(S.lv===3 && S.n>=1200 && !S.done);
+
+  const R = rates(), t = Math.max(-1, Math.min(1, S.llr / BREAK));
+  const pct = 50 + t*44;
+  $("head").style.left = pct+"%";
+  $("fillP").style.width = (t>0 ? t*44 : 0)+"%";
+  $("fillU").style.width = (t<0 ? -t*44 : 0)+"%";
+  $("mN").textContent = S.n.toLocaleString();
+  $("mK").textContent = S.k.toLocaleString();
+  $("mR").textContent = S.n ? (S.k/S.n).toFixed(4) : "—";
+  const ot = oddsText();
+  $("mOdds").textContent = ot.s;
+  $("mToward").textContent = ot.toward ? "favouring "+ot.toward : "";
+  $("mToward").style.color = ot.cls==="prg" ? "var(--amber-lit)" : ot.cls==="unif" ? "var(--teal-lit)" : "";
+  drawSpark();
+}
+
+/* ═══════════ dealing ═══════════ */
+const SUPS="⁰¹²³⁴⁵⁶⁷⁸⁹";
+function sup(n){ return String(n).split("").map(d=>SUPS[+d]).join(""); }
+function odds(){ return Math.exp(Math.abs(S.llr)); }
+function oddsText(){
+  const R = rates();
+  if(S.n===0 || R.prg===R.unif) return {s:"1 : 1", cls:"", o:1, toward:null};
+  const o = odds(), tp = S.llr>0, cls = o<3 ? "" : (tp?"prg":"unif");
+  let num;
+  if(!isFinite(o)||o>1e15) num="overwhelming";
+  else if(o>=1e6){ const e=Math.floor(Math.log10(o)); num=(o/Math.pow(10,e)).toFixed(1)+" × 10"+sup(e)+" : 1"; }
+  else if(o>=1000) num=Math.round(o).toLocaleString()+" : 1";
+  else num=o.toFixed(1)+" : 1";
+  return {s:num, cls, toward:tp?"pseudorandom":"uniform", o};
+}
+function label(w){ return w==="prg"?"pseudorandom":"uniform"; }
+function wait(ms){ return new Promise(r=>setTimeout(r, REDUCED?Math.min(ms,60):ms)); }
+function randomBits(k){ let s=""; for(let i=0;i<k;i++){ s+=(Math.random()<.5?"0":"1"); if(i%8===7)s+=" "; } return s.trim(); }
+
+async function deal(count, bpCost){
+  if(busy || S.done) return;
+  const R = rates(); const m = Math.min(count, S.allow - S.n); if(m<=0) return;
+  busy = true; S.bp -= bpCost; renderBattle();
+
+  const p = R[S.world];
+  const lp1 = Math.log(R.prg/R.unif), lp0 = Math.log((1-R.prg)/(1-R.unif));
+  let ones=0, before=S.llr;
+  for(let i=0;i<m;i++){
+    const one = Math.random()<p;
+    S.n++; if(one){ S.k++; ones++; }
+    S.llr += one?lp1:lp0;
+    if(S.n>=S.mark){ S.series.push({n:S.n,r:S.k/S.n}); S.mark=Math.max(S.n+1,Math.ceil(S.n*1.07)); }
+  }
+  if(!S.series.length || S.series[S.series.length-1].n!==S.n) S.series.push({n:S.n,r:S.k/S.n});
+  const delta = S.llr - before;
+
+  /* the round's animation */
+  Snd.cue("deal");
+  $("gate").classList.add("lit");
+  const bs=$("bits"); bs.textContent=randomBits(66);
+  bs.classList.remove("flash"); void bs.offsetWidth; bs.classList.add("flash");
+  report("Round "+S.round, m===1
+    ? "The gate opens. A string <code>w</code> slides across the table — indistinguishable from noise, as always."
+    : "The gate opens and stays open. <b>"+m.toLocaleString()+"</b> strings cross the table in a single boosted turn.", "");
+  await wait(520); $("gate").classList.remove("lit");
+
+  Snd.cue("answer");
+  $("foeActor").classList.add("jolt");
+  const bF=$("bubFoe");
+  bF.textContent = m===1 ? "b′ = "+(Math.random()<.5?0:1) : "Ā answers ×"+m.toLocaleString();
+  bF.classList.add("on");
+  await wait(430); $("foeActor").classList.remove("jolt");
+
+  const bH=$("bubHero");
+  Snd.cue(m===1 ? (ones ? "match" : "miss") : "match");
+  bH.textContent = m===1 ? (ones? "b′ = b  ✦ match" : "b′ ≠ b  · miss") : ones.toLocaleString()+" / "+m.toLocaleString()+" matched";
+  bH.classList.add("on");
+  await wait(380);
+
+  const d=$("dmg");
+  const towardPrg = delta>0;
+  d.style.color = Math.abs(delta)<1e-9 ? "#7f8aa3" : (towardPrg?"var(--amber-lit)":"var(--teal-lit)");
+  d.textContent = (Math.abs(delta)<1e-9 ? "0.00" : (towardPrg?"+":"−")+Math.abs(delta).toFixed(2));
+  d.classList.remove("pop"); void d.offsetWidth; d.classList.add("pop");
+
+  S.round++; S.bp = Math.min(5, S.bp+1);
+  renderBattle();
+  await wait(700);
+  bF.classList.remove("on"); bH.classList.remove("on");
+
+  /* consequences */
+  const R2 = rates(), ot = oddsText();
+  const justBroke = !S.broke && Math.abs(S.llr) >= BREAK;
+  if(justBroke){
+    S.broke = true; Snd.cue("break");
+    const bf=$("brkFlash"); bf.classList.remove("on"); void bf.offsetWidth; bf.classList.add("on");
+    report("BREAK", "The evidence has reached <b>"+ot.s+"</b> favouring the <b>"+ot.toward+"</b> source. That is the threshold: you are no longer guessing, you are distinguishing. <b>Call the source</b> when ready — or keep dealing to widen the gap.", "good");
+  } else if(R2.flaw && S.round>=5 && !S.flawWarned){
+    S.flawWarned = true;
+    report("The meter has not moved", FLAWS[R2.flaw] + "</p><p>No number of rounds will fix this: your machine's output rate is identical in both worlds, so the gap you are trying to measure is zero by construction. <b>Rebuild the machine.</b>", "bad");
+    setTimeout(()=>{ const b=document.createElement("button"); b.className="btn big"; b.textContent="Return to assembly ▸";
+      b.onclick=()=>{ asmIdx=0; load={input:null,invoke:null,pad:null,gate:null}; renderAssembly(); show("scAssembly"); };
+      $("report").appendChild(b); }, 30);
+  } else if(S.n>=S.allow){
+    if(S.lv===3){ finale(); busy=false; return; }
+    S.done = true;
+    report("Allowance spent", "You have used your whole polynomial allowance of "+S.allow.toLocaleString()+" hands at this table. Note what just happened, because it is the whole point of Table IV: the hands you need grow like 1/ε², and an allowance is only ever polynomial.", "bad");
+    setTimeout(()=>{ const b=document.createElement("button"); b.className="btn big"; b.textContent="Reshuffle and try again ▸";
+      b.onclick=()=>{ const w=S.wonLevels, lv=S.lv; S=newTable(lv); S.wonLevels=w; enterBattle(); };
+      $("report").appendChild(b); }, 30);
+  } else {
+    const near = Math.abs(S.llr)/BREAK;
+    report("Round "+(S.round-1)+" resolved", m===1
+      ? "One hand. The meter moved by <b>"+Math.abs(delta).toFixed(2)+"</b> toward "+(towardPrg?"pseudorandom":"uniform")
+        +". At this rate the gap is a slow thing — that is what Boost is for."
+      : "<b>"+ones.toLocaleString()+"</b> of <b>"+m.toLocaleString()+"</b> hands matched your coin. The meter moved <b>"+Math.abs(delta).toFixed(2)+"</b> toward "+(towardPrg?"pseudorandom":"uniform")
+        +", and now stands at <b>"+ot.s+"</b>"+(ot.toward?" favouring "+ot.toward:"")+" — "+(near>.6?"close to BREAK.":near>.25?"leaning, but not established.":"barely a lean.")
+      , "");
+  }
+  busy = false; renderBattle();
+}
+
+/* ═══════════ the call ═══════════ */
+function openCall(){
+  const ot = oddsText();
+  $("callLede").innerHTML = "Your evidence stands at <b>"+ot.s+"</b> favouring the <b>"+ot.toward+"</b> source, after "+S.n.toLocaleString()+
+    " hands over "+(S.round-1)+" rounds. Name it.";
+  show("scCall");
+}
+function makeCall(guess){
+  const correct = (guess===S.world), ot = oddsText(), R = rates();
+  const strong = ot.o>=20 && ot.toward===label(guess);
+  S.done = true;
+  const L = LEVELS[S.lv];
+  if(correct && strong){
+    Snd.setMode("calm"); Snd.cue("win");
+    S.wonLevels = Math.max(S.wonLevels||0, S.lv+1);
+    $("resEyebrow").textContent = "Table "+ROMAN[S.lv]+" cleared";
+    $("resTitle").textContent = "You broke G.";
+    $("resText").innerHTML = "The source was <b>"+label(S.world)+"</b>, called on <b>"+ot.s+"</b> evidence across "+(S.round-1)+
+      " rounds and "+S.n.toLocaleString()+" hands — using nothing but Ā and a coin"+
+      (load.gate==="mismatch" ? ", with the mirrored gate, whose rate runs <i>below</i> 1/2 in the pseudorandom world" : "")+
+      ". A polynomial-time machine just told G's output from uniform. If an eavesdropper with ε = "+L.epsLabel+
+      " existed, G would not be a pseudorandom generator. G <i>is</i> one. So no such eavesdropper exists — and you proved it without learning a thing about how Ā works.";
+    $("resNext").textContent = S.lv<3 ? "On to Table "+ROMAN[S.lv+1]+" ▸" : "The last table ▸";
+    $("resNext").onclick = ()=>startTable(S.lv+1);
+  } else {
+    Snd.cue("fail");
+    $("resEyebrow").textContent = "Table "+ROMAN[S.lv];
+    $("resTitle").textContent = correct ? "Right — but not established." : "Wrong call.";
+    $("resText").innerHTML = correct
+      ? "The source was indeed <b>"+label(S.world)+"</b>, but your evidence stood at only <b>"+ot.s+"</b>. A coin would have done nearly as well, and a coin is not a distinguisher. The table reshuffles."
+      : "The source was <b>"+label(S.world)+"</b>. Your evidence stood at <b>"+ot.s+"</b> favouring "+ot.toward+
+        (ot.o<20 ? " — never enough to call on." : " — a real distinguisher can still be unlucky, which is why the definition speaks of probabilities and not of single runs.")+
+        " The table reshuffles.";
+    $("resNext").textContent = "Reshuffle and play on ▸";
+    $("resNext").onclick = ()=>{ const w=S.wonLevels, lv=S.lv; S=newTable(lv); S.wonLevels=w; enterBattle(); };
+  }
+  drawChart(); show("scResult");
+}
+
+/* ═══════════ finale ═══════════ */
+function finale(){
+  S.done = true;
+  Snd.setMode("calm"); Snd.cue("win");
+  const need = 3/(2*Math.pow(S.eps,2));
+  $("finalBody").innerHTML = `
+<p>You dealt <b>${S.n.toLocaleString()}</b> hands across <b>${S.round-1}</b> rounds and the meter never left the centre. Nothing was wrong with your machine — it is the same machine that broke the first three tables. What changed is ε.</p>
+<div class="pre">hands needed to reach BREAK  ≈  3 / 2ε²
+
+  ε = 0.25    →            24 hands      a round or two
+  ε = 0.08    →           234 hands      a boost or three
+  ε = 0.02    →         3,750 hands      several full boosts
+  ε = 2⁻⁶⁴    →   ${need.toExponential(1).replace("e+"," × 10^")} hands      more than there is time for</div>
+<p>That last row is not a bigger number of the same kind. It is <i>outside every polynomial</i> — which is precisely what <b>negligible</b> means. And it runs both ways, which is the whole argument.</p>
+
+<h4>The reduction, stated plainly</h4>
+<p>Take any efficient eavesdropper A with advantage ε(n) against Π. Wrap it in the machine you assembled. You get an efficient distinguisher D whose two output rates are exactly <code>1/2 + ε(n)</code> and <code>1/2</code> — so D's advantage against G <i>is</i> ε(n), with nothing lost in transit. If ε(n) were non-negligible you would break G, as you did at the first three tables. G cannot be broken. So ε(n) is negligible, for every efficient A. That is EAV security.</p>
+
+<h4>The theorem</h4>
+<p><b>Theorem.</b> If G is a pseudorandom generator, then Π with Enc(k, m) = G(k) ⊕ m has indistinguishable encryptions in the presence of an eavesdropper.</p>
+<p><b>Proof.</b> Let A be any PPT eavesdropper and set ε(n) := Pr[PrivK<sup>eav</sup><sub>A,Π</sub>(n) = 1] − 1/2. Define the distinguisher you assembled:</p>
+<div class="pre">D(w):
+  1. run A(1ⁿ) to obtain m₀, m₁ with |m₀| = |m₁| = ℓ(n)
+  2. b ← {0,1};  c := w ⊕ m_b
+  3. b′ ← A(c)
+  4. output 1 if b′ = b, else 0</div>
+<p>D runs A once and does O(ℓ(n)) further work, so D is PPT. Writing Π̃ for the one-time pad with ℓ(n)-bit keys:</p>
+<div class="pre">• w = G(k), k uniform:  A's view inside D is distributed exactly
+  as in PrivK^eav_{A,Π}(n), so
+
+    Pr[ D(G(k)) = 1 ] = Pr[ PrivK^eav_{A,Π}(n) = 1 ] = 1/2 + ε(n).
+
+• w uniform on {0,1}^ℓ(n):  c = w ⊕ m_b is a one-time pad, so A's
+  view is independent of b and Π̃ is perfectly secret, giving
+
+    Pr[ D(w) = 1 ] = 1/2   exactly, even against an unbounded A.</div>
+<p>Since G is a PRG and D is PPT, there is a negligible negl with</p>
+<div class="pre">negl(n) ≥ | Pr[D(G(k))=1] − Pr[D(w)=1] |
+        = | (1/2 + ε(n)) − 1/2 |
+        = ε(n).</div>
+<p>Hence Pr[PrivK<sup>eav</sup><sub>A,Π</sub>(n) = 1] ≤ 1/2 + negl(n). A was arbitrary, so Π is EAV-secure. ∎</p>
+
+<h4>Four things you played through</h4>
+<ul>
+<li><b>The reduction is black-box, straight-line and tight.</b> You never read Ā's code, never rewound it, ran it once per hand — and lost nothing: your advantage was ε exactly, not ε/2. No hybrid argument, because the pad is applied a single time.</li>
+<li><b>Polynomial time is the load-bearing word.</b> The Image Test would have won every table on round one: G's image is at most 2ⁿ of 2^ℓ(n) strings, so an unbounded machine always distinguishes. The definition binds only efficient machines, which is exactly why your allowance was finite.</li>
+<li><b>The uniform world's 1/2 is unconditional.</b> Not "1/2 minus something small" — with a uniform pad the ciphertext is independent of b, so even an infinitely powerful Ā guesses 1/2. That exact anchor is what lets the subtraction leave ε and nothing else.</li>
+<li><b>This is EAV, not CPA.</b> Enc is deterministic, so the same message twice gives the same ciphertext twice, and two messages under one seed leak c₁ ⊕ c₂ = m₁ ⊕ m₂. Ā got one encryption per seed because that is all EAV allows. CPA needs randomized encryption — a pseudorandom function with a fresh nonce, not a one-shot pad.</li>
+</ul>`;
+  show("scFinale");
+}
+
+/* ═══════════ charts ═══════════ */
+function chartGeom(W,H,L,Rm,T,B){
+  const R8 = rates(), pPrg = R8.prg, pUnif = R8.unif;
+  let lo=Math.min(.5,pPrg,pUnif), hi=Math.max(.5,pPrg,pUnif);
+  S.series.forEach(p=>{ lo=Math.min(lo,p.r); hi=Math.max(hi,p.r); });
+  const pad=Math.max(.04,(hi-lo)*.35); lo=Math.max(0,lo-pad); hi=Math.min(1.02,hi+pad);
+  if(hi-lo<.06){ const c=(hi+lo)/2; lo=Math.max(0,c-.03); hi=Math.min(1.02,c+.03); }
+  const maxN=Math.max(10,S.allow), x0=L, x1=W-Rm, y0=T, y1=H-B;
+  return {lo,hi,maxN,x0,x1,y0,y1,pPrg,pUnif,flaw:R8.flaw,
+    lx:n=>x0+(Math.log10(Math.max(1,n))/Math.log10(maxN))*(x1-x0),
+    ly:r=>y1-((r-lo)/(hi-lo))*(y1-y0)};
+}
+const GLOW='<defs><filter id="gl" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>';
+function drawSpark(){
+  const g = chartGeom(720,118,10,158,10,12);
+  let s = GLOW;
+  [[g.pUnif,"#3d9cc8","#68c8ee","uniform  1/2"],
+   [g.pPrg,"#c2831f","#f0b64a","pseudorandom  "+(g.flaw?"1/2":(load.gate==="mismatch"?"1/2−ε":"1/2+ε"))]]
+   .forEach((l,i)=>{
+    const y=g.ly(l[0]), dy=(Math.abs(g.ly(g.pPrg)-g.ly(g.pUnif))<12 && i===1)?13:0;
+    s+=`<line x1="${g.x0}" y1="${y.toFixed(1)}" x2="${g.x1}" y2="${y.toFixed(1)}" stroke="${l[1]}" stroke-width="1.8" stroke-dasharray="5 4" filter="url(#gl)"/>`
+      +`<text x="${g.x1+8}" y="${(y+4+dy).toFixed(1)}" font-size="10.5" font-family="IBM Plex Mono, monospace" fill="${l[2]}">${l[3]}</text>`;
+  });
+  if(S.series.length>1){
+    s+=`<polyline points="${S.series.map(p=>g.lx(p.n).toFixed(1)+","+g.ly(p.r).toFixed(1)).join(" ")}" fill="none" stroke="#f3ecdd" stroke-width="1.8" stroke-linejoin="round" filter="url(#gl)"/>`;
+    const last=S.series[S.series.length-1];
+    s+=`<circle cx="${g.lx(last.n).toFixed(1)}" cy="${g.ly(last.r).toFixed(1)}" r="3.6" fill="#ffe0a3" filter="url(#gl)"/>`;
+  }
+  $("spark").innerHTML = s;
+}
+function drawChart(){
+  const W=720,H=250, g = chartGeom(W,H,54,162,16,34);
+  let s = GLOW;
+  const span=g.hi-g.lo, step = span>.3?.1:span>.12?.05:span>.05?.02:.01;
+  for(let v=Math.ceil(g.lo/step)*step; v<=g.hi+1e-9; v+=step){
+    const vv=+v.toFixed(4), y=g.ly(vv).toFixed(1);
+    s+=`<line x1="${g.x0}" y1="${y}" x2="${g.x1}" y2="${y}" stroke="rgba(227,189,107,.09)"/>`
+      +`<text x="${g.x0-9}" y="${(+y+4).toFixed(1)}" text-anchor="end" font-size="11" font-family="IBM Plex Mono, monospace" fill="#7f8aa3">${vv.toFixed(2)}</text>`;
+  }
+  for(let d=0; Math.pow(10,d)<=g.maxN; d++){
+    const n=Math.pow(10,d), x=g.lx(n).toFixed(1);
+    s+=`<line x1="${x}" y1="${g.y1}" x2="${x}" y2="${g.y1+5}" stroke="rgba(227,189,107,.28)"/>`
+      +`<text x="${x}" y="${g.y1+19}" text-anchor="middle" font-size="11" font-family="IBM Plex Mono, monospace" fill="#7f8aa3">${n>=1000?(n/1000)+"k":n}</text>`;
+  }
+  s+=`<text x="${((g.x0+g.x1)/2).toFixed(0)}" y="${H-4}" text-anchor="middle" font-size="11" font-family="Spectral, serif" fill="#7f8aa3">hands dealt (log scale)</text>`
+    +`<line x1="${g.x0}" y1="${g.y1}" x2="${g.x1}" y2="${g.y1}" stroke="rgba(227,189,107,.3)"/>`;
+  const seen={};
+  [[g.pUnif,"#3d9cc8","#68c8ee","uniform source","rate = 1/2"],
+   [g.pPrg,"#c2831f","#f0b64a","pseudorandom source","rate = "+(g.flaw?"1/2":(load.gate==="mismatch"?"1/2 − ε":"1/2 + ε"))]]
+   .forEach(l=>{
+    const y=g.ly(l[0]), key=y.toFixed(1), dy=seen[key]?15:0; seen[key]=1;
+    s+=`<line x1="${g.x0}" y1="${y.toFixed(1)}" x2="${g.x1}" y2="${y.toFixed(1)}" stroke="${l[1]}" stroke-width="2" stroke-dasharray="6 5" filter="url(#gl)"/>`
+      +`<text x="${g.x1+10}" y="${(y+4+dy).toFixed(1)}" font-size="11.5" font-family="Cinzel, serif" font-weight="600" fill="${l[2]}">${l[3]}</text>`
+      +`<text x="${g.x1+10}" y="${(y+19+dy).toFixed(1)}" font-size="11" font-family="IBM Plex Mono, monospace" fill="#7f8aa3">${l[4]}</text>`;
+  });
+  if(S.series.length){
+    s+=`<polyline points="${S.series.map(p=>g.lx(p.n).toFixed(1)+","+g.ly(p.r).toFixed(1)).join(" ")}" fill="none" stroke="#f3ecdd" stroke-width="2" stroke-linejoin="round" filter="url(#gl)"/>`;
+    const last=S.series[S.series.length-1];
+    s+=`<circle cx="${g.lx(last.n).toFixed(1)}" cy="${g.ly(last.r).toFixed(1)}" r="4.5" fill="#ffe0a3" stroke="#04070f" stroke-width="1.5" filter="url(#gl)"/>`;
+  }
+  s+=`<line id="cross" x1="0" y1="${g.y0}" x2="0" y2="${g.y1}" stroke="rgba(227,189,107,.5)" stroke-dasharray="3 3" opacity="0"/>`;
+  const svg=$("chart"); svg.innerHTML=s; svg._g=g;
+}
+$("chart").addEventListener("pointermove", e=>{
+  const svg=$("chart"), g=svg._g; if(!g||!S||!S.series.length) return;
+  const r=svg.getBoundingClientRect(), px=(e.clientX-r.left)/r.width*720;
+  let best=S.series[0], bd=Infinity;
+  S.series.forEach(p=>{const d=Math.abs(g.lx(p.n)-px); if(d<bd){bd=d;best=p;}});
+  const cr=svg.querySelector("#cross");
+  if(cr){cr.setAttribute("x1",g.lx(best.n).toFixed(1)); cr.setAttribute("x2",g.lx(best.n).toFixed(1)); cr.setAttribute("opacity","1");}
+  $("readout").textContent="after "+best.n.toLocaleString()+" hands · observed rate "+best.r.toFixed(4);
+});
+$("chart").addEventListener("pointerleave",()=>{
+  const cr=$("chart").querySelector("#cross"); if(cr) cr.setAttribute("opacity","0");
+  $("readout").textContent="Hover the plot to read a point.";
+});
+
+/* ═══════════ wiring ═══════════ */
+function boot(){
+  load={input:null,invoke:null,pad:null,gate:null}; asmIdx=0; busy=false;
+  S=newTable(0); S.wonLevels=0;
+  $("foeActor").classList.remove("on");
+  show("scTitle");
+}
+function begin(){ Snd.start(); Snd.setMode("ambient"); Snd.cue("pick"); show("scBrief"); }
+$("pressStart").onclick = begin;
+document.addEventListener("keydown", e=>{
+  if(!$("scrim").hidden){ if(e.key==="Escape") $("scrim").hidden=true; return; }
+  if($("scTitle").classList.contains("on") && (e.key===" "||e.key==="Enter")){ e.preventDefault(); begin(); }
+});
+function paintMute(){ const m=Snd.isMuted(); const b=$("muteBtn");
+  b.textContent = m ? "♪ Music off" : "♪ Music on"; b.setAttribute("aria-pressed", m?"true":"false");
+  b.style.color = m ? "var(--muted)" : ""; }
+$("muteBtn").onclick = ()=>{ Snd.start(); Snd.toggle(); paintMute(); };
+paintMute();
+$("toAssembly").onclick = ()=>{ renderAssembly(); show("scAssembly"); };
+$("toBattle").onclick = enterBattle;
+$("deal1").onclick=()=>deal(1,0);
+$("boost10").onclick=()=>deal(10,1);
+$("boost100").onclick=()=>deal(100,2);
+$("boost1000").onclick=()=>deal(1000,3);
+$("callBtn").onclick=openCall;
+$("callBack").onclick=()=>show("scBattle");
+$("callPrg").onclick=()=>makeCall("prg");
+$("callUnif").onclick=()=>makeCall("unif");
+$("concede").onclick=()=>finale();
+$("resetBtn").onclick=boot;
+$("finRestart").onclick=boot;
+$("manualBtn").onclick=()=>{ $("scrim").hidden=false; $("closeManual").focus(); };
+$("closeManual").onclick=()=>$("scrim").hidden=true;
+$("scrim").addEventListener("click",e=>{ if(e.target===$("scrim")) $("scrim").hidden=true; });
+boot();
+})();
+</script>
+</body>
+</html>

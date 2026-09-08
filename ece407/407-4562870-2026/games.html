@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="ECE 407: Cryptography — long-form interactive games for Fall 2026.">
+<title>Games · ECE 407 · Cryptography (Fall 2026)</title>
+<style>
+  :root{
+    --illini-orange:#FF5F05;
+    --orange-text:#B03A00;
+    --illini-blue:#13294B;
+    --ink:#1b1f27;
+    --muted:#565f6d;
+    --link:#0b5fa5;
+    --rule:#dfe3ea;
+    --bg:#ffffff;
+    --tint:#f5f7fa;
+    --focus:#0b5fa5;
+  }
+
+  @media (prefers-color-scheme: dark){
+    :root{
+      --orange-text:#FF9550;
+      --illini-blue:#9FC0EE;
+      --ink:#e8ebf0;
+      --muted:#a9b2c0;
+      --link:#7fb6ee;
+      --rule:#333b48;
+      --bg:#14171c;
+      --tint:#1b1f26;
+      --focus:#8ec2ff;
+    }
+  }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+
+  @media (prefers-reduced-motion: reduce){
+    html{scroll-behavior:auto}
+    *,*::before,*::after{
+      animation-duration:.01ms !important;
+      animation-iteration-count:1 !important;
+      transition-duration:.01ms !important;
+    }
+  }
+
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font:16px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  a:focus-visible,
+  [tabindex]:focus-visible{
+    outline:3px solid var(--focus);
+    outline-offset:3px;
+    border-radius:2px;
+  }
+
+  .skip{
+    position:absolute;left:-9999px;top:0;z-index:100;
+    background:var(--bg);color:var(--link);
+    padding:.75rem 1.25rem;font-weight:600;
+    border:2px solid var(--focus);border-radius:0 0 6px 0;
+  }
+  .skip:focus{left:0}
+
+  /* ---------- nav ---------- */
+  .nav{
+    position:sticky;top:0;z-index:50;
+    display:flex;flex-wrap:wrap;gap:.25rem 1rem;align-items:center;
+    padding:.5rem 1.5rem;
+    background:var(--illini-blue);
+    border-bottom:3px solid var(--illini-orange);
+  }
+  @media (prefers-color-scheme: dark){
+    .nav{background:#0d1420}
+  }
+  @media (max-height:26rem){ .nav{position:static} }
+
+  .nav .brand{
+    color:#fff;font-weight:700;letter-spacing:.02em;
+    margin-right:auto;padding:.6rem 0;
+  }
+  .nav a{
+    color:#e4eaf3;text-decoration:none;font-size:.95rem;
+    padding:.7rem .25rem;
+    border-bottom:2px solid transparent;
+  }
+  .nav a:hover{color:#fff;border-bottom-color:var(--illini-orange)}
+  .nav a:focus-visible{outline:3px solid #fff;outline-offset:2px}
+  .nav a[aria-current="page"]{color:#fff;border-bottom-color:var(--illini-orange)}
+
+  /* ---------- layout ---------- */
+  main{max-width:1000px;margin:0 auto;padding:2.5rem 1.5rem 4rem}
+  main > p, .note, footer{max-width:70ch}
+
+  h1{
+    font-size:clamp(1.9rem,4.5vw,2.7rem);line-height:1.2;
+    margin:0 0 .4rem;color:var(--illini-blue);letter-spacing:-.015em;
+  }
+  .term{color:var(--muted);margin:0 0 1.6rem;font-size:1.02rem}
+  a{color:var(--link);text-underline-offset:.15em}
+  a:hover{color:var(--orange-text)}
+
+  .note{
+    font-size:.95rem;color:var(--muted);
+    margin:0 0 2.4rem;padding:.9rem 1.2rem;
+    background:var(--tint);border-left:4px solid var(--illini-orange);
+    border-radius:0 6px 6px 0;
+  }
+  .note strong{color:var(--illini-blue)}
+
+  /* ---------- topic groups ---------- */
+  main > h2{
+    font-size:1.35rem;color:var(--illini-blue);
+    margin:2.8rem 0 .3rem;padding-bottom:.4rem;
+    border-bottom:2px solid var(--rule);
+    scroll-margin-top:5rem;
+  }
+  main > h2:first-of-type{margin-top:1.4rem}
+  .group-note{
+    font-size:.92rem;color:var(--muted);margin:0 0 1.2rem;max-width:70ch;
+  }
+
+  /* ---------- game list ---------- */
+  .games{list-style:none;margin:0;padding:0;display:grid;gap:1.4rem}
+
+  .game{
+    border:1px solid var(--rule);border-left:4px solid var(--illini-orange);
+    border-radius:0 6px 6px 0;padding:1.25rem 1.4rem;
+    background:var(--bg);position:relative;
+  }
+  .game h3{
+    font-size:1.25rem;margin:0 0 .5rem;line-height:1.3;
+    color:var(--illini-blue);letter-spacing:-.01em;
+  }
+  /* Whole card is the click target, but the name stays the accessible link text */
+  .game h3 a{color:inherit;text-decoration:none}
+  .game h3 a::after{content:"";position:absolute;inset:0}
+  .game:hover{border-color:var(--illini-orange);background:var(--tint)}
+  .game:hover h3 a{color:var(--orange-text);text-decoration:underline}
+  .game h3 a:focus-visible{outline:none}
+  .game:focus-within{outline:3px solid var(--focus);outline-offset:3px}
+
+  .game p{margin:0 0 .8rem;color:var(--ink)}
+
+  .meta{
+    display:flex;flex-wrap:wrap;gap:.35rem .9rem;align-items:baseline;
+    font-size:.88rem;color:var(--muted);margin:0;
+  }
+  .meta .topic{color:var(--orange-text);font-weight:700}
+  .meta .file{
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:.85rem;
+  }
+  .panels{
+    margin:.7rem 0 .9rem;padding:0;list-style:none;
+    display:flex;flex-wrap:wrap;gap:.4rem;
+    font-size:.85rem;color:var(--muted);
+  }
+  .panels li{
+    border:1px solid var(--rule);border-radius:999px;
+    padding:.12rem .7rem;background:var(--tint);
+    white-space:nowrap;
+  }
+
+  footer{
+    border-top:1px solid var(--rule);margin-top:3rem;padding-top:1.2rem;
+    color:var(--muted);font-size:.9rem;
+  }
+
+  @media (forced-colors: active){
+    .game,.note,.panels li{
+      background:Canvas;color:CanvasText;border:1px solid CanvasText;
+    }
+    a:focus-visible,[tabindex]:focus-visible{outline:3px solid Highlight}
+  }
+
+  @media print{
+    .nav,.skip{display:none}
+    body{color:#000;background:#fff}
+    .game{break-inside:avoid;page-break-inside:avoid}
+    .game h3 a::after{content:none}
+    .game h3 a[href]::after{content:" (" attr(href) ")";font-size:.75em;color:#333;position:static}
+  }
+</style>
+</head>
+<body>
+
+<a class="skip" href="#main">Skip to main content</a>
+
+<nav class="nav" aria-label="Site sections">
+  <span class="brand">ECE 407 · Cryptography</span>
+  <a href="index.html">Syllabus</a>
+  <a href="index.html#schedule">Schedule</a>
+  <a href="demos.html">Demos</a>
+  <a href="games.html" aria-current="page">Games</a>
+</nav>
+
+<main id="main">
+  <h1>Games</h1>
+  <p class="term">Fall 2026 · University of Illinois Urbana–Champaign</p>
+
+  <p class="note">
+    <strong>Longer than a demo.</strong> A demo shows you one idea in a few minutes; a game asks you to
+    carry a whole proof yourself, and takes fifteen to twenty. Each one runs entirely in your browser —
+    nothing is installed, nothing is uploaded, and reloading starts over. Both have sound, and both have a
+    mute control. Every choice is keyboard reachable, and every game carries the formal statement of what
+    you just proved, so nothing here replaces the textbook — it rehearses it.
+  </p>
+
+  <h2 id="pseudorandomness">Pseudorandomness</h2>
+  <p class="group-note">
+    Week 2 · KL 3.1–3.3, Theorem 3.18. Two different games about the same theorem: that a pseudorandom
+    generator already gives you an eavesdropper-secure encryption scheme. Play either one — or both, since
+    they attack the proof from opposite ends.
+  </p>
+
+  <ul class="games">
+
+    <li class="game">
+      <h3><a href="distinguishers-table.html">The Distinguisher's Table</a></h3>
+      <p>
+        You are not fighting the adversary; you <em>are</em> the distinguisher. The challenger deals you a
+        string <em>w</em> that came from one of two sources and will not say which, and your only asset is
+        Ā, an eavesdropper under contract who beats
+        <em>Enc</em>(<em>k</em>, <em>m</em>) = <em>G</em>(<em>k</em>) ⊕ <em>m</em> with advantage ε.
+        Turn Ā's talent into an answer about <em>w</em>.
+      </p>
+      <p>
+        The reduction is the combat system. You assemble <em>D</em> over four turns; two of the wrong
+        answers cannot be built at all and say why — the challenger never issues the seed, and searching
+        <em>w</em> for <em>G</em>'s image works perfectly and costs 2<sup><em>n</em></sup> — while three of
+        them build a machine that runs and quietly fails, so you deal a few rounds, watch the evidence
+        meter refuse to move, and get sent back to the forge. Then the rounds: every hand tilts a meter
+        between the two hypotheses, BREAK unlocks the call at 20 : 1 odds, and Boost spends BP to deal ten,
+        a hundred or a thousand hands at once.
+      </p>
+      <p>
+        Four tables, at ε = 0.25, 0.08, 0.02 and 2<sup>−64</sup>. The first three are won; the fourth
+        cannot be, and recognising that is the point — the hands you need grow like 1/ε<sup>2</sup>, and at
+        2<sup>−64</sup> that is outside every polynomial. Which is exactly what <em>negligible</em> means.
+      </p>
+      <ul class="panels">
+        <li>Assemble D</li><li>Deal, Boost, Break</li><li>Call the source</li>
+        <li>Four tables</li><li>The theorem</li>
+      </ul>
+      <p class="meta">
+        <span class="topic">PRG ⟹ EAV security · playing the distinguisher</span>
+        <span>Week 2, Tue 9.1 · KL 3.3, Theorem 3.18</span>
+        <span>≈ 15 minutes</span>
+        <span class="file">distinguishers-table.html</span>
+      </p>
+    </li>
+
+    <li class="game">
+      <h3><a href="reduction-quest.html">Reduction Quest</a></h3>
+      <p>
+        The same theorem from the other side. A reductionist cannot out-fight anything; the whole power is
+        using the adversary as a component. So this game refuses to let you attack him: you assume he
+        exists, seat him inside a distinguisher you assemble yourself, and aim that machine at <em>G</em>.
+      </p>
+      <p>
+        In the Forge you seat six instructions into <em>D</em> in order, choosing from eleven cards; the
+        five traps are the mistakes that actually get made — ignoring the challenge string and generating
+        your own <em>G</em>(<em>k</em>), telling the adversary the coin, outputting <em>b</em>′ instead of
+        [<em>b</em>′ = <em>b</em>]. In the boss fight you argue the two worlds, and the gap between the two
+        probability bars is ε. The in-game Codex carries the formal statements — the PRG definition,
+        PrivK<sup>eav</sup>, the pseudocode for <em>D</em>, the two probabilities, and a page on where
+        reductions go wrong.
+      </p>
+      <ul class="panels">
+        <li>The Forge</li><li>Eleven cards, five traps</li><li>The two worlds</li><li>Codex</li>
+      </ul>
+      <p class="meta">
+        <span class="topic">PRG ⟹ EAV security · building the reduction</span>
+        <span>Week 2 · KL 3.1–3.3</span>
+        <span>≈ 20 minutes</span>
+        <span class="file">reduction-quest.html</span>
+      </p>
+    </li>
+
+  </ul>
+
+  <footer>
+    <p>© 2026 ECE 407 — Cryptography · <a href="index.html">Back to the syllabus</a> · <a href="demos.html">Interactive demos</a></p>
+    <p>Progress is kept in your browser only, and reloading starts over. If a game is difficult to read,
+      hear or operate, email me (address on Canvas) and I will provide an alternative — a static
+      walkthrough of the same proof, or the same content in another format.</p>
+  </footer>
+</main>
+
+</body>
+</html>
