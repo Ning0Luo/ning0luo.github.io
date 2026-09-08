@@ -1,0 +1,1750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Reduction Quest - ECE 407 - playing the proof that PRG security implies EAV security of Enc_k(m) = G(k) XOR m.">
+<style>html,body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Reduction Quest</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Zen+Maru+Gothic:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+/* ------------------------------------------------------------------
+   REDUCTION QUEST — a 16-bit console screen.
+   The SCREEN commits to one visual world on purpose (a lit CRT).
+   The ROOM around it follows the viewer's theme.
+------------------------------------------------------------------- */
+:root{
+  --room-bg:#e7e4dc;
+  --room-ink:#2a2740;
+  --room-mute:#6c6784;
+  --room-cab:#c9c4ba;
+  --room-cab2:#b3ada2;
+
+  /* screen palette — fixed in all themes */
+  --void:#0b0a16;
+  --deep:#141232;
+  --win:#1b2160;
+  --win2:#2c3690;
+  --frame:#e9e3c6;
+  --frame2:#8f89a8;
+  --ink:#f5f1e2;
+  --dim:#a9a6c8;
+  --gold:#f2c14e;
+  --jade:#5fe3b4;
+  --sakura:#ff6f96;
+  --blood:#7a1c3d;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --room-bg:#0e0d16;
+    --room-ink:#ddd8ee;
+    --room-mute:#8b86a6;
+    --room-cab:#22203a;
+    --room-cab2:#151428;
+  }
+}
+:root[data-theme="dark"]{
+  --room-bg:#0e0d16;
+  --room-ink:#ddd8ee;
+  --room-mute:#8b86a6;
+  --room-cab:#22203a;
+  --room-cab2:#151428;
+}
+
+*{box-sizing:border-box}
+body{
+  background:var(--room-bg);
+  color:var(--room-ink);
+  font-family:"Zen Maru Gothic",system-ui,-apple-system,sans-serif;
+  margin:0;
+  min-height:100vh;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;
+  padding:18px 14px 26px;
+}
+
+/* ---------- cabinet ---------- */
+#cab{
+  width:100%;max-width:980px;
+  background:linear-gradient(180deg,var(--room-cab),var(--room-cab2));
+  border-radius:14px;
+  padding:14px;
+  box-shadow:0 18px 40px -18px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.25);
+}
+#screen{
+  position:relative;
+  width:100%;
+  height:clamp(500px,74vh,650px);
+  background:var(--void);
+  border-radius:6px;
+  overflow:hidden;
+  display:flex;flex-direction:column;
+  font-size:16px;
+  outline:none;
+}
+#screen::after{ /* scanlines */
+  content:"";position:absolute;inset:0;pointer-events:none;z-index:60;
+  background:repeating-linear-gradient(180deg,rgba(0,0,0,.16) 0 1px,transparent 1px 3px);
+  mix-blend-mode:multiply;
+}
+#screen:focus-visible{box-shadow:0 0 0 3px var(--gold)}
+
+/* ---------- top bar ---------- */
+#hud{
+  position:relative;z-index:20;
+  display:flex;align-items:center;gap:10px;
+  padding:8px 10px;
+  background:linear-gradient(180deg,rgba(11,10,22,.92),rgba(11,10,22,.35));
+  font-family:"Press Start 2P",monospace;
+  font-size:8px;letter-spacing:.06em;color:var(--dim);
+  flex:0 0 auto;
+}
+#chapter{color:var(--gold);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#hud .sp{flex:1}
+#insight{color:var(--jade);white-space:nowrap}
+.hbtn{
+  font-family:"Press Start 2P",monospace;font-size:8px;
+  color:var(--ink);background:rgba(43,54,144,.65);
+  border:1px solid var(--frame2);border-radius:2px;
+  padding:5px 7px;cursor:pointer;letter-spacing:.06em;
+}
+.hbtn:hover{background:var(--win2);border-color:var(--frame)}
+.hbtn:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
+
+/* ---------- stage ---------- */
+/* backdrop colour comes from the .bd-* class, so no background here (id would win) */
+#stage{position:relative;flex:1 1 auto;min-height:0;overflow:hidden}
+#bgcv{position:absolute;inset:0;width:100%;height:100%;display:block}
+#scenery{position:absolute;inset:0;pointer-events:none}
+#actors{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:center;gap:clamp(24px,12vw,150px);padding:0 6% 11%}
+.actor{position:relative;transition:transform .25s ease,opacity .25s ease;opacity:0;transform:translateY(8px)}
+.actor.in{opacity:1;transform:none}
+.actor canvas{display:block;image-rendering:pixelated;filter:drop-shadow(0 6px 0 rgba(0,0,0,.35))}
+.actor.bob canvas{animation:bob 2.4s steps(2,end) infinite}
+@keyframes bob{0%,49%{transform:translateY(0)}50%,100%{transform:translateY(-3px)}}
+.actor.speaking canvas{animation:bob .7s steps(2,end) infinite}
+.nameTag{
+  position:absolute;left:50%;transform:translateX(-50%);top:-16px;
+  font-family:"Press Start 2P",monospace;font-size:7px;color:var(--dim);white-space:nowrap;
+}
+.shake{animation:shake .32s linear}
+@keyframes shake{0%,100%{transform:translate(0)}20%{transform:translate(-5px,2px)}40%{transform:translate(5px,-2px)}60%{transform:translate(-3px,-1px)}80%{transform:translate(3px,1px)}}
+#flash{position:absolute;inset:0;background:var(--ink);opacity:0;pointer-events:none;z-index:56}
+#flash.go{animation:fl .3s ease-out}
+@keyframes fl{0%{opacity:.85}100%{opacity:0}}
+
+/* backdrops */
+.bd-village{background:linear-gradient(180deg,#3a2350 0%,#7b3f63 45%,#c9714f 78%,#f0a860 100%)}
+.bd-fount{background:linear-gradient(180deg,#07131f 0%,#0d3040 55%,#11515a 100%)}
+.bd-lair{background:linear-gradient(180deg,#1b0716 0%,#3a0f2c 60%,#5c1436 100%)}
+.bd-forge{background:linear-gradient(180deg,#0a0a1c 0%,#1a1b46 60%,#2a2a6b 100%)}
+.bd-judge{background:linear-gradient(180deg,#020a12 0%,#062733 50%,#0a4a4e 100%)}
+.bd-white{background:linear-gradient(180deg,#efe9d2,#cfc6ea)}
+
+.ridge{position:absolute;left:0;right:0;bottom:0;width:100%;height:38%;opacity:.55}
+
+/* ---------- dialogue window ---------- */
+.jwin{
+  background:linear-gradient(180deg,var(--win2),var(--win));
+  border:3px solid var(--frame);
+  border-radius:5px;
+  box-shadow:0 0 0 3px var(--void), inset 0 0 0 2px rgba(11,10,22,.55);
+}
+#dialog{
+  position:relative;z-index:22;flex:0 0 auto;
+  margin:0 10px 10px;padding:14px 16px 16px;
+  min-height:150px;
+  cursor:pointer;
+}
+#speaker{
+  position:absolute;top:-13px;left:14px;
+  font-family:"Press Start 2P",monospace;font-size:8px;letter-spacing:.06em;
+  color:var(--void);background:var(--gold);
+  padding:5px 8px;border-radius:2px;box-shadow:0 0 0 2px var(--void);
+}
+#speaker:empty{display:none}
+#text{
+  color:var(--ink);font-size:clamp(13px,1.55vw,15.5px);line-height:1.85;
+  max-width:62ch;min-height:4.2em;
+}
+#text .f{font-family:"JetBrains Mono",ui-monospace,monospace;color:var(--gold);font-size:.94em;background:rgba(11,10,22,.4);padding:1px 4px;border-radius:2px;white-space:nowrap}
+#text .em{color:var(--jade);font-weight:700}
+#text.nar{color:var(--dim);max-width:58ch}
+#cursor{
+  position:absolute;right:14px;bottom:9px;color:var(--gold);
+  font-family:"Press Start 2P",monospace;font-size:9px;opacity:0;
+}
+#cursor.on{opacity:1;animation:blink 1s steps(2,end) infinite}
+@keyframes blink{0%,49%{opacity:1}50%,100%{opacity:.15}}
+
+/* ---------- choice menu ---------- */
+#menu{
+  position:absolute;z-index:46;left:10px;right:10px;bottom:168px;
+  padding:12px;display:none;flex-direction:column;gap:7px;
+  max-height:min(36vh,238px);overflow-y:auto;
+}
+#menu.on{display:flex}
+#menuQ{
+  font-family:"Press Start 2P",monospace;font-size:8.5px;line-height:1.9;
+  color:var(--gold);margin-bottom:3px;letter-spacing:.04em;
+}
+.opt{
+  display:flex;gap:9px;align-items:flex-start;text-align:left;width:100%;
+  font-family:"Zen Maru Gothic",sans-serif;font-size:clamp(12px,1.4vw,14px);line-height:1.6;
+  color:var(--ink);background:rgba(11,10,22,.34);
+  border:1px solid transparent;border-radius:3px;
+  padding:8px 10px;cursor:pointer;
+}
+.opt::before{content:"▶";color:transparent;font-size:10px;line-height:1.6;flex:0 0 auto}
+.opt:hover,.opt:focus-visible{background:rgba(11,10,22,.62);border-color:var(--gold);outline:none}
+.opt:hover::before,.opt:focus-visible::before{color:var(--gold)}
+.opt.dead{opacity:.4;cursor:default;text-decoration:line-through}
+.opt.dead:hover{background:rgba(11,10,22,.34);border-color:transparent}
+
+/* ---------- generic panel overlay (inside screen) ---------- */
+/* default panel leaves the dialogue window visible below it */
+#panel{
+  position:absolute;z-index:40;left:10px;right:10px;top:34px;bottom:168px;
+  display:none;flex-direction:column;padding:14px;overflow:hidden;
+}
+#panel.on{display:flex}
+#panel.full{bottom:10px}
+#panel.compact{bottom:auto;max-height:46%}
+
+#codex{
+  position:absolute;z-index:58;inset:34px 10px 10px;
+  display:none;flex-direction:column;padding:14px;overflow:hidden;
+}
+#codex.on{display:flex}
+.pTitle{
+  font-family:"Press Start 2P",monospace;font-size:9px;color:var(--gold);
+  letter-spacing:.06em;margin-bottom:4px;
+}
+.pSub{font-size:12px;color:var(--dim);line-height:1.7;margin-bottom:10px}
+.pBody{flex:1;min-height:0;overflow-y:auto;padding-right:4px}
+.pBody::-webkit-scrollbar{width:8px}
+.pBody::-webkit-scrollbar-thumb{background:var(--frame2);border-radius:4px}
+
+/* ---------- XOR bench ---------- */
+.bits{display:flex;flex-wrap:wrap;gap:4px;font-family:"JetBrains Mono",monospace}
+.bit{
+  width:22px;height:26px;display:grid;place-items:center;
+  font-size:13px;font-weight:700;border-radius:2px;
+  background:rgba(11,10,22,.5);color:var(--ink);border:1px solid var(--frame2);
+}
+.bit.k{color:var(--jade);border-color:rgba(95,227,180,.5)}
+.bit.c{color:var(--gold);border-color:rgba(242,193,78,.55)}
+.bit.hot{background:var(--gold);color:var(--void);border-color:var(--frame)}
+.brow{display:grid;grid-template-columns:88px 1fr;gap:10px;align-items:center;margin-bottom:9px}
+.blab{font-family:"Press Start 2P",monospace;font-size:7px;color:var(--dim);line-height:1.7}
+
+/* ---------- fountains ---------- */
+.founts{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fount{
+  border:2px solid var(--frame2);border-radius:4px;padding:10px;
+  background:rgba(11,10,22,.42);cursor:pointer;text-align:left;
+}
+.fount:hover,.fount:focus-visible{border-color:var(--gold);outline:none}
+.fount h4{margin:0 0 8px;font-family:"Press Start 2P",monospace;font-size:8px;color:var(--gold)}
+.fount code{
+  display:block;font-family:"JetBrains Mono",monospace;font-size:11px;
+  color:var(--jade);line-height:1.85;word-break:break-all;
+}
+.tally{font-family:"Press Start 2P",monospace;font-size:8px;color:var(--dim);margin-top:10px;line-height:1.9}
+
+/* ---------- assembly ---------- */
+.asm{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);grid-template-rows:minmax(0,1fr);gap:12px;height:100%;min-height:0}
+.asmBody{overflow:hidden}
+/* narrow: one column, and the PANEL scrolls — never two nested scrollers,
+   which squeezed the card list down to a few pixels */
+@media (max-width:700px){
+  .asm{grid-template-columns:1fr;grid-template-rows:auto auto;height:auto;min-height:0}
+  .asmBody{overflow-y:auto}
+  .asm .chassis,.asm .cards{height:auto;min-height:0;overflow:visible}
+}
+.chassis{
+  border:2px solid var(--frame2);border-radius:4px;padding:10px;
+  background:linear-gradient(180deg,rgba(11,10,22,.55),rgba(11,10,22,.25));
+  display:flex;flex-direction:column;gap:5px;
+  overflow-y:auto;
+}
+.slot{
+  display:flex;gap:8px;align-items:flex-start;
+  border:1px dashed var(--frame2);border-radius:3px;padding:6px 7px;
+  font-size:11.5px;line-height:1.55;color:var(--dim);min-height:38px;
+}
+.slot .n{
+  font-family:"Press Start 2P",monospace;font-size:8px;color:var(--frame2);
+  flex:0 0 auto;padding-top:2px;
+}
+.slot.filled{border-style:solid;border-color:var(--jade);color:var(--ink);background:rgba(95,227,180,.09)}
+.slot.filled .n{color:var(--jade)}
+.slot.next{border-color:var(--gold);animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(242,193,78,0)}50%{box-shadow:0 0 0 3px rgba(242,193,78,.22)}}
+.cards{display:flex;flex-direction:column;gap:6px;overflow-y:auto;padding-right:4px}
+.card{
+  text-align:left;font-family:"Zen Maru Gothic",sans-serif;
+  font-size:11.5px;line-height:1.55;color:var(--ink);
+  background:rgba(11,10,22,.4);border:1px solid var(--frame2);border-radius:3px;
+  padding:8px 9px;cursor:pointer;
+}
+.card:hover,.card:focus-visible{border-color:var(--gold);background:rgba(11,10,22,.68);outline:none}
+.card.used{display:none}
+.card.wrong{animation:shake .32s linear;border-color:var(--sakura)}
+.card.hintOn{border-color:var(--gold);box-shadow:0 0 0 2px rgba(242,193,78,.3)}
+
+/* ---------- battle ---------- */
+.bar-wrap{margin-bottom:9px}
+.bar-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:3px}
+.bar-name{font-family:"Press Start 2P",monospace;font-size:7px;color:var(--dim);letter-spacing:.05em}
+.bar-val{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--ink);font-variant-numeric:tabular-nums}
+.track{position:relative;height:12px;background:rgba(11,10,22,.6);border:1px solid var(--frame2);border-radius:2px;overflow:hidden}
+.fill{position:absolute;left:0;top:0;bottom:0;width:0;transition:width .6s cubic-bezier(.2,.8,.3,1)}
+.fill.boast{background:linear-gradient(90deg,var(--blood),var(--sakura))}
+.fill.rain{background:linear-gradient(90deg,#1d6f78,var(--jade))}
+.fill.river{background:linear-gradient(90deg,#8a6512,var(--gold))}
+.tick{position:absolute;top:-1px;bottom:-1px;width:1px;background:var(--frame2);opacity:.85}
+.tickL{position:absolute;top:100%;transform:translateX(-50%);margin-top:2px;font-family:"JetBrains Mono",monospace;font-size:10px;color:var(--dim)}
+.scaleRow{position:relative;height:14px;margin-top:1px}
+.gapmark{
+  position:absolute;top:-2px;bottom:-2px;background:repeating-linear-gradient(45deg,rgba(255,111,150,.55) 0 3px,transparent 3px 6px);
+  border-left:1px solid var(--sakura);border-right:1px solid var(--sakura);
+}
+#dmg{
+  position:absolute;z-index:57;left:50%;top:30%;transform:translateX(-50%);
+  font-family:"Press Start 2P",monospace;font-size:16px;color:var(--gold);
+  text-shadow:0 2px 0 var(--void);opacity:0;pointer-events:none;
+}
+#dmg.go{animation:pop 1s ease-out}
+@keyframes pop{0%{opacity:1;transform:translate(-50%,10px)}70%{opacity:1;transform:translate(-50%,-22px)}100%{opacity:0;transform:translate(-50%,-30px)}}
+
+/* ---------- title / ending ---------- */
+#title{
+  position:absolute;inset:0;z-index:50;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:16px;text-align:center;padding:24px;
+  background:radial-gradient(120% 90% at 50% 25%,#221a4d 0%,#0b0a16 70%);
+}
+#title{transition:opacity .55s ease}
+#title.off{opacity:0;visibility:hidden;pointer-events:none}
+.tKanji{font-family:"Zen Maru Gothic",sans-serif;font-weight:900;font-size:clamp(20px,4.4vw,34px);color:var(--sakura);letter-spacing:.32em;margin-right:-.32em}
+.tMain{font-family:"Press Start 2P",monospace;font-size:clamp(15px,3.6vw,30px);color:var(--gold);line-height:1.5;text-shadow:0 3px 0 var(--blood)}
+.tSub{font-family:"Press Start 2P",monospace;font-size:clamp(7px,1.5vw,10px);color:var(--dim);line-height:2.1;max-width:34ch}
+.tBtns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:6px}
+.startBtn{
+  font-family:"Press Start 2P",monospace;font-size:10px;color:var(--void);
+  background:var(--gold);border:0;border-radius:3px;padding:12px 16px;cursor:pointer;
+  box-shadow:0 4px 0 #8a6512;
+}
+.startBtn:hover{background:#ffd471}
+.startBtn:active{transform:translateY(2px);box-shadow:0 2px 0 #8a6512}
+.startBtn.ghost{background:transparent;color:var(--dim);box-shadow:0 0 0 2px var(--frame2)}
+.startBtn.ghost:hover{color:var(--ink);box-shadow:0 0 0 2px var(--gold)}
+.startBtn:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.tFoot{font-family:"Zen Maru Gothic",sans-serif;font-size:11px;color:var(--frame2);line-height:1.8;max-width:44ch}
+
+/* ---------- codex ---------- */
+.cxGrid{display:grid;grid-template-columns:minmax(120px,.8fr) minmax(0,2fr);gap:12px;height:100%}
+@media (max-width:640px){.cxGrid{grid-template-columns:1fr;overflow-y:auto}}
+.cxList{display:flex;flex-direction:column;gap:4px;overflow-y:auto;padding-right:4px}
+.cxItem{
+  text-align:left;font-family:"Press Start 2P",monospace;font-size:7.5px;line-height:1.8;
+  color:var(--dim);background:rgba(11,10,22,.35);border:1px solid transparent;
+  border-radius:3px;padding:8px;cursor:pointer;
+}
+.cxItem:hover,.cxItem:focus-visible{color:var(--ink);border-color:var(--gold);outline:none}
+.cxItem.sel{color:var(--void);background:var(--gold);border-color:var(--frame)}
+.cxItem.locked{opacity:.35;cursor:default}
+.cxItem.locked:hover{color:var(--dim);border-color:transparent}
+.cxRead{overflow-y:auto;padding-right:6px;font-size:12.5px;line-height:1.85;color:var(--ink)}
+.cxRead h3{font-family:"Press Start 2P",monospace;font-size:9px;color:var(--gold);margin:0 0 10px;line-height:1.8}
+.cxRead h4{font-family:"Press Start 2P",monospace;font-size:7.5px;color:var(--jade);margin:16px 0 6px;letter-spacing:.05em}
+.cxRead p{margin:0 0 10px;max-width:60ch}
+.cxRead .math{
+  font-family:"JetBrains Mono",monospace;font-size:11.5px;line-height:1.9;color:var(--gold);
+  background:rgba(11,10,22,.5);border-left:2px solid var(--gold);
+  padding:9px 11px;margin:0 0 10px;overflow-x:auto;white-space:pre;
+}
+.cxRead code{font-family:"JetBrains Mono",monospace;font-size:.92em;color:var(--jade)}
+.cxRead ul{margin:0 0 10px;padding-left:18px;max-width:60ch}
+.cxRead li{margin-bottom:6px}
+
+/* ---------- ending scroll ---------- */
+.qed{display:flex;flex-direction:column;gap:10px}
+.qedLine{
+  display:grid;grid-template-columns:26px 1fr;gap:10px;align-items:start;
+  font-size:12.5px;line-height:1.75;color:var(--ink);
+  border-left:2px solid var(--jade);padding:6px 0 6px 10px;
+}
+.qedLine .qn{font-family:"Press Start 2P",monospace;font-size:8px;color:var(--jade);padding-top:3px}
+.rank{
+  font-family:"Press Start 2P",monospace;font-size:11px;color:var(--gold);
+  text-align:center;line-height:2;margin:14px 0 4px;
+}
+
+/* room caption under the cabinet */
+#caption{
+  max-width:980px;font-size:12.5px;line-height:1.7;color:var(--room-mute);
+  text-align:center;
+}
+#caption b{color:var(--room-ink);font-weight:700}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important}
+}
+</style>
+</head>
+<body>
+<div id="cab">
+  <div id="screen" tabindex="0">
+
+    <div id="hud">
+      <span id="chapter">序章 · PROLOGUE</span>
+      <span class="sp"></span>
+      <span id="insight">INSIGHT 0</span>
+      <button class="hbtn" id="sndBtn" type="button">BGM ON</button>
+      <button class="hbtn" id="codexBtn" type="button">CODEX</button>
+    </div>
+
+    <div id="stage" class="bd-village">
+      <canvas id="bgcv"></canvas>
+      <div id="scenery"></div>
+      <div id="actors"></div>
+    </div>
+    <div id="flash"></div>
+    <div id="dmg"></div>
+
+    <div id="dialog" class="jwin">
+      <div id="speaker"></div>
+      <div id="text"></div>
+      <div id="cursor">▼</div>
+    </div>
+
+    <div id="menu" class="jwin">
+      <div id="menuQ"></div>
+      <div id="menuOpts"></div>
+    </div>
+
+    <div id="panel" class="jwin"></div>
+    <div id="codex" class="jwin"></div>
+
+    <div id="title">
+      <div class="tKanji">帰着の探求</div>
+      <div class="tMain">REDUCTION<br>QUEST</div>
+      <div class="tSub">THE SEAL OF PSEUDORANDOMIA</div>
+      <div class="tBtns">
+        <button class="startBtn" id="btnNew" type="button">PRESS START</button>
+        <button class="startBtn ghost" id="btnCont" type="button" style="display:none">CONTINUE</button>
+      </div>
+      <div class="tFoot">A turn-based proof. You will not out-fight the demon — you will wire him into a machine and aim him at a god.</div>
+    </div>
+
+  </div>
+</div>
+
+<p id="caption"><b>Reduction Quest</b> — click or press <b>Space</b> to advance dialogue. The Codex holds the formal statements behind every scene; <b>BGM</b> mutes the soundtrack.</p>
+
+<script>
+"use strict";
+(function(){
+
+/* =========================================================
+   1. PIXEL SPRITES
+   ========================================================= */
+const SPRITES = {
+  kaede:{ w:16,h:16,
+    pal:{k:"#150e2e",r:"#4d7cf0",R:"#2c4fb8",s:"#f3c9a2",e:"#150e2e",w:"#efe9d2"},
+    rows:[
+      ".....kkkkkk.....",
+      "....krrrrrrk....",
+      "...krrrrrrrrk...",
+      "...krssssssrk...",
+      "...krsessesrk...",
+      "...krssssssrk...",
+      "....krrrrrrk....",
+      "...krrwwwwrrk...",
+      "..krrrwwwwrrrk..",
+      "..krrrrwwrrrrk..",
+      "..krrrrrrrrrrk..",
+      ".krrrrrrrrrrrrk.",
+      ".krRRrrrrrrRRrk.",
+      ".krrrrrrrrrrrrk.",
+      ".kkkkkkkkkkkkkk.",
+      "..kk........kk.."]},
+
+  elder:{ w:16,h:16,
+    pal:{k:"#141a12",W:"#efeade",s:"#e8bd93",e:"#141a12",n:"#3f7d4a",N:"#245530"},
+    rows:[
+      ".....kkkkkk.....",
+      "....kWWWWWWk....",
+      "...kWWWWWWWWk...",
+      "...kWssssssWk...",
+      "...kWsessesWk...",
+      "...kWssssssWk...",
+      "...kWWWWWWWWk...",
+      "....kWWWWWWk....",
+      "..knnnWWnnnk....",
+      ".knnnnWWnnnnk...",
+      ".knnnnnnnnnnnnk.",
+      ".knnNNnnnnNNnnk.",
+      ".knnnnnnnnnnnnk.",
+      ".knnnnnnnnnnnnk.",
+      ".kkkkkkkkkkkkkk.",
+      "..kk........kk.."]},
+
+  demon:{ w:16,h:16,
+    pal:{k:"#25081a",h:"#f0ead6",p:"#c0397b",P:"#7f1d50",e:"#ffe066",c:"#3a1030"},
+    rows:[
+      "...h........h...",
+      "..hh........hh..",
+      "..hkkkkkkkkkkh..",
+      "..kppppppppppk..",
+      "..kpeeppppeepk..",
+      "..kpeeppppeepk..",
+      "..kppppppppppk..",
+      "..kpPPPPPPPPpk..",
+      "..kkppppppppkk..",
+      ".kcccccccccccck.",
+      ".kcccPPPPPPccck.",
+      "kcccccccccccccck",
+      "kccccPPPPPPcccck",
+      "kcccccccccccccck",
+      ".kcccccccccccck.",
+      "..kkkkkkkkkkkk.."]},
+
+  gennai:{ w:16,h:16,
+    pal:{k:"#04202a",t:"#2fd6c8",T:"#14727e",w:"#eafff9"},
+    rows:[
+      ".....kkkk.......",
+      "....ktttk.......",
+      "...kttttkk......",
+      "...ktwtttk......",
+      "...kttttk.......",
+      "..kkttttkk......",
+      ".kTttttttkk.....",
+      ".ktttttttttk....",
+      "..kTTttttttk....",
+      "...kkTTtttttk...",
+      ".....kkTTtttk...",
+      ".......kkTTttk..",
+      ".........kkTTtk.",
+      "...........kkTTk",
+      ".............kkk",
+      "................"]},
+
+  machine:{ w:16,h:16,
+    pal:{k:"#0a0c1c",m:"#c9cfe8",M:"#767ea6",o:"#f2c14e",p:"#c0397b",g:"#5fe3b4"},
+    rows:[
+      ".......oo.......",
+      ".......kk.......",
+      "..kkkkkkkkkkkk..",
+      "..kmmmmmmmmmmk..",
+      "..kmkkkkkkkkmk..",
+      "..kmkppppppkmk..",
+      "..kmkppppppkmk..",
+      "..kmkppppppkmk..",
+      "..kmkkkkkkkkmk..",
+      "..kmmggmmggmmk..",
+      "..kmMMmmmmMMmk..",
+      "..kmmmmmmmmmmk..",
+      "..kkkkkkkkkkkk..",
+      "..kmk......kmk..",
+      "..kmk......kmk..",
+      "..kkk......kkk.."]}
+};
+
+function spriteCanvas(name, scale){
+  const s = SPRITES[name];
+  const cv = document.createElement("canvas");
+  cv.width = s.w*scale; cv.height = s.h*scale;
+  const g = cv.getContext("2d");
+  for(let y=0;y<s.h;y++){
+    const row = (s.rows[y]||"").padEnd(s.w,".").slice(0,s.w);
+    for(let x=0;x<s.w;x++){
+      const c = s.pal[row[x]];
+      if(!c) continue;
+      g.fillStyle = c;
+      g.fillRect(x*scale,y*scale,scale,scale);
+    }
+  }
+  return cv;
+}
+
+/* =========================================================
+   1b. CHIPTUNE — a tiny 3-voice sequencer (square lead,
+       triangle bass, noise percussion). No audio files:
+       everything is synthesised on the fly.
+
+       One motif runs through the whole score — A C E D,
+       a rise that steps back. It is minor everywhere and
+       turns major only in the ending, when the seal holds.
+   ========================================================= */
+const P = s => s.replace(/\|/g," ").trim().split(/\s+/);
+const SEMI = {C:0,"C#":1,Db:1,D:2,"D#":3,Eb:3,E:4,F:5,"F#":6,Gb:6,G:7,"G#":8,Ab:8,A:9,"A#":10,Bb:10,B:11};
+function hz(n){
+  const m = /^([A-G][#b]?)(-?\d)$/.exec(n);
+  if(!m) return 0;
+  return 440 * Math.pow(2, (SEMI[m[1]] + (parseInt(m[2],10)+1)*12 - 69)/12);
+}
+
+const TRACKS = {
+  title:{ bpm:100,
+    lead:P("A4 - - - C5 - - - E5 - - - D5 - - - | E5 - - - G5 - - - A5 - - - - - - - | F5 - - - E5 - - - D5 - - - C5 - - - | B4 - - - D5 - - - E5 - - - - - - -"),
+    bass:P("A2 - A2 - A2 - A2 - E2 - E2 - E2 - E2 - | C3 - C3 - C3 - C3 - G2 - G2 - G2 - G2 - | D3 - D3 - D3 - D3 - A2 - A2 - A2 - A2 - | E3 - E3 - E3 - E3 - E2 - E2 - E2 - E2 -"),
+    drum:P("k . . . h . . . s . . . h . . h | k . . . h . . . s . . . h . . h | k . . . h . . . s . . . h . . h | k . . . h . . . s . . . s . s .")},
+
+  village:{ bpm:82,
+    lead:P("E4 - - - G4 - - - A4 - - - - - - - | C5 - - - B4 - - - A4 - - - G4 - - - | A4 - - - G4 - - - E4 - - - D4 - - - | E4 - - - - - - - - - - - - - - -"),
+    bass:P("A2 - - - E3 - - - A2 - - - E3 - - - | F2 - - - C3 - - - F2 - - - C3 - - - | C3 - - - G2 - - - C3 - - - G2 - - - | E2 - - - B2 - - - E2 - - - - - - -"),
+    drum:P(". . . . h . . . . . . . h . . . | . . . . h . . . . . . . h . . . | . . . . h . . . . . . . h . . . | . . . . h . . . . . . . h . . h")},
+
+  fount:{ bpm:96,
+    lead:P("D5 F5 A5 F5 D5 F5 A5 F5 C5 E5 A5 E5 C5 E5 A5 E5 | Bb4 D5 F5 D5 Bb4 D5 F5 D5 A4 C5 E5 C5 A4 C5 E5 C5 | D5 F5 A5 C6 A5 F5 D5 F5 A5 F5 D5 A4 D5 F5 A5 F5 | A4 C5 E5 G5 E5 C5 A4 C5 E5 - - - - - - -"),
+    bass:P("D2 - - - - - - - D2 - - - - - - - | Bb2 - - - - - - - A2 - - - - - - - | D2 - - - - - - - D2 - - - - - - - | A2 - - - - - - - A2 - - - - - - -"),
+    drum:P(". . . . . . . . h . . . . . . . | . . . . . . . . h . . . . . . . | . . . . . . . . h . . . . . . . | . . . . . . . . h . . . . . . .")},
+
+  lair:{ bpm:112,
+    lead:P("E4 . Eb4 . E4 . . . Bb4 . . . A4 . . . | E4 . Eb4 . E4 . . . G4 . F#4 . F4 . . . | Bb4 . . . A4 . . . Ab4 . . . G4 . . . | E4 . F4 . E4 . Eb4 . E4 - - - . . . ."),
+    bass:P("E2 - E2 - E2 - E2 - E2 - E2 - Bb2 - Bb2 - | E2 - E2 - E2 - E2 - E2 - E2 - F2 - F2 - | A2 - A2 - A2 - A2 - Ab2 - Ab2 - G2 - G2 - | E2 - E2 - E2 - E2 - E2 - E2 - E2 - E2 -"),
+    drum:P("k . . k . . s . k . . . . . s . | k . . k . . s . k . . . . . s . | k . . k . . s . k . . . . . s . | k . . k . . s . k . k . s . s .")},
+
+  forge:{ bpm:116,
+    lead:P("A4 . A4 . E5 . A4 . D5 . . . C5 . . . | A4 . A4 . E5 . A4 . G4 . . . E4 . . . | F4 . F4 . C5 . F4 . E5 . . . D5 . . . | E4 . E4 . B4 . E4 . E5 . D5 . C5 . B4 ."),
+    bass:P("A2 - A2 - A2 - A2 - A2 - A2 - A2 - A2 - | A2 - A2 - A2 - A2 - E2 - E2 - E2 - E2 - | F2 - F2 - F2 - F2 - F2 - F2 - F2 - F2 - | E2 - E2 - E2 - E2 - E2 - E2 - E2 - E2 -"),
+    drum:P("k . h . s . h . k . h . s . h h | k . h . s . h . k . h . s . h h | k . h . s . h . k . h . s . h h | k . h . s . h . k . h . s . s s")},
+
+  battle:{ bpm:150,
+    lead:P("A4 . C5 . E5 . D5 . E5 . G5 . A5 . . . | A5 . G5 . E5 . D5 . C5 . B4 . A4 . . . | F5 . E5 . D5 . C5 . D5 . E5 . F5 . G5 . | E5 . D5 . C5 . B4 . A4 . . . E5 . . ."),
+    bass:P("A2 . A2 . A2 . A2 . A2 . A2 . A2 . A2 . | F2 . F2 . F2 . F2 . C3 . C3 . C3 . C3 . | D2 . D2 . D2 . D2 . D2 . D2 . D2 . D2 . | E2 . E2 . E2 . E2 . E2 . E2 . E2 . E2 ."),
+    drum:P("k . h . s . h . k . k . s . h . | k . h . s . h . k . k . s . h . | k . h . s . h . k . k . s . h . | k . h . s . h . k . k . s . s s")},
+
+  ending:{ bpm:88,
+    lead:P("A4 - - - C#5 - - - E5 - - - D5 - - - | E5 - - - F#5 - - - E5 - - - - - - - | D5 - - - C#5 - - - B4 - - - A4 - - - | A4 - - - - - - - - - - - - - - -"),
+    bass:P("A2 - - - E3 - - - A2 - - - E3 - - - | D3 - - - A2 - - - D3 - - - A2 - - - | B2 - - - F#3 - - - E3 - - - B2 - - - | A2 - - - E2 - - - A2 - - - - - - -"),
+    drum:P(". . . . h . . . . . . . h . . . | . . . . h . . . . . . . h . . . | . . . . h . . . . . . . h . . . | . . . . h . . . . . . . h . . h")}
+};
+
+let ac=null, master=null, musGain=null, sfxGain=null, noiseBuf=null;
+let soundOn = true, curTrack = null, seqTimer = null;
+const seqSt = { t:null, step:0, next:0 };
+const MUSVOL = 0.20;
+
+try{ soundOn = localStorage.getItem("rq_sound") !== "off"; }catch(e){}
+
+function initAudio(){
+  if(ac) { if(ac.state==="suspended") ac.resume(); return; }
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if(!AC) return;
+  ac = new AC();
+  master = ac.createGain(); master.gain.value = soundOn ? 0.9 : 0; master.connect(ac.destination);
+  musGain = ac.createGain(); musGain.gain.value = MUSVOL; musGain.connect(master);
+  sfxGain = ac.createGain(); sfxGain.gain.value = 0.5;   sfxGain.connect(master);
+  const n = ac.sampleRate * 0.4;
+  noiseBuf = ac.createBuffer(1, n, ac.sampleRate);
+  const d = noiseBuf.getChannelData(0);
+  for(let i=0;i<n;i++) d[i] = Math.random()*2 - 1;
+  if(ac.state==="suspended") ac.resume();
+  if(!seqTimer) seqTimer = setInterval(scheduler, 25);
+}
+
+function tone(type, f, t, dur, vol, dest){
+  if(!ac || !f) return;
+  const o = ac.createOscillator(); o.type = type; o.frequency.setValueAtTime(f, t);
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(vol, t + 0.006);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(dest || musGain);
+  o.start(t); o.stop(t + dur + 0.02);
+}
+function hit(t, kind){
+  if(!ac) return;
+  if(kind === "k"){
+    const o = ac.createOscillator(); o.type="sine";
+    o.frequency.setValueAtTime(150,t); o.frequency.exponentialRampToValueAtTime(45,t+0.10);
+    const g = ac.createGain(); g.gain.setValueAtTime(0.45,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.13);
+    o.connect(g); g.connect(musGain); o.start(t); o.stop(t+0.15); return;
+  }
+  const s = ac.createBufferSource(); s.buffer = noiseBuf;
+  const f = ac.createBiquadFilter(); f.type = "highpass";
+  const g = ac.createGain();
+  if(kind === "s"){ f.frequency.value = 1400; g.gain.setValueAtTime(0.20,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.11); }
+  else            { f.frequency.value = 7000; g.gain.setValueAtTime(0.09,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.04); }
+  s.connect(f); f.connect(g); g.connect(musGain);
+  s.start(t); s.stop(t+0.16);
+}
+function held(arr, i, unit){ let n=1; while(arr[i+n] === "-") n++; return n*unit; }
+
+function playStep(i, t){
+  const T = seqSt.t; if(!T || !soundOn) return;
+  const unit = 60 / T.bpm / 4;
+  const L = T.lead[i], B = T.bass[i], D = T.drum[i];
+  if(L && L !== "." && L !== "-"){
+    const d = held(T.lead, i, unit);
+    tone("square", hz(L), t, Math.min(d*0.92, 1.1), 0.085);
+    tone("square", hz(L)*1.005, t, Math.min(d*0.55, 0.7), 0.030);   // slight chorus
+  }
+  if(B && B !== "." && B !== "-") tone("triangle", hz(B), t, Math.min(held(T.bass,i,unit)*0.9, 1.0), 0.30);
+  if(D && D !== "." && D !== "-") hit(t, D);
+}
+function scheduler(){
+  if(!ac || !seqSt.t) return;
+  const unit = 60 / seqSt.t.bpm / 4;
+  if(seqSt.next < ac.currentTime - 0.5) seqSt.next = ac.currentTime + 0.05;  // resync after a throttled tab
+  while(seqSt.next < ac.currentTime + 0.18){
+    if(seqSt.next > ac.currentTime - 0.05) playStep(seqSt.step, seqSt.next);
+    seqSt.next += unit;
+    seqSt.step = (seqSt.step + 1) % seqSt.t.lead.length;
+  }
+}
+function playTrack(id){
+  curTrack = id;
+  if(!ac || !TRACKS[id]) return;
+  const g = musGain.gain, now = ac.currentTime;
+  g.cancelScheduledValues(now);
+  g.setValueAtTime(Math.max(g.value, 0.0001), now);
+  g.linearRampToValueAtTime(0.0001, now + 0.28);
+  setTimeout(()=>{
+    if(curTrack !== id || !ac) return;
+    seqSt.t = TRACKS[id]; seqSt.step = 0; seqSt.next = ac.currentTime + 0.06;
+    musGain.gain.cancelScheduledValues(ac.currentTime);
+    musGain.gain.setValueAtTime(0.0001, ac.currentTime);
+    musGain.gain.linearRampToValueAtTime(MUSVOL, ac.currentTime + 0.4);
+  }, 300);
+}
+
+const sfx = {
+  blip(){ if(!ac||!soundOn) return; const t=ac.currentTime;
+          tone("square", 820 + Math.random()*140, t, 0.035, 0.045, sfxGain); },
+  ok(){   if(!ac||!soundOn) return; const t=ac.currentTime;
+          tone("square", hz("E5"), t, 0.07, 0.10, sfxGain);
+          tone("square", hz("A5"), t+0.06, 0.11, 0.10, sfxGain); },
+  err(){  if(!ac||!soundOn) return; const t=ac.currentTime;
+          tone("sawtooth", hz("F3"), t, 0.10, 0.10, sfxGain);
+          tone("sawtooth", hz("B2"), t+0.07, 0.16, 0.10, sfxGain); },
+  lock(){ if(!ac||!soundOn) return; const t=ac.currentTime;
+          ["A4","C#5","E5"].forEach((n,i)=>tone("square", hz(n), t+i*0.05, 0.16, 0.09, sfxGain)); },
+  strike(big){ if(!ac||!soundOn) return; const t=ac.currentTime;
+          hit(t,"s"); hit(t+0.04,"s");
+          const o=ac.createOscillator(); o.type="sawtooth";
+          o.frequency.setValueAtTime(big?540:340,t); o.frequency.exponentialRampToValueAtTime(60,t+(big?0.6:0.24));
+          const g=ac.createGain(); g.gain.setValueAtTime(big?0.22:0.15,t);
+          g.gain.exponentialRampToValueAtTime(0.001,t+(big?0.7:0.3));
+          o.connect(g); g.connect(sfxGain); o.start(t); o.stop(t+(big?0.75:0.35)); },
+  fanfare(){ if(!ac||!soundOn) return; const t=ac.currentTime+0.02;
+          ["A4","C5","E5","A5"].forEach((n,i)=>tone("square", hz(n), t+i*0.08, 0.2, 0.11, sfxGain)); }
+};
+function setSound(on){
+  soundOn = on;
+  try{ localStorage.setItem("rq_sound", on ? "on" : "off"); }catch(e){}
+  if(master) master.gain.setTargetAtTime(on ? 0.9 : 0, ac.currentTime, 0.05);
+}
+
+/* =========================================================
+   2. BACKDROP PARTICLES
+   ========================================================= */
+const bgcv = document.getElementById("bgcv");
+const bgx = bgcv.getContext("2d");
+let motes = [], moteColor = "#f2c14e", moteMode = "drift";
+const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function sizeCanvas(){
+  const r = bgcv.getBoundingClientRect();
+  bgcv.width = Math.max(1,Math.floor(r.width));
+  bgcv.height = Math.max(1,Math.floor(r.height));
+}
+function seedMotes(n){
+  motes = [];
+  for(let i=0;i<n;i++) motes.push({
+    x:Math.random()*bgcv.width, y:Math.random()*bgcv.height,
+    v:.15+Math.random()*.55, s:Math.random()<.3?3:2, a:.25+Math.random()*.55
+  });
+}
+function tick(){
+  bgx.clearRect(0,0,bgcv.width,bgcv.height);
+  for(const m of motes){
+    bgx.globalAlpha = m.a;
+    bgx.fillStyle = moteColor;
+    bgx.fillRect(m.x|0, m.y|0, m.s, m.s);
+    if(!reduced){
+      if(moteMode==="rain"){ m.y += m.v*2.4; if(m.y>bgcv.height){m.y=-4;m.x=Math.random()*bgcv.width;} }
+      else { m.y -= m.v; m.x += Math.sin((m.y+m.v*90)/28)*.35;
+             if(m.y< -4){m.y=bgcv.height+4;m.x=Math.random()*bgcv.width;} }
+    }
+  }
+  bgx.globalAlpha = 1;
+  requestAnimationFrame(tick);
+}
+window.addEventListener("resize", ()=>{ sizeCanvas(); seedMotes(motes.length||40); });
+
+/* =========================================================
+   3. STATE + DOM
+   ========================================================= */
+const S = { i:0, insight:0, first:{}, unlocked:new Set(["otp"]), eps:0.18, checkpoint:0 };
+const el = id => document.getElementById(id);
+const stage=el("stage"), actorsEl=el("actors"), sceneryEl=el("scenery"),
+      dialog=el("dialog"), speakerEl=el("speaker"), textEl=el("text"), cursorEl=el("cursor"),
+      menu=el("menu"), menuQ=el("menuQ"), menuOpts=el("menuOpts"),
+      panel=el("panel"), titleEl=el("title"), chapterEl=el("chapter"),
+      insightEl=el("insight"), flashEl=el("flash"), dmgEl=el("dmg");
+
+let waiting = null;   // "text" | "click" | null
+let typer = null, fullSegs = null;
+
+function setInsight(n){ S.insight = n; insightEl.textContent = "INSIGHT " + n; }
+function award(key, amt){
+  if(S.first[key]) return;
+  S.first[key] = true; setInsight(S.insight + amt);
+}
+
+/* ---- rich text ---- */
+function parse(t){
+  const out = [];
+  const re = /(«[^»]*»|\*[^*]*\*)/g;
+  let last = 0, m;
+  while((m = re.exec(t))){
+    if(m.index > last) out.push({t:t.slice(last,m.index), c:""});
+    const tok = m[0];
+    out.push(tok[0]==="«" ? {t:tok.slice(1,-1), c:"f"} : {t:tok.slice(1,-1), c:"em"});
+    last = re.lastIndex;
+  }
+  if(last < t.length) out.push({t:t.slice(last), c:""});
+  return out;
+}
+function renderFull(segs, node){
+  node.textContent = "";
+  for(const s of segs){
+    if(s.c){ const sp=document.createElement("span"); sp.className=s.c; sp.textContent=s.t; node.appendChild(sp); }
+    else node.appendChild(document.createTextNode(s.t));
+  }
+}
+function typeOut(segs, node, done){
+  node.textContent = "";
+  let si=0, ci=0, cur=null, blipN=0;
+  clearInterval(typer);
+  typer = setInterval(()=>{
+    if(si>=segs.length){ clearInterval(typer); typer=null; done && done(); return; }
+    const seg = segs[si];
+    if(ci===0){
+      if(seg.c){ cur=document.createElement("span"); cur.className=seg.c; node.appendChild(cur); }
+      else { cur=document.createTextNode(""); node.appendChild(cur); }
+    }
+    const n = Math.min(seg.t.length, ci + 2);
+    const chunk = seg.t.slice(ci, n);
+    if(cur.nodeType===3) cur.nodeValue = seg.t.slice(0,n); else cur.textContent = seg.t.slice(0,n);
+    ci = n;
+    if((blipN++ % 3 === 0) && /\S/.test(chunk)) sfx.blip();
+    if(ci>=seg.t.length){ si++; ci=0; }
+  }, reduced ? 1 : 14);
+}
+
+function say(who, txt, nar){
+  speakerEl.textContent = who || "";
+  textEl.className = nar ? "nar" : "";
+  cursorEl.classList.remove("on");
+  fullSegs = parse(txt);
+  waiting = "text";
+  highlightSpeaker(who);
+  typeOut(fullSegs, textEl, ()=>{ waiting="click"; cursorEl.classList.add("on"); });
+}
+function finishText(){
+  if(typer){ clearInterval(typer); typer=null; }
+  renderFull(fullSegs, textEl);
+  waiting = "click"; cursorEl.classList.add("on");
+}
+
+/* ---- actors ---- */
+let castNow = {};
+function setCast(cfg){
+  actorsEl.innerHTML = "";
+  castNow = cfg || {};
+  const order = ["left","center","right"];
+  for(const pos of order){
+    const c = castNow[pos];
+    if(!c) continue;
+    const wrap = document.createElement("div");
+    wrap.className = "actor bob";
+    wrap.dataset.name = c.name || "";
+    const sc = c.scale || 7;
+    wrap.appendChild(spriteCanvas(c.sprite, sc));
+    if(c.name){
+      const tag = document.createElement("div");
+      tag.className="nameTag"; tag.textContent=c.name;
+      wrap.appendChild(tag);
+    }
+    actorsEl.appendChild(wrap);
+    requestAnimationFrame(()=>wrap.classList.add("in"));
+  }
+}
+function highlightSpeaker(who){
+  [...actorsEl.children].forEach(a=>{
+    a.classList.toggle("speaking", !!who && a.dataset.name===who);
+    a.classList.toggle("bob", !(!!who && a.dataset.name===who));
+  });
+}
+function shakeStage(){ const s=el("screen"); s.classList.add("shake"); setTimeout(()=>s.classList.remove("shake"),340); }
+function flash(){ flashEl.classList.add("go"); setTimeout(()=>flashEl.classList.remove("go"),320); }
+function popDamage(n){ dmgEl.textContent=n; dmgEl.classList.remove("go"); void dmgEl.offsetWidth; dmgEl.classList.add("go"); }
+
+/* ---- backdrops ---- */
+const BD = {
+  village:{cls:"bd-village", mote:"#ffd79a", mode:"drift", n:36, ridge:"#2a1638", mus:"village"},
+  fount:{cls:"bd-fount", mote:"#9fe8ff", mode:"rain", n:60, ridge:"#03222e", mus:"fount"},
+  lair:{cls:"bd-lair", mote:"#ff8fb4", mode:"drift", n:34, ridge:"#210a1c", mus:"lair"},
+  forge:{cls:"bd-forge", mote:"#c9cfe8", mode:"drift", n:40, ridge:"#0a0a22", mus:"forge"},
+  judge:{cls:"bd-judge", mote:"#7ff0d8", mode:"rain", n:70, ridge:"#02181e", mus:"battle"},
+  white:{cls:"bd-white", mote:"#8a84c0", mode:"drift", n:26, ridge:"#b9b1dd", mus:"ending"}
+};
+function setBackdrop(id){
+  const b = BD[id] || BD.village;
+  stage.className = b.cls;
+  if(b.mus && b.mus !== curTrack) playTrack(b.mus);
+  moteColor = b.mote; moteMode = b.mode;
+  sizeCanvas(); seedMotes(b.n);
+  sceneryEl.innerHTML =
+    '<svg class="ridge" viewBox="0 0 160 40" preserveAspectRatio="none" aria-hidden="true">' +
+    '<path fill="'+b.ridge+'" d="M0 40 V26 l10-8 8 8 12-14 10 10 14-6 12 12 10-10 14 8 12-12 12 12 10-6 16 10 H160 V40 Z"/></svg>';
+}
+
+/* =========================================================
+   4. MENUS
+   ========================================================= */
+function showMenu(q, opts, onPick){
+  menuQ.textContent = q;
+  menuOpts.innerHTML = "";
+  opts.forEach((o,idx)=>{
+    const b = document.createElement("button");
+    b.type="button"; b.className="opt"; b.textContent = o.a;
+    b.addEventListener("click", ev=>{
+      ev.stopPropagation();
+      if(b.classList.contains("dead")) return;
+      onPick(o, idx, b);
+    });
+    menuOpts.appendChild(b);
+  });
+  menu.classList.add("on");
+  waiting = null;
+  cursorEl.classList.remove("on");
+}
+function hideMenu(){ menu.classList.remove("on"); }
+
+/* =========================================================
+   5. THE SCRIPT
+   ========================================================= */
+const EPS = 0.18;   // drawn large so the gap is visible
+
+const script = [
+  /* ---------------- PROLOGUE: the village ---------------- */
+  {t:"chapter", name:"序章 · THE VILLAGE OF NAGARA"},
+  {t:"bg", id:"village"},
+  {t:"cast", cfg:{left:{sprite:"kaede",name:"Kaede",scale:7}, right:{sprite:"elder",name:"Elder Kaji",scale:7}}},
+  {t:"nar", text:"Nagara sits at the mouth of a river. For four hundred years its messages have crossed enemy land unread."},
+  {t:"say", who:"Elder Kaji", text:"Kaede. Before you may call yourself a Reductionist, you must understand what it is we guard."},
+  {t:"say", who:"Elder Kaji", text:"The Endless Scroll. A ribbon of symbols drawn from the gods' own rain — no pattern, no memory, no reason. We lay it over a message and the message vanishes beneath it."},
+  {t:"say", who:"Kaede", text:"Lay it over? Like ink?"},
+  {t:"say", who:"Elder Kaji", text:"Like a coin flip on every letter. We call the operation «XOR». Watch."},
+  {t:"xor"},
+  {t:"say", who:"Elder Kaji", text:"Perfect. Not \"hard\". *Perfect*. A spy who intercepts that could sit with it until the stars burn out and learn nothing — every message of that length was equally possible."},
+  {t:"unlock", key:"otp"},
+  {t:"say", who:"Kaede", text:"Then why does the village look so worried?"},
+  {t:"say", who:"Elder Kaji", text:"Because the scroll is used up. One symbol of scroll for one symbol of message, and never reused. We have written more letters than the gods have sent us rain."},
+  {t:"ask", q:"WHY NOT JUST USE THE SCROLL TWICE?",
+    opts:[
+      {a:"Because two messages sealed with the same scroll leak: XOR the two ciphertexts and the scroll cancels out.", ok:true,
+       r:"Elder Kaji nods. \"«c₁ ⊕ c₂ = m₁ ⊕ m₂». The scroll cancels itself and leaves the two messages holding hands. That is how villages fall.\"", key:"otp_reuse", pts:10},
+      {a:"Because the scroll wears out physically from handling.", ok:false,
+       r:"\"Paper is not the problem, child. The problem is arithmetic.\""},
+      {a:"Because the enemy might steal a copy of the scroll.", ok:false,
+       r:"\"They might. But even a scroll they never see betrays us if we use it twice. Think about what cancels.\""}
+    ]},
+  {t:"save"},
+
+  /* ---------------- CH1: Gennai's oath ---------------- */
+  {t:"chapter", name:"第一章 · GENNAI'S OATH"},
+  {t:"bg", id:"fount"},
+  {t:"cast", cfg:{left:{sprite:"kaede",name:"Kaede",scale:6}, right:{sprite:"gennai",name:"Gennai",scale:8}}},
+  {t:"nar", text:"They climb to the headwaters. Something long and bright is coiled in the spray."},
+  {t:"say", who:"Gennai", text:"I am the stream that never repeats. Give me a seed no larger than your palm — call it «k» — and I will pour you a river as long as you like."},
+  {t:"say", who:"Kaede", text:"A river made from a palmful of water. Then it isn't the gods' rain. It's... a trick."},
+  {t:"say", who:"Gennai", text:"It is a trick. That is exactly what I swear to. My oath is not that my river *is* rain. My oath is that *no mortal can tell*."},
+  {t:"say", who:"Gennai", text:"Set my river beside true rain. Study both. Any test you can finish in a lifetime will call them the same, give or take a whisper."},
+  {t:"unlock", key:"prg"},
+  {t:"say", who:"Elder Kaji", text:"That whisper has a name: *negligible*. Smaller than one over any polynomial you care to name. Try the oath yourself."},
+  {t:"fountains"},
+  {t:"say", who:"Kaede", text:"...I was guessing. All three times, I was just guessing."},
+  {t:"say", who:"Elder Kaji", text:"*That is what indistinguishable feels like from the inside.* And it is the whole reason we can seal messages now."},
+  {t:"say", who:"Elder Kaji", text:"The new seal: draw one short seed «k», let Gennai pour «G(k)», and lay that over the message. «Enc_k(m) = G(k) ⊕ m»."},
+  {t:"unlock", key:"scheme"},
+  {t:"say", who:"Kaede", text:"But it isn't perfect anymore. The river isn't real rain."},
+  {t:"say", who:"Elder Kaji", text:"No. It is something we must now *prove*. And that is your examination."},
+  {t:"save"},
+
+  /* ---------------- CH2: the demon ---------------- */
+  {t:"chapter", name:"第二章 · THE EAVESDROPPER"},
+  {t:"bg", id:"lair"},
+  {t:"cast", cfg:{left:{sprite:"kaede",name:"Kaede",scale:6}, right:{sprite:"demon",name:"Adversarius",scale:8}}},
+  {t:"nar", text:"He is waiting on the road down, sitting on a milestone, as though the appointment were his idea."},
+  {t:"say", who:"Adversarius", text:"Little Reductionist. I am Adversarius, and I only ever ask one question. Shall I show you the game I play?"},
+  {t:"say", who:"Adversarius", text:"I name two messages — «m₀» and «m₁» — the same length, my choosing. You flip a coin «b» where I cannot see it. You seal «m_b» and hand me the ciphertext."},
+  {t:"say", who:"Adversarius", text:"Then I say a number: *zero* or *one*. If I name your coin, I win. That is all I do. I never decrypt. I only guess — and I only need to guess *better than half*."},
+  {t:"unlock", key:"eav"},
+  {t:"ask", q:"HE PLAYS THIS AGAINST THE ENDLESS SCROLL FIRST. HOW OFTEN DOES HE WIN?",
+    opts:[
+      {a:"Exactly half the time — the ciphertext is the same distribution no matter which message you sealed.", ok:true,
+       r:"Adversarius bows, unbothered. \"Exactly half. Against the gods' rain I am a coin in a coat. It is *precisely* one half, not approximately.\"", key:"eav_otp", pts:10},
+      {a:"Slightly more than half, because ciphertexts leak a little.", ok:false,
+       r:"\"Against true rain? Nothing leaks. Nothing at all. Look again at what the scroll does to the message.\""},
+      {a:"Never, because the one-time pad is unbreakable.", ok:false,
+       r:"\"Unbreakable does not mean I lose. I can always flip my own coin and be right half the time. Half is the floor, not a failure.\""}
+    ]},
+  {t:"say", who:"Adversarius", text:"But your new seal is not the gods' rain, is it. It is a *palmful of water pretending*."},
+  {t:"say", who:"Adversarius", text:"So I make a boast. Against «G(k) ⊕ m», I win with probability «1/2 + ε» — where «ε» is *not* a whisper. It is a real crack, and I am standing in it."},
+  {t:"cast", cfg:{left:{sprite:"kaede",name:"Kaede",scale:6}, center:{sprite:"elder",name:"Elder Kaji",scale:6}, right:{sprite:"demon",name:"Adversarius",scale:8}}},
+  {t:"say", who:"Kaede", text:"Master — can we beat him?"},
+  {t:"say", who:"Elder Kaji", text:"We cannot even *find* him. He is a boast, not a body. But listen to what he just claimed, and think about where such a power would have to come from."},
+  {t:"ask", q:"IF HIS BOAST IS TRUE, WHAT DOES IT ACTUALLY PROVE?",
+    opts:[
+      {a:"That there is something about Gennai's river a mortal can detect — because true rain gives him nothing, and the river gives him ε.", ok:true,
+       r:"\"*There.*\" The Elder's staff cracks against the stone. \"His edge is not his. It is a hole in the river. And a hole in the river can be *pointed at*.\"", key:"insight_core", pts:20},
+      {a:"That XOR is a weak operation.", ok:false,
+       r:"\"XOR is the same operation that gave us perfect secrecy an hour ago. Nothing changed but where the ribbon came from.\""},
+      {a:"That he can recover the seed k from the ciphertext.", ok:false,
+       r:"\"He never said so, and he does not need to. He only names a coin. Do not credit him with powers he did not claim.\""},
+      {a:"That the message m_b was badly chosen.", ok:false,
+       r:"\"*He* chooses the messages. That is part of the game. The messages are his, and it still must not help him.\""}
+    ]},
+  {t:"say", who:"Elder Kaji", text:"So we will not fight him. We will *hire* him. We build a machine, seat him inside it, and aim the machine at the two fountains."},
+  {t:"say", who:"Elder Kaji", text:"If his boast is real, the machine tells Gennai's river from the gods' rain. And Gennai swore that no machine can. One of them is lying — and gods do not boast."},
+  {t:"unlock", key:"reduction"},
+  {t:"save"},
+
+  /* ---------------- CH3: build the distinguisher ---------------- */
+  {t:"chapter", name:"第三章 · THE FORGE"},
+  {t:"bg", id:"forge"},
+  {t:"cast", cfg:{center:{sprite:"machine",name:"The Distinguisher",scale:9}}},
+  {t:"nar", text:"The chassis is empty. Six sockets, in order. Whatever you seat in them, the machine will do — exactly, blindly, forever."},
+  {t:"say", who:"Elder Kaji", text:"The machine is called «D». It is handed one ribbon, «w», by the Fountain of Judgment. It must end by saying *one* or *zero*."},
+  {t:"say", who:"Elder Kaji", text:"It is never told which fountain «w» came from. That is the entire point: it must *behave differently* depending on which — without ever being told."},
+  {t:"assemble"},
+  {t:"say", who:"Elder Kaji", text:"Six sockets, six instructions. Note what the machine never does: it never decrypts, never inspects «w», never asks a question it isn't owed. It only *hosts* him and *scores* him."},
+  {t:"unlock", key:"machine"},
+  {t:"save"},
+
+  /* ---------------- CH4: the two worlds ---------------- */
+  {t:"chapter", name:"第四章 · THE FOUNTAIN OF JUDGMENT"},
+  {t:"bg", id:"judge"},
+  {t:"cast", cfg:{center:{sprite:"machine",name:"D",scale:8}}},
+  {t:"nar", text:"Two fountains. One fed by the gods, one by Gennai. The machine will drink from each, and you must say — before it does — what will happen."},
+  {t:"say", who:"Adversarius", text:"Cramped in here. Fine. Feed me a ciphertext, mortal, and I will name your coin."},
+  {t:"battle"},
+  {t:"save"},
+
+  /* ---------------- ENDING ---------------- */
+  {t:"chapter", name:"終章 · Q.E.D."},
+  {t:"bg", id:"white"},
+  {t:"cast", cfg:{left:{sprite:"kaede",name:"Kaede",scale:7}, right:{sprite:"elder",name:"Elder Kaji",scale:7}}},
+  {t:"say", who:"Adversarius", text:"...wait. *Wait.* If my edge cracks the river, and the river cannot be cracked, then my edge—"},
+  {t:"nar", text:"He does not finish. There is nothing there to finish."},
+  {t:"say", who:"Kaede", text:"He's gone. Did we kill him?"},
+  {t:"say", who:"Elder Kaji", text:"He was never here. He was an *assumption*. We followed him all the way to a place he could not stand, and he was left holding his own contradiction."},
+  {t:"say", who:"Elder Kaji", text:"Say it back to me properly, Reductionist. Not as a story."},
+  {t:"say", who:"Kaede", text:"Any eavesdropper's edge «ε» against «G(k) ⊕ m» is *exactly* the edge some distinguisher gets against «G». Gennai's oath caps that at negligible. So «ε» is negligible. The seal holds."},
+  {t:"say", who:"Elder Kaji", text:"That is the whole art. We never made the seal strong. We *borrowed* the strength of something already strong — and the borrowing is the proof."},
+  {t:"unlock", key:"pitfalls"},
+  {t:"ending"}
+];
+
+/* ---- assembly cards ---- */
+const CHASSIS = [
+  "Take the ribbon w handed to you by the Fountain of Judgment — do not ask which fountain it came from.",
+  "Summon Adversarius inside the machine. Let him name his two messages, m₀ and m₁.",
+  "Flip a hidden coin b. He must not see it.",
+  "Forge the seal from the ribbon you were given: c = w ⊕ m_b.",
+  "Show c to Adversarius. Take his guess, b′.",
+  "Output ONE if b′ = b. Output ZERO otherwise."
+];
+const CARDS = [
+  {ord:1, text:"Take the ribbon w handed to you by the Fountain of Judgment. Do not ask which fountain it came from.",
+   ok:"Socket one seats. The machine now holds a ribbon whose origin it does not know — the only honest starting position."},
+  {ord:2, text:"Summon Adversarius inside the machine. Let him name his two messages, m₀ and m₁.",
+   ok:"He names them at once, smirking. The machine does not care which they are — only that they are his choice and the same length."},
+  {ord:3, text:"Flip a hidden coin b.",
+   ok:"A coin turns over in a sealed box. He can hear it. He cannot see it."},
+  {ord:4, text:"Forge the seal from the ribbon you were given: c = w ⊕ m_b.",
+   ok:"The socket glows. This is the hinge of the whole machine: the mystery ribbon goes *straight into the ciphertext*, so whichever fountain fed it, he is the one who feels the difference."},
+  {ord:5, text:"Show c to Adversarius. Take his guess, b′.",
+   ok:"He studies it exactly as long as he would in a real siege — and says a number."},
+  {ord:6, text:"Output ONE if b′ = b, and ZERO otherwise.",
+   ok:"The output lamp wakes. The machine's answer is not his guess — it is *whether he was right*. That is the signal."},
+
+  {bad:"He has no idea. That is the very thing the machine exists to find out — and it is not a question he answers. He answers about ciphertexts, nothing else."},
+  {bad:"Then the machine never touches the ribbon it was handed, and its output is the same in both worlds. A machine that ignores its input cannot distinguish anything."},
+  {bad:"Then his guess is worthless. He must face a genuine challenge, or being right proves nothing about his power."},
+  {bad:"His raw guess b′ is just a bit — he could say ONE every time. The signal is agreement between b′ and b, not b′ alone."},
+  {bad:"That is a different game, and not the one he boasted about. Change the experiment and his boast no longer applies to it."}
+];
+CARDS[6].text = "Ask Adversarius whether the ribbon came from Gennai's fountain.";
+CARDS[7].text = "Ignore w. Draw your own seed k and use G(k) to build the ciphertext.";
+CARDS[8].text = "Tell Adversarius the value of the coin b before he guesses.";
+CARDS[9].text = "Output b′ — whatever Adversarius says, say the same.";
+CARDS[10].text = "Seal both m₀ and m₁ and show him both ciphertexts.";
+
+const HINTS = [
+  "The machine does not get to choose its own ribbon. Its very first act is to accept what the fountain hands it — blind.",
+  "There is nothing to seal until Adversarius has named what he wants sealed. Two messages, his choice, equal length.",
+  "He must be able to be wrong. Something has to be decided that he cannot see.",
+  "This is the hinge. The ribbon you were handed has to end up *inside* the ciphertext — otherwise the machine cannot feel which fountain it drank from.",
+  "Now let him do the one thing he does: look at a ciphertext and name a bit.",
+  "The machine's answer is not his guess. It is whether his guess was *right*."
+];
+
+/* ---- battle ---- */
+const BATTLE = [
+  { world:"R", banner:"WORLD R — THE GODS' TRUE RAIN",
+    intro:"The left fountain fills the machine. The ribbon «w» is true rain: every bit an honest coin.",
+    turns:[
+      { q:"WHAT IS THE CIPHERTEXT c THAT REACHES HIM?",
+        opts:[
+          {a:"A fresh Endless Scroll laid over m_b — c is uniform, whichever message was sealed.", ok:true, dmg:220,
+           r:"«c = r ⊕ m_b» with «r» uniform. That is the one-time pad, rebuilt by accident inside your machine."},
+          {a:"Gennai's river, shifted by the message.", ok:false,
+           r:"Not in this world. This fountain is the gods'. Read the ribbon you were handed."},
+          {a:"Something he can invert given enough time.", ok:false,
+           r:"Unbounded time does not help against a one-time pad. Every message of that length stays equally possible."}
+        ]},
+      { q:"SO HOW OFTEN IS HIS GUESS b′ CORRECT?",
+        opts:[
+          {a:"Half the time, exactly. Nothing he sees depends on b, so he is flipping his own coin.", ok:true, dmg:260,
+           r:"His view is *independent of «b»*. Whatever cleverness he applies to it cannot manufacture information that isn't there."},
+          {a:"1/2 + ε, as he boasted.", ok:false,
+           r:"He boasted against Gennai's river. This is true rain — his boast says nothing here."},
+          {a:"He is always wrong, which is just as useful.", ok:false,
+           r:"Being reliably wrong would be a signal too — but he isn't. He is simply blind, and blind means one half."}
+        ]}
+    ],
+    conclude:"Pr[ D outputs 1 | true rain ] = 1/2",
+    bar:"rain", val:0.5,
+    line:"The machine's needle settles at exactly one half. It has no opinion about the gods' rain — as it must not."
+  },
+  { world:"G", banner:"WORLD G — GENNAI'S RIVER",
+    intro:"The right fountain fills the machine. Now «w = G(k)» for a seed «k» nobody in the room has seen.",
+    turns:[
+      { q:"WHAT DOES ADVERSARIUS SEE NOW?",
+        opts:[
+          {a:"c = G(k) ⊕ m_b — bit for bit, the real seal of Nagara. He is besieging the village and does not know it.", ok:true, dmg:240,
+           r:"*Every single thing he observes is distributed exactly as in the real game.* That is why his boast transfers into your machine unchanged."},
+          {a:"A uniform ciphertext, same as before.", ok:false,
+           r:"Only if the river were truly random — which is the one thing you are not allowed to assume here. That is the whole question."},
+          {a:"He notices the machine and refuses to play.", ok:false,
+           r:"He cannot notice. His view is identical to a real siege, and identical views produce identical behaviour."}
+        ]},
+      { q:"SO HOW OFTEN IS HE CORRECT IN THIS WORLD?",
+        opts:[
+          {a:"1/2 + ε — his boast, applied exactly where he made it.", ok:true, dmg:280,
+           r:"His view here *is* the real experiment, so his win rate here *is* his win rate there: «1/2 + ε»."},
+          {a:"Half the time, like before.", ok:false,
+           r:"That was the other fountain. Here you are standing inside the game he claims to beat."},
+          {a:"Certainty — he always wins against a pseudorandom seal.", ok:false,
+           r:"He never claimed certainty. Do not strengthen his boast; the proof works with the small edge he actually named."}
+        ]}
+    ],
+    conclude:"Pr[ D outputs 1 | Gennai's river ] = 1/2 + ε",
+    bar:"river", val:0.5+EPS,
+    line:"The needle climbs past half — by exactly ε, the edge he bragged about — and stops."
+  },
+  { world:"X", banner:"THE STRIKE",
+    intro:"Two needles. Two worlds. The machine has never once been told which fountain it drank from.",
+    turns:[
+      { q:"SUBTRACT THE WORLDS. WHAT HAVE YOU BUILT?",
+        opts:[
+          {a:"A machine that says ONE more often on Gennai's river than on true rain — by ε. It tells the two fountains apart.", ok:true, dmg:999,
+           r:"«|(1/2 + ε) − 1/2| = ε». And the machine is cheap: it is just Adversarius, one XOR and one comparison. If he runs fast, so does it."},
+          {a:"A machine that decrypts Gennai's river.", ok:false,
+           r:"It never decrypts anything. Distinguishing is a far weaker demand — and far more dangerous, because it is so easy to achieve."},
+          {a:"A proof that ε = 0.", ok:false,
+           r:"Not zero — *negligible*. He may keep a whisper of an edge. Nagara can live with a whisper."}
+        ]}
+    ],
+    conclude:"ε = the distinguishing advantage against G",
+    bar:"gap", val:EPS,
+    line:"The striped band on the gauge is «ε» — drawn large so you can see it. Gennai's oath caps that gap at a whisper. So «ε» was a whisper all along, and Adversarius, who insisted it was not, has nowhere left to stand."
+  }
+];
+
+/* =========================================================
+   6. CODEX
+   ========================================================= */
+const CODEX = [
+ {key:"otp", name:"ONE-TIME PAD", html:`
+  <h3>The Endless Scroll — the one-time pad</h3>
+  <p>Key <code>k</code> is uniform over <code>{0,1}<sup>ℓ</sup></code>, the same length as the message.</p>
+  <div class="math">Enc_k(m) = k ⊕ m
+Dec_k(c) = k ⊕ c</div>
+  <h4>PERFECT SECRECY</h4>
+  <p>For every <code>m</code>, the ciphertext <code>k ⊕ m</code> is uniform on <code>{0,1}<sup>ℓ</sup></code>. So the ciphertext distribution is the <em>same</em> for every message: an eavesdropper with unbounded time learns nothing.</p>
+  <h4>WHY NEVER TWICE</h4>
+  <div class="math">c₁ ⊕ c₂ = (k ⊕ m₁) ⊕ (k ⊕ m₂) = m₁ ⊕ m₂</div>
+  <p>The key cancels. This is the historical break of reused pads.</p>
+  <h4>THE COST</h4>
+  <p>|k| = |m|. Nagara's problem, and the reason pseudorandom generators exist.</p>`},
+
+ {key:"prg", name:"PRG (GENNAI)", html:`
+  <h3>Pseudorandom generator</h3>
+  <p>A deterministic polynomial-time <code>G</code> with expansion <code>ℓ(n) &gt; n</code>:</p>
+  <div class="math">G : {0,1}^n → {0,1}^ℓ⁽ⁿ⁾</div>
+  <p><strong>Security.</strong> For every probabilistic polynomial-time distinguisher <code>D</code> there is a negligible <code>negl</code> such that</p>
+  <div class="math">| Pr[ D(G(k)) = 1 ] − Pr[ D(r) = 1 ] | ≤ negl(n)</div>
+  <p>where <code>k ← {0,1}^n</code> and <code>r ← {0,1}^ℓ⁽ⁿ⁾</code>, both uniform.</p>
+  <h4>NEGLIGIBLE</h4>
+  <p><code>negl(n)</code> is smaller than <code>1/p(n)</code> for every polynomial <code>p</code> and all large enough <code>n</code>. "A whisper" in Gennai's phrasing.</p>
+  <h4>NOTE THE QUANTIFIER</h4>
+  <p>The guarantee is over <em>all</em> efficient <code>D</code>. That universality is what lets you hand the definition a machine of your own design — which is exactly what the reduction does.</p>`},
+
+ {key:"scheme", name:"THE SEAL", html:`
+  <h3>The scheme Π being defended</h3>
+  <div class="math">Gen(1ⁿ):  k ← {0,1}^n
+Enc_k(m): G(k) ⊕ m        (|m| = ℓ(n))
+Dec_k(c): G(k) ⊕ c</div>
+  <p>A fixed-length scheme: the message length is exactly the generator's output length. Correctness is immediate, since <code>G(k) ⊕ (G(k) ⊕ m) = m</code>.</p>
+  <p>Note what is <em>not</em> claimed: this scheme is not perfectly secret. The key is <code>n</code> bits and the message is <code>ℓ(n) &gt; n</code> bits, so an unbounded adversary can rule messages out. Everything rests on the adversary being efficient.</p>`},
+
+ {key:"eav", name:"EAV SECURITY", html:`
+  <h3>Indistinguishability in the presence of an eavesdropper</h3>
+  <p>The experiment <code>PrivK<sup>eav</sup><sub>A,Π</sub>(n)</code>:</p>
+  <div class="math">1. A(1ⁿ) outputs m₀, m₁  with |m₀| = |m₁|
+2. k ← Gen(1ⁿ);  b ← {0,1}
+3. c ← Enc_k(m_b)   — the challenge ciphertext
+4. A(c) outputs b′
+5. Experiment = 1 iff b′ = b</div>
+  <p><strong>Π is EAV-secure</strong> if for every PPT <code>A</code> there is a negligible <code>negl</code> with</p>
+  <div class="math">Pr[ PrivK^eav_{A,Π}(n) = 1 ] ≤ 1/2 + negl(n)</div>
+  <h4>WHAT THE 1/2 IS</h4>
+  <p>Not a weakness — a floor. Any <code>A</code> can ignore <code>c</code> and flip a coin. Security is about the <em>excess</em> over 1/2, the advantage ε.</p>
+  <h4>WHO PICKS THE MESSAGES</h4>
+  <p>The adversary does, and they may be maximally different. Security must hold anyway.</p>`},
+
+ {key:"reduction", name:"THE THEOREM", html:`
+  <h3>If G is a PRG, then Π is EAV-secure</h3>
+  <p>The shape of every reduction: you are given a <em>breaker</em> of the thing you want to defend, and you use it as a component to build a <em>breaker</em> of the thing already assumed hard.</p>
+  <div class="math">assume:   A breaks Π  (advantage ε, non-negligible)
+build:    D, using A as a subroutine
+conclude: D breaks G  (advantage ε)
+but:      G is a PRG, so ε ≤ negl
+hence:    every A has ε ≤ negl  ⇒  Π is EAV-secure</div>
+  <h4>THE DIRECTION THAT MATTERS</h4>
+  <p>You call <code>A</code>; <code>A</code> never calls you. <code>A</code> is a black box you feed and score. You are allowed to lie to it about what world it is in — indeed the whole trick is that you cannot tell it, because you do not know either.</p>`},
+
+ {key:"machine", name:"THE DISTINGUISHER D", html:`
+  <h3>D, in full</h3>
+  <div class="math">D(w):   // w ∈ {0,1}^ℓ⁽ⁿ⁾, source unknown
+  1. run A(1ⁿ) to get m₀, m₁
+  2. b ← {0,1}
+  3. c := w ⊕ m_b
+  4. b′ := A(c)
+  5. output 1 if b′ = b, else 0</div>
+  <h4>D IS EFFICIENT</h4>
+  <p>One run of <code>A</code>, one XOR, one comparison. If <code>A</code> is PPT then so is <code>D</code> — necessary, since the PRG guarantee only covers efficient distinguishers.</p>
+  <h4>THE TWO WORLDS</h4>
+  <p>If <code>w = r</code> uniform: <code>c = r ⊕ m_b</code> is a one-time-pad ciphertext, independent of <code>b</code>, so</p>
+  <div class="math">Pr[ D(r) = 1 ] = 1/2   (exactly)</div>
+  <p>If <code>w = G(k)</code> for uniform <code>k</code>: <code>A</code>'s view is <em>identically distributed</em> to its view in the real experiment against Π, so</p>
+  <div class="math">Pr[ D(G(k)) = 1 ] = Pr[ PrivK^eav_{A,Π}(n) = 1 ] = 1/2 + ε(n)</div>
+  <p>Subtracting:</p>
+  <div class="math">| Pr[D(G(k))=1] − Pr[D(r)=1] | = ε(n)</div>
+  <p>By PRG security this is at most <code>negl(n)</code>. Hence <code>ε(n) ≤ negl(n)</code> for every PPT <code>A</code>, which is exactly EAV-security of Π. <em>Q.E.D.</em></p>`},
+
+ {key:"pitfalls", name:"COMMON TRAPS", html:`
+  <h3>Where reductions go wrong</h3>
+  <h4>1. THE MACHINE IGNORES ITS CHALLENGE</h4>
+  <p>If <code>D</code> generates its own seed and uses <code>G(k)</code> instead of <code>w</code>, its output distribution is the same in both worlds. Advantage zero. <em>The challenge input must reach the simulated ciphertext.</em></p>
+  <h4>2. THE SIMULATION ISN'T FAITHFUL</h4>
+  <p>The reduction is only valid because <code>A</code>'s view inside <code>D</code> is distributed <em>exactly</em> as in the real experiment. Telling <code>A</code> the bit <code>b</code>, or handing it both ciphertexts, breaks that and the boast no longer transfers.</p>
+  <h4>3. OUTPUTTING b′ INSTEAD OF [b′ = b]</h4>
+  <p><code>b′</code> alone carries no signal — <code>A</code> could always say 1. What varies between worlds is <em>agreement</em>.</p>
+  <h4>4. FORGETTING D MUST BE EFFICIENT</h4>
+  <p>A distinguisher that takes exponential time contradicts nothing.</p>
+  <h4>5. "CONTRADICTION" VS. DIRECT</h4>
+  <p>The story frames it as contradiction, which is the usual way it is taught. The cleaner statement is direct and quantitative: for every PPT <code>A</code>, its advantage against Π <em>equals</em> the advantage of an explicit PPT <code>D</code> against <code>G</code>. Since the latter is negligible, so is the former. No contradiction is strictly needed — only a bound that transfers.</p>
+  <h4>6. WHAT THIS DOES NOT PROVE</h4>
+  <p>EAV is single-message and passive. The same scheme is <em>broken</em> under chosen-plaintext attack (it is deterministic, so encrypting the same message twice is visible). Stronger definitions need stronger constructions.</p>`}
+];
+
+/* =========================================================
+   7. INTERACTIVE SCENES
+   ========================================================= */
+function bitRow(label, bits, cls){
+  const row = document.createElement("div"); row.className="brow";
+  const l = document.createElement("div"); l.className="blab"; l.textContent=label;
+  const b = document.createElement("div"); b.className="bits";
+  bits.forEach(v=>{ const d=document.createElement("div"); d.className="bit "+(cls||""); d.textContent=v; b.appendChild(d); });
+  row.appendChild(l); row.appendChild(b);
+  return {row, cells:[...b.children]};
+}
+
+function sceneXOR(done){
+  const m = [0,1,0,0,1,1,0,0,0,1,1,0,1,0,0,1];
+  const k = Array.from({length:16},()=>Math.random()<.5?1:0);
+  panel.className="jwin on";
+  panel.innerHTML = '<div class="pTitle">THE ENDLESS SCROLL</div>'+
+    '<div class="pSub">A message, a ribbon of true rain, and one operation.</div>'+
+    '<div class="pBody" id="xb"></div>'+
+    '<div style="margin-top:10px"><button class="startBtn" id="xgo" type="button">LAY THE SCROLL</button></div>';
+  const body = el("xb");
+  const M = bitRow("MESSAGE m", m); body.appendChild(M.row);
+  const K = bitRow("SCROLL k", k, "k"); body.appendChild(K.row);
+  const C = bitRow("SEALED c", Array(16).fill("·"), "c"); body.appendChild(C.row);
+  const note = document.createElement("p");
+  note.style.cssText="font-size:12px;line-height:1.8;color:var(--dim);margin:12px 0 0;max-width:56ch";
+  body.appendChild(note);
+
+  el("xgo").addEventListener("click", function(){
+    this.disabled = true; this.style.opacity=".5";
+    let i=0;
+    const iv = setInterval(()=>{
+      if(i>=16){
+        clearInterval(iv);
+        note.innerHTML = "Every bit of <b>c</b> is a fair coin, because every bit of <b>k</b> was. Change <b>m</b> to anything else and <b>c</b> is still a fair coin. There is nothing in the ciphertext to read.";
+        setTimeout(()=>{ panel.className="jwin"; done(); }, 1600);
+        return;
+      }
+      C.cells[i].textContent = m[i]^k[i];
+      C.cells[i].classList.add("hot");
+      if(ac && soundOn) tone("square", hz("A4")*Math.pow(2,(i%8)/12), ac.currentTime, 0.06, 0.06, sfxGain);
+      const j=i; setTimeout(()=>C.cells[j].classList.remove("hot"),260);
+      i++;
+    }, reduced?20:110);
+  });
+}
+
+function sceneFountains(done){
+  let round=0, right=0;
+  const ROUNDS=3;
+  const rndBits = n => Array.from({length:n},()=>Math.random()<.5?"1":"0").join("");
+  function lcgBits(n){                       // a stand-in "river": looks the same by eye
+    let x = (Math.random()*4294967295)>>>0, out="";
+    for(let i=0;i<n;i++){ x = (1664525*x + 1013904223)>>>0; out += ((x>>>28)&1); }
+    return out;
+  }
+  function fmt(s){ return s.replace(/(.{8})/g,"$1 ").trim(); }
+  function draw(){
+    const truthLeft = Math.random()<.5;                    // is the LEFT one the river?
+    const a = truthLeft ? lcgBits(64) : rndBits(64);
+    const b = truthLeft ? rndBits(64) : lcgBits(64);
+    panel.className="jwin on";
+    panel.innerHTML =
+      '<div class="pTitle">THE TWO FOUNTAINS &nbsp;·&nbsp; ROUND '+(round+1)+' / '+ROUNDS+'</div>'+
+      '<div class="pSub">One of these is the gods\' true rain. The other is Gennai\'s river from a palm-sized seed. Point at the river.</div>'+
+      '<div class="pBody"><div class="founts">'+
+        '<button class="fount" id="fA" type="button"><h4>FOUNTAIN A</h4><code>'+fmt(a)+'</code></button>'+
+        '<button class="fount" id="fB" type="button"><h4>FOUNTAIN B</h4><code>'+fmt(b)+'</code></button>'+
+      '</div><div class="tally">CORRECT SO FAR: '+right+' / '+round+'</div></div>';
+    const pick = isLeft => {
+      const ok = (isLeft === truthLeft);
+      if(ok){ right++; sfx.ok(); } else sfx.err();
+      round++;
+      panel.querySelector(".tally").textContent =
+        (ok ? "▶ RIGHT. " : "▶ WRONG. ") + "THE RIVER WAS FOUNTAIN " + (truthLeft?"A":"B") + ".";
+      panel.querySelectorAll(".fount").forEach(f=>f.disabled=true);
+      setTimeout(()=>{ if(round<ROUNDS) draw(); else finish(); }, 1200);
+    };
+    el("fA").addEventListener("click",()=>pick(true));
+    el("fB").addEventListener("click",()=>pick(false));
+  }
+  function finish(){
+    panel.innerHTML =
+      '<div class="pTitle">RESULT: '+right+' / '+ROUNDS+'</div>'+
+      '<div class="pSub" style="max-width:56ch">Whatever you scored, you scored it by guessing — and so would any test you could finish in a lifetime. That is Gennai\'s oath, felt rather than stated.</div>'+
+      '<div style="margin-top:6px"><button class="startBtn" id="fdone" type="button">CONTINUE</button></div>';
+    el("fdone").addEventListener("click",()=>{ panel.className="jwin"; done(); });
+  }
+  draw();
+}
+
+function sceneAssemble(done){
+  let next = 0;
+  const order = CARDS.map((c,i)=>i);
+  for(let i=order.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [order[i],order[j]]=[order[j],order[i]]; }
+
+  panel.className="jwin on";
+  panel.innerHTML =
+    '<div style="display:flex;align-items:center;gap:10px">'+
+      '<div class="pTitle" style="flex:1;margin:0">FORGE THE DISTINGUISHER &nbsp;·&nbsp; 判別機</div>'+
+      '<button class="hbtn" id="ahint" type="button">HINT</button>'+
+    '</div>'+
+    '<div class="pSub">Seat six instructions, in order. Five of the eleven tactics are traps.</div>'+
+    '<div class="pBody asmBody"><div class="asm">'+
+      '<div class="chassis" id="chs"></div>'+
+      '<div class="cards" id="crd"></div>'+
+    '</div></div>';
+
+  const chs = el("chs"), crd = el("crd");
+  const byOrd = {};
+  el("ahint").addEventListener("click", ()=>{
+    const want = byOrd[next+1];
+    if(!want) return;
+    crd.querySelectorAll(".card").forEach(c=>c.classList.remove("hintOn"));
+    want.classList.add("hintOn");
+    want.scrollIntoView({block:"nearest"});
+    say("Elder Kaji", HINTS[next] || "Look at what the machine must do next.");
+  });
+  const slots = CHASSIS.map((_,i)=>{
+    const d = document.createElement("div");
+    d.className = "slot" + (i===0?" next":"");
+    d.innerHTML = '<span class="n">'+(i+1)+'</span><span class="s">— empty socket —</span>';
+    chs.appendChild(d); return d;
+  });
+
+  order.forEach(idx=>{
+    const c = CARDS[idx];
+    const b = document.createElement("button");
+    b.type="button"; b.className="card"; b.textContent = c.text;
+    if(c.ord) byOrd[c.ord] = b;
+    b.addEventListener("click", ()=>{
+      if(c.ord === next+1){
+        b.classList.add("used"); sfx.lock();
+        slots[next].classList.remove("next");
+        slots[next].classList.add("filled");
+        slots[next].querySelector(".s").textContent = CHASSIS[next];
+        say("Elder Kaji", c.ok);
+        award("asm"+c.ord, 10);
+        next++;
+        if(next < slots.length) slots[next].classList.add("next");
+        else {
+          setTimeout(()=>{
+            panel.innerHTML =
+              '<div class="pTitle">THE DISTINGUISHER IS COMPLETE</div>'+
+              '<div class="pSub">Six sockets. One ribbon in, one bit out.</div>'+
+              '<div class="pBody"><div class="chassis">'+
+                CHASSIS.map((t,i)=>'<div class="slot filled"><span class="n">'+(i+1)+'</span><span>'+t+'</span></div>').join("")+
+              '</div></div>'+
+              '<div style="margin-top:10px"><button class="startBtn" id="adone" type="button">SEAL THE MACHINE</button></div>';
+            el("adone").addEventListener("click",()=>{ panel.className="jwin"; done(); });
+          }, 900);
+        }
+      } else if(c.ord){
+        b.classList.remove("wrong"); void b.offsetWidth; b.classList.add("wrong"); sfx.err();
+        say("Elder Kaji", "That instruction belongs in the machine — but not yet. Socket " + (next+1) + " comes first, and order is everything: the machine does exactly what it is told, in the order it is told.");
+      } else {
+        b.classList.remove("wrong"); void b.offsetWidth; b.classList.add("wrong"); sfx.err();
+        shakeStage();
+        say("Elder Kaji", c.bad);
+      }
+    });
+    crd.appendChild(b);
+  });
+  say("Elder Kaji", "Socket one. What does the machine do *first*?");
+}
+
+/* ---------- battle ---------- */
+function sceneBattle(done){
+  let phase = 0, turn = 0, boast = 1000, boastMax = 1000;
+  const established = {rain:null, river:null};
+
+  panel.className="jwin on compact";
+  panel.innerHTML =
+    '<div class="pTitle" id="bTitle"></div>'+
+    '<div class="pSub" id="bSub"></div>'+
+    '<div class="pBody">'+
+      '<div class="bar-wrap">'+
+        '<div class="bar-top"><span class="bar-name">ADVERSARIUS · BOAST</span><span class="bar-val" id="vBoast">100%</span></div>'+
+        '<div class="track"><div class="fill boast" id="fBoast" style="width:100%"></div></div>'+
+      '</div>'+
+      '<div style="height:12px"></div>'+
+      '<div class="bar-wrap">'+
+        '<div class="bar-top"><span class="bar-name">Pr[D=1] · TRUE RAIN</span><span class="bar-val" id="vRain">—</span></div>'+
+        '<div class="track" id="tRain"><div class="fill rain" id="fRain"></div></div>'+
+      '</div>'+
+      '<div class="bar-wrap">'+
+        '<div class="bar-top"><span class="bar-name">Pr[D=1] · GENNAI\'S RIVER</span><span class="bar-val" id="vRiver">—</span></div>'+
+        '<div class="track" id="tRiver"><div class="fill river" id="fRiver"></div></div>'+
+        '<div class="scaleRow" id="scale"></div>'+
+      '</div>'+
+    '</div>';
+
+  // scale ticks at 0, 1/2, 1 on both probability tracks
+  ["tRain","tRiver"].forEach(id=>{
+    const t = el(id);
+    [0,.5,1].forEach(p=>{
+      const k=document.createElement("div"); k.className="tick"; k.style.left=(p*100)+"%"; t.appendChild(k);
+    });
+  });
+  const sc = el("scale");
+  [[0,"0"],[.5,"½"],[1,"1"]].forEach(([p,l])=>{
+    const d=document.createElement("div"); d.className="tickL"; d.style.left=(p*100)+"%"; d.textContent=l; sc.appendChild(d);
+  });
+
+  function setBar(which, v){
+    established[which]=v;
+    el(which==="rain"?"fRain":"fRiver").style.width=(v*100)+"%";
+    el(which==="rain"?"vRain":"vRiver").textContent = (which==="rain") ? "0.500" : v.toFixed(3);
+  }
+  function markGap(){
+    const t = el("tRiver");
+    const g = document.createElement("div");
+    g.className="gapmark";
+    g.style.left="50%"; g.style.width=(EPS*100)+"%";
+    t.appendChild(g);
+  }
+  function hitBoast(d){
+    boast = Math.max(0, boast - d);
+    const p = boast/boastMax;
+    el("fBoast").style.width=(p*100)+"%";
+    el("vBoast").textContent = Math.round(p*100)+"%";
+    popDamage(d>=999 ? "BROKEN" : d);
+    sfx.strike(d>=999);
+    flash(); shakeStage();
+  }
+
+  function runPhase(){
+    const P = BATTLE[phase];
+    el("bTitle").textContent = P.banner;
+    el("bSub").textContent = "";
+    say("Elder Kaji", P.intro);
+    // wait for the dialogue, then ask
+    waitThen(()=>askTurn());
+  }
+  function askTurn(){
+    const P = BATTLE[phase], T = P.turns[turn];
+    showMenu(T.q, T.opts, (o,i,btn)=>{
+      if(o.ok){
+        hideMenu();
+        hitBoast(o.dmg);
+        award("bt"+phase+"_"+turn, 10);
+        say("Kaede", o.r);
+        waitThen(()=>{
+          turn++;
+          if(turn < P.turns.length) askTurn();
+          else phaseEnd();
+        });
+      } else {
+        btn.classList.add("dead"); sfx.err();
+        say("Adversarius", o.r);
+        // menu stays open; typing continues underneath
+      }
+    });
+  }
+  function phaseEnd(){
+    const P = BATTLE[phase];
+    el("bSub").textContent = P.conclude;
+    if(P.bar==="rain") setBar("rain", P.val);
+    else if(P.bar==="river") setBar("river", P.val);
+    else markGap();
+    say("Elder Kaji", P.line);
+    waitThen(()=>{
+      phase++; turn=0;
+      if(phase < BATTLE.length) runPhase();
+      else {
+        const b = document.createElement("div");
+        b.style.marginTop="10px";
+        b.innerHTML = '<button class="startBtn" id="bdone" type="button">THE BOAST BREAKS</button>';
+        panel.appendChild(b);
+        el("bdone").addEventListener("click",()=>{ panel.className="jwin"; done(); });
+      }
+    });
+  }
+  runPhase();
+}
+
+/* a small helper: continue once the current line has been dismissed */
+let afterText = null;
+function waitThen(fn){ afterText = fn; }
+
+/* ---------- ending ---------- */
+function sceneEnding(){
+  const rank = S.insight >= 130 ? "REDUCTIONIST · FIRST RANK"
+             : S.insight >= 90  ? "REDUCTIONIST · SECOND RANK"
+             : "APPRENTICE OF NAGARA";
+  const lines = [
+    "Assume some efficient eavesdropper A wins the game against «G(k) ⊕ m» with probability «1/2 + ε».",
+    "Build «D(w)»: run A for «m₀, m₁»; flip «b»; hand it «c = w ⊕ m_b»; output 1 exactly when A's guess equals «b».",
+    "Fed true rain, «c» is a one-time pad: A is blind, so «Pr[D(r) = 1] = 1/2» exactly.",
+    "Fed «G(k)», A's view is the real game: «Pr[D(G(k)) = 1] = 1/2 + ε».",
+    "So «|Pr[D(G(k))=1] − Pr[D(r)=1]| = ε». G is a PRG, so «ε» is negligible — for every A. The seal holds."
+  ];
+  panel.className="jwin on full";
+  panel.innerHTML =
+    '<div class="pTitle">終 · THE PROOF SCROLL</div>'+
+    '<div class="pSub">What the whole journey was, written plainly.</div>'+
+    '<div class="pBody" style="display:flex;flex-direction:column;justify-content:center"><div class="qed">'+
+      lines.map((t,i)=>'<div class="qedLine"><span class="qn">'+(i+1)+'</span><span>'+
+        t.replace(/«([^»]*)»/g,'<span style="font-family:JetBrains Mono,monospace;color:var(--gold)">$1</span>')+'</span></div>').join("")+
+    '</div>'+
+    '<div class="rank">'+rank+'<br><span style="color:var(--jade);font-size:9px">INSIGHT '+S.insight+' / 150</span></div>'+
+    '<div style="text-align:center;margin-top:8px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">'+
+      '<button class="startBtn" id="eCodex" type="button">OPEN CODEX</button>'+
+      '<button class="startBtn ghost" id="eAgain" type="button">NEW GAME</button>'+
+    '</div></div>';
+  el("eCodex").addEventListener("click",()=>openCodex());
+  el("eAgain").addEventListener("click",()=>{ try{localStorage.removeItem("rq_save");}catch(e){} location.reload(); });
+  speakerEl.textContent=""; textEl.className="nar";
+  textEl.textContent = "Nagara sends its letters down the river. They are still not read.";
+  cursorEl.classList.remove("on");
+  waiting = null;
+}
+
+/* ---------- codex ---------- */
+const cx = el("codex");
+let codexOpen = false, codexSel = "otp";
+function openCodex(){ codexOpen = true; drawCodex(); }
+function drawCodex(){
+  const entry = CODEX.find(c=>c.key===codexSel) || CODEX[0];
+  const locked = !S.unlocked.has(entry.key);
+  cx.className="jwin on";
+  cx.innerHTML =
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'+
+      '<div class="pTitle" style="margin:0;flex:1">CODEX &nbsp;·&nbsp; 図鑑</div>'+
+      '<button class="hbtn" id="cxClose" type="button">CLOSE</button>'+
+    '</div>'+
+    '<div class="pBody"><div class="cxGrid">'+
+      '<div class="cxList">'+ CODEX.map(c=>{
+        const lk = !S.unlocked.has(c.key);
+        return '<button type="button" class="cxItem'+(c.key===codexSel?" sel":"")+(lk?" locked":"")+'" data-k="'+c.key+'">'+
+               (lk ? "??? LOCKED" : c.name)+'</button>';
+      }).join("") + '</div>'+
+      '<div class="cxRead">'+ (locked
+        ? '<h3>Not yet discovered</h3><p>Play on. This entry unlocks when the story reaches it.</p>'
+        : entry.html) +'</div>'+
+    '</div></div>';
+  cx.querySelectorAll(".cxItem").forEach(b=>{
+    b.addEventListener("click",()=>{ if(b.classList.contains("locked")) return; codexSel=b.dataset.k; drawCodex(); });
+  });
+  el("cxClose").addEventListener("click",closeCodex);
+}
+function closeCodex(){
+  codexOpen = false;
+  cx.className = "jwin";
+  cx.innerHTML = "";
+}
+el("codexBtn").addEventListener("click", ()=>{ if(codexOpen) closeCodex(); else openCodex(); });
+
+/* =========================================================
+   8. RUNNER
+   ========================================================= */
+function save(){
+  try{ localStorage.setItem("rq_save", JSON.stringify({
+    i:S.i, insight:S.insight, first:S.first, unlocked:[...S.unlocked]
+  })); }catch(e){}
+}
+function load(){
+  try{
+    const raw = localStorage.getItem("rq_save"); if(!raw) return null;
+    return JSON.parse(raw);
+  }catch(e){ return null; }
+}
+
+function step(){
+  if(S.i >= script.length) return;
+  const b = script[S.i++];
+  switch(b.t){
+    case "chapter": chapterEl.textContent = b.name; step(); break;
+    case "bg": setBackdrop(b.id); step(); break;
+    case "cast": setCast(b.cfg); step(); break;
+    case "unlock": S.unlocked.add(b.key); sfx.lock(); step(); break;
+    case "save": save(); step(); break;
+    case "nar": say("", b.text, true); break;
+    case "say": say(b.who, b.text); break;
+    case "ask": doAsk(b); break;
+    case "xor": sceneXOR(step); break;
+    case "fountains": sceneFountains(step); break;
+    case "assemble": sceneAssemble(step); break;
+    case "battle": sceneBattle(step); break;
+    case "ending": sceneEnding(); break;
+    default: step();
+  }
+}
+
+function doAsk(b){
+  showMenu(b.q, b.opts, (o,i,btn)=>{
+    if(o.ok){
+      hideMenu(); sfx.ok();
+      if(o.key) award(o.key, o.pts||10);
+      say("", o.r, false);
+      speakerEl.textContent = "";
+      waitThen(step);
+    } else {
+      btn.classList.add("dead"); sfx.err();
+      say("", o.r, false);
+      speakerEl.textContent = "";
+    }
+  });
+}
+
+/* advance on click / key */
+function advance(){
+  if(codexOpen) return;
+  if(waiting === "text"){ finishText(); return; }
+  if(waiting === "click"){
+    waiting = null; cursorEl.classList.remove("on");
+    if(afterText){ const f = afterText; afterText = null; f(); return; }
+    // a menu or an interactive panel owns the flow — the dialogue is only feedback
+    if(menu.classList.contains("on") || panel.classList.contains("on")) return;
+    step();
+  }
+}
+dialog.addEventListener("click", advance);
+document.addEventListener("keydown", e=>{
+  if(e.key===" " || e.key==="Enter"){
+    if(document.activeElement && /BUTTON/.test(document.activeElement.tagName)) return;
+    e.preventDefault(); advance();
+  }
+  if(e.key==="Escape" && codexOpen) closeCodex();
+});
+
+/* ---- audio wiring ---- */
+const sndBtn = el("sndBtn");
+function syncSnd(){ sndBtn.textContent = soundOn ? "BGM ON" : "BGM OFF"; }
+syncSnd();
+sndBtn.addEventListener("click", ()=>{
+  initAudio();
+  setSound(!soundOn);
+  syncSnd();
+  if(soundOn && curTrack) playTrack(curTrack);
+});
+// any first touch inside the screen is a valid gesture to open the audio context
+el("screen").addEventListener("pointerdown", e=>{
+  if(e.target.closest(".startBtn,.hbtn,.fount,.cxItem,.opt,.card,#dialog")) initAudio();
+  const b = e.target.closest(".startBtn,.hbtn,.cxItem");
+  if(b && !e.target.closest("#title") && b.id !== "sndBtn") sfx.ok();
+}, true);
+// clicking the title art (not the buttons) starts the main theme
+titleEl.addEventListener("pointerdown", e=>{
+  initAudio();
+  if(!e.target.closest(".startBtn") && curTrack !== "title") playTrack("title");
+});
+
+function beginGame(){
+  initAudio();
+  sfx.fanfare();
+  setTimeout(()=>{ titleEl.classList.add("off"); el("screen").focus(); step(); }, 640);
+}
+
+/* boot */
+sizeCanvas(); setBackdrop("village"); tick();
+curTrack = null;                       // so the prologue theme actually starts
+setInsight(0);
+const saved = load();
+if(saved && saved.i > 0){
+  el("btnCont").style.display = "";
+  el("btnCont").addEventListener("click", ()=>{
+    S.i = saved.i; S.insight = saved.insight||0; S.first = saved.first||{};
+    S.unlocked = new Set(saved.unlocked && saved.unlocked.length ? saved.unlocked : ["otp"]);
+    setInsight(S.insight);
+    beginGame();
+  });
+}
+el("btnNew").addEventListener("click", ()=>{
+  try{ localStorage.removeItem("rq_save"); }catch(e){}
+  S.i=0; S.insight=0; S.first={}; S.unlocked=new Set(["otp"]);
+  setInsight(0);
+  beginGame();
+});
+
+})();
+</script>
+
+<p style="max-width:980px;font-size:12.5px;line-height:1.7;text-align:center;color:#6c6784;margin:0 auto">
+  <a href="index.html" style="color:inherit">&larr; ECE 407 &middot; Cryptography</a>
+  &nbsp;&middot;&nbsp;
+  <a href="demos.html" style="color:inherit">Interactive demos</a>
+</p>
+</body>
+</html>
