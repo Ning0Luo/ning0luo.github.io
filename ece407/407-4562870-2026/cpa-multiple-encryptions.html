@@ -1,0 +1,1229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="An interactive proof that CPA security implies CPA security for multiple encryptions: build the reduction, walk the hybrid chain, and measure the factor-t loss. ECE 407 — Cryptography.">
+<title>One challenge ciphertext, and the ladder that turns it into many</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Antique&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --paper:#e4e1d5; --paper-2:#f0ede3; --paper-3:#d9d5c6;
+  --ink:#21211d; --ink-2:#5b5a51; --ink-3:#86847a;
+  --rule:#c3bfae; --rule-2:#a9a495;
+  --indigo:#2c4f70; --indigo-2:#cfdae4;
+  --shu:#b03a2a; --shu-2:#eed6cf;
+  --matcha:#4d6b3c; --matcha-2:#d8e2ce;
+  --gold:#93701f; --gold-2:#e9dcbb;
+  /* categorical marks — validated for CVD separation on both surfaces */
+  --m0:#b0442a; --m0-soft:#f0dbd3;
+  --m1:#2b6aa8; --m1-soft:#d7e3ef;
+  --shadow:0 1px 0 rgba(0,0,0,.05), 0 8px 22px rgba(40,44,38,.10);
+  --f-disp:"Zen Antique","Hiragino Mincho ProN",Georgia,serif;
+  --f-ui:"IBM Plex Sans",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#15181b; --paper-2:#1d2126; --paper-3:#121518;
+  --ink:#e4e0d4; --ink-2:#a6a89f; --ink-3:#7b7d75;
+  --rule:#31363c; --rule-2:#454b53;
+  --indigo:#7fa8cd; --indigo-2:#22303d;
+  --shu:#e0705c; --shu-2:#3a241f;
+  --matcha:#8fb277; --matcha-2:#242e1f;
+  --gold:#c09239; --gold-2:#332a16;
+  --m0:#d45a42; --m0-soft:#3a241f;
+  --m1:#4f95d0; --m1-soft:#1b2b39;
+  --shadow:0 1px 0 rgba(0,0,0,.3), 0 8px 22px rgba(0,0,0,.35);
+}}
+:root[data-theme="dark"]{
+  --paper:#15181b; --paper-2:#1d2126; --paper-3:#121518;
+  --ink:#e4e0d4; --ink-2:#a6a89f; --ink-3:#7b7d75;
+  --rule:#31363c; --rule-2:#454b53;
+  --indigo:#7fa8cd; --indigo-2:#22303d;
+  --shu:#e0705c; --shu-2:#3a241f;
+  --matcha:#8fb277; --matcha-2:#242e1f;
+  --gold:#c09239; --gold-2:#332a16;
+  --m0:#d45a42; --m0-soft:#3a241f;
+  --m1:#4f95d0; --m1-soft:#1b2b39;
+  --shadow:0 1px 0 rgba(0,0,0,.3), 0 8px 22px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+body{margin:0; background:var(--paper); color:var(--ink); font-family:var(--f-ui); font-size:15px; line-height:1.6;
+  background-image:repeating-linear-gradient(0deg,transparent 0 39px,rgba(120,124,110,.055) 39px 40px),
+                   repeating-linear-gradient(90deg,transparent 0 39px,rgba(120,124,110,.055) 39px 40px);}
+.wrap{max-width:1280px; margin:0 auto; padding:0 20px 56px}
+
+.bar{position:sticky; top:0; z-index:9; background:var(--paper); border-bottom:1px solid var(--rule);
+  margin:0 -20px 20px; padding:11px 20px; display:flex; align-items:center; gap:20px; flex-wrap:wrap}
+.bar .brand{font-family:var(--f-disp); font-size:16px; white-space:nowrap}
+.stat{font-family:var(--f-mono); font-size:12px; color:var(--ink-2); white-space:nowrap}
+.stat b{font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums}
+.bar .right{margin-left:auto; display:flex; gap:8px}
+.btn{font-family:var(--f-ui); font-size:12.5px; font-weight:500; color:var(--ink); background:var(--paper-2);
+  border:1px solid var(--rule-2); border-radius:2px; padding:6px 13px; cursor:pointer}
+.btn:hover:not(:disabled){border-color:var(--indigo); color:var(--indigo)}
+.btn:disabled{opacity:.4; cursor:default}
+.btn:focus-visible{outline:2px solid var(--indigo); outline-offset:2px}
+.btn.go{background:var(--indigo); border-color:var(--indigo); color:var(--paper-2); font-weight:600}
+.btn.go:hover:not(:disabled){filter:brightness(1.12); color:var(--paper-2)}
+.btn.call{border-color:var(--gold); color:var(--gold); font-weight:600}
+.btn.call:hover:not(:disabled){background:var(--gold); color:var(--paper-2)}
+.btn.sm{padding:4px 9px; font-size:12px}
+
+.mast{padding:24px 0 18px; border-bottom:2px solid var(--ink); margin-bottom:20px}
+.mast .eyebrow{font-family:var(--f-mono); font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--shu); margin-bottom:8px}
+.mast h1{margin:0; font-family:var(--f-disp); font-size:clamp(27px,4vw,40px); font-weight:400; line-height:1.12; text-wrap:balance}
+.mast p{margin:10px 0 0; color:var(--ink-2); max-width:74ch; font-size:15.5px}
+.mast b{color:var(--ink)}
+
+/* the two agents, kept apart everywhere */
+.pan > h3 .ttl{font-size:11px; letter-spacing:.13em; text-transform:uppercase; color:var(--ink-2); font-weight:500}
+.pan > h3 .ttl .lc{text-transform:none}
+.pan > h3 .ttl .nA{color:var(--shu)}
+.pan > h3 .ttl .nP{color:var(--indigo)}
+.nA{color:var(--shu); font-weight:600; white-space:nowrap}
+.nP{color:var(--indigo); font-weight:600; white-space:nowrap}
+.cast{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+@media (max-width:720px){.cast{grid-template-columns:1fr}}
+.cc{border:1px solid var(--rule-2); border-top:3px solid var(--rule-2); background:var(--paper); padding:13px 15px}
+.cc.a{border-top-color:var(--shu)} .cc.p{border-top-color:var(--indigo)}
+.cc .rl{font-family:var(--f-mono); font-size:10.5px; letter-spacing:.13em; text-transform:uppercase; color:var(--ink-3)}
+.cc h4{margin:3px 0 2px; font-family:var(--f-disp); font-size:21px; font-weight:400; line-height:1.2}
+.cc.a h4{color:var(--shu)} .cc.p h4{color:var(--indigo)}
+.cc .tag{font-size:13px; color:var(--ink-2); margin-bottom:9px}
+.cc dl{margin:0; display:grid; grid-template-columns:80px 1fr; gap:2px 10px; font-size:13px}
+.cc dt{font-family:var(--f-mono); font-size:10.5px; letter-spacing:.07em; text-transform:uppercase; color:var(--ink-3); padding-top:3px}
+.cc dd{margin:0; color:var(--ink)}
+.cc .foot{margin:10px 0 0; font-size:12.5px; color:var(--ink-3); line-height:1.5}
+.nest{margin-top:14px; border-top:1px dashed var(--rule); padding-top:13px}
+.nest svg{width:100%; height:auto; display:block}
+.nest figcaption{margin-top:7px; font-size:12.5px; color:var(--ink-2); line-height:1.55; max-width:80ch}
+
+.msg{border:1px solid var(--rule-2); border-left:4px solid var(--indigo); background:var(--paper-2);
+  padding:15px 18px; margin-bottom:20px; box-shadow:var(--shadow)}
+.msg.good{border-left-color:var(--matcha)} .msg.bad{border-left-color:var(--shu)} .msg.gold{border-left-color:var(--gold)}
+.msg .who{font-family:var(--f-mono); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3); margin-bottom:6px}
+.msg .who b{color:var(--indigo)} .msg.good .who b{color:var(--matcha)} .msg.bad .who b{color:var(--shu)} .msg.gold .who b{color:var(--gold)}
+.msg p{margin:0; max-width:80ch; font-size:15.5px; line-height:1.65}
+.msg p+p{margin-top:9px}
+.msg code{font-family:var(--f-mono); font-size:14px; background:var(--paper-3); padding:1px 4px; border-radius:2px}
+
+.grid{display:grid; grid-template-columns:1fr 372px; gap:20px; align-items:start}
+@media (max-width:1040px){.grid{grid-template-columns:1fr}}
+
+.pan{border:1px solid var(--rule-2); background:var(--paper-2); margin-bottom:18px}
+.pan > h3{margin:0; padding:11px 16px; border-bottom:1px solid var(--rule); font-family:var(--f-mono);
+  font-size:11px; letter-spacing:.13em; text-transform:uppercase; color:var(--ink-2); font-weight:500;
+  display:flex; justify-content:space-between; gap:10px; align-items:baseline}
+.pan > h3 span{color:var(--ink-3); letter-spacing:.06em; text-transform:none; font-size:11.5px}
+.pan .in{padding:15px 16px}
+
+/* ── vectors ───────────────────────────────────────────── */
+.vecs{display:flex; flex-direction:column; gap:6px; margin-bottom:12px}
+.vrow{display:grid; grid-template-columns:56px minmax(0,1fr); gap:10px; align-items:center}
+.vrow .vl{font-family:var(--f-mono); font-size:12.5px; font-weight:600}
+.vrow.v0 .vl{color:var(--m0)} .vrow.v1 .vl{color:var(--m1)}
+.cells{display:grid; gap:4px; overflow-x:auto}
+.cell{font-family:var(--f-mono); font-size:11.5px; text-align:center; padding:5px 2px; border:1px solid var(--rule-2);
+  border-radius:2px; background:var(--paper); color:var(--ink-2); white-space:nowrap; min-width:0; overflow:hidden}
+.cell.m0{background:var(--m0-soft); border-color:var(--m0); color:var(--m0); font-weight:500}
+.cell.m1{background:var(--m1-soft); border-color:var(--m1); color:var(--m1); font-weight:500}
+.cell.same{background:var(--paper-3); border-style:dashed; color:var(--ink-3)}
+.cell.chal{background:var(--gold-2); border-color:var(--gold); color:var(--gold); font-weight:600}
+.cell.hot{box-shadow:0 0 0 2px var(--gold); border-color:var(--gold)}
+.slotnums{display:grid; gap:4px; font-family:var(--f-mono); font-size:10px; color:var(--ink-3); text-align:center; margin-bottom:2px}
+.picker{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px}
+.chip{font-family:var(--f-ui); font-size:12.5px; padding:5px 11px; border:1px solid var(--rule-2); background:var(--paper);
+  border-radius:2px; cursor:pointer; color:var(--ink)}
+.chip:hover{border-color:var(--indigo)}
+.chip:focus-visible{outline:2px solid var(--indigo); outline-offset:1px}
+.chip.on{background:var(--indigo-2); border-color:var(--indigo); color:var(--indigo); font-weight:600}
+.legend{display:flex; gap:16px; flex-wrap:wrap; font-size:12.5px; color:var(--ink-2); align-items:center}
+.legend i{display:inline-block; width:11px; height:11px; border-radius:2px; vertical-align:-1px; margin-right:5px; border:1px solid}
+.legend i.k0{background:var(--m0-soft); border-color:var(--m0)}
+.legend i.k1{background:var(--m1-soft); border-color:var(--m1)}
+.legend i.kc{background:var(--gold-2); border-color:var(--gold)}
+.note{font-size:12.5px; color:var(--ink-3); margin-top:9px; max-width:76ch}
+
+/* ── the ladder ────────────────────────────────────────── */
+.ladder{border:1px solid var(--rule); background:var(--paper); padding:10px 12px; overflow-x:auto}
+.rung, .step{display:grid; grid-template-columns:52px minmax(240px,1fr) 84px; gap:10px; align-items:center; width:100%}
+.rung{padding:5px 4px; border-radius:2px}
+.rung .rl{font-family:var(--f-mono); font-size:12.5px; color:var(--ink-2); white-space:nowrap}
+.rung .rp{font-family:var(--f-mono); font-size:12px; color:var(--ink-3); text-align:right; font-variant-numeric:tabular-nums}
+.rung.sel{background:var(--paper-3)}
+.rung.sel .rl{color:var(--ink); font-weight:600}
+.rung.sel .rp{color:var(--ink)}
+.step{background:none; border:0; border-left:2px solid transparent; padding:3px 4px 3px 2px; cursor:pointer; text-align:left;
+  font-family:var(--f-ui); color:var(--ink-2)}
+.step:hover{background:var(--paper-3)}
+.step:focus-visible{outline:2px solid var(--indigo); outline-offset:-2px}
+.step .sl{font-family:var(--f-mono); font-size:10.5px; color:var(--ink-3); white-space:nowrap}
+.step .sd{display:flex; align-items:center; gap:9px; min-width:0}
+.step .sd em{font-family:var(--f-mono); font-style:normal; font-size:11.5px; color:var(--ink-3); white-space:nowrap}
+.step .sv{font-family:var(--f-mono); font-size:11.5px; text-align:right; color:var(--ink-3); font-variant-numeric:tabular-nums}
+.gtrack{flex:1; height:9px; min-width:40px; background:var(--paper-3); border:1px solid var(--rule); border-radius:2px; overflow:hidden}
+.gtrack i{display:block; height:100%; background:var(--gold); border-radius:0 2px 2px 0}
+.step.sel{border-left-color:var(--gold); background:var(--gold-2)}
+.step.sel .sl,.step.sel .sv,.step.sel .sd em{color:var(--gold)}
+.step.zero .gtrack i{background:var(--rule-2)}
+.lad-acts{display:flex; gap:7px; flex-wrap:wrap; align-items:center; margin-top:12px}
+
+/* ── embedding strip ───────────────────────────────────── */
+.emb{display:flex; flex-direction:column; gap:7px}
+.erow{display:grid; grid-template-columns:104px minmax(0,1fr); gap:10px; align-items:center}
+.erow .el{font-family:var(--f-mono); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); text-align:right}
+.srcs{display:grid; gap:4px; font-family:var(--f-mono); font-size:9.5px; text-align:center; color:var(--ink-3)}
+.srcs span.ch{color:var(--gold); font-weight:600}
+.worlds2{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px}
+@media (max-width:560px){.worlds2{grid-template-columns:1fr}}
+.wc{border:1px solid var(--rule-2); border-top:3px solid var(--rule-2); background:var(--paper); padding:9px 11px}
+.wc.b0{border-top-color:var(--m0)} .wc.b1{border-top-color:var(--m1)}
+.wc .h{font-family:var(--f-mono); font-size:11px; color:var(--ink-3); letter-spacing:.06em; text-transform:uppercase}
+.wc .v{font-size:13.5px; margin-top:3px}
+.wc.b0 .v b{color:var(--m0)} .wc.b1 .v b{color:var(--m1)}
+
+/* ── the arithmetic ────────────────────────────────────── */
+.deriv{margin-bottom:20px}
+.deriv:last-child{margin-bottom:0}
+.deriv h5{margin:0 0 6px; font-size:14.5px; font-weight:600}
+table.dt{width:100%; border-collapse:collapse; font-size:12.5px; margin:9px 0; }
+table.dt th{font-family:var(--f-mono); font-size:9.5px; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-3);
+  font-weight:500; text-align:left; padding:4px 10px 5px 0; border-bottom:1px solid var(--rule-2); vertical-align:bottom}
+table.dt td{padding:6px 10px 6px 0; border-bottom:1px solid var(--rule); vertical-align:baseline}
+table.dt tr:last-child td{border-bottom:0}
+table.dt td.n{font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap}
+table.dt tr.b0 td:first-child{color:var(--m0); font-weight:500}
+table.dt tr.b1 td:first-child{color:var(--m1); font-weight:500}
+.algo{font-family:var(--f-mono); font-size:12.5px; line-height:1.85; white-space:pre; overflow-x:auto;
+  background:var(--paper-3); border-left:2px solid var(--gold); padding:10px 13px; margin:0 0 9px; color:var(--ink)}
+.meters{border:1px solid var(--rule); background:var(--paper); padding:12px 14px 9px; margin-top:14px}
+.meters h5{margin:0 0 10px; font-size:13.5px; font-weight:600}
+.meter{display:grid; grid-template-columns:132px minmax(0,1fr) 72px; gap:11px; align-items:center; margin-bottom:8px}
+.meter .ml{font-family:var(--f-mono); font-size:11px; color:var(--ink-2); text-align:right; line-height:1.35}
+.meter .mt{position:relative; height:15px; background:var(--paper-3); border:1px solid var(--rule); border-radius:2px; overflow:hidden}
+.meter .mt .half{position:absolute; left:0; top:0; bottom:0; width:50%; background:var(--rule)}
+.meter .mt .edge{position:absolute; left:50%; top:0; bottom:0; background:var(--gold); min-width:2px}
+.meter .mt .tick{position:absolute; left:50%; top:0; bottom:0; width:1px; background:var(--ink-2)}
+.meter .mv{font-family:var(--f-mono); font-size:12.5px; font-variant-numeric:tabular-nums; text-align:right; font-weight:600}
+.mscale{display:grid; grid-template-columns:132px minmax(0,1fr) 72px; gap:11px; font-family:var(--f-mono); font-size:10px; color:var(--ink-3)}
+.mscale .sc{display:flex; justify-content:space-between}
+
+/* ── chart ─────────────────────────────────────────────── */
+.chartbox{border:1px solid var(--rule); background:var(--paper); padding:12px 12px 8px; margin-top:14px}
+.chartbox h4{margin:0 0 2px; font-size:13.5px; font-weight:600}
+.chartbox .sub{font-size:12.5px; color:var(--ink-3); margin-bottom:8px}
+.chartbox svg{width:100%; height:auto; display:block; touch-action:none}
+.readout{font-family:var(--f-mono); font-size:11.5px; color:var(--ink-2); min-height:1.5em; margin-top:4px}
+
+/* ── tally ─────────────────────────────────────────────── */
+.tally{display:grid; grid-template-columns:repeat(auto-fit,minmax(126px,1fr)); gap:1px; background:var(--rule); border:1px solid var(--rule); margin:14px 0}
+.tally div{background:var(--paper); padding:9px 12px}
+.tally .k{font-family:var(--f-mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3)}
+.tally .v{font-family:var(--f-mono); font-size:17px; font-weight:600; font-variant-numeric:tabular-nums; margin-top:1px}
+.tally .v.gold{color:var(--gold)} .tally .v.mut{color:var(--ink-2)} .tally .v.good{color:var(--matcha)}
+.tally .s{font-family:var(--f-mono); font-size:10px; color:var(--ink-3); margin-top:2px}
+.acts{display:flex; gap:7px; flex-wrap:wrap; align-items:center}
+
+/* ── loadout ───────────────────────────────────────────── */
+.slot{margin-bottom:15px}
+.slot:last-child{margin-bottom:0}
+.slot .sh{font-family:var(--f-mono); font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3); margin-bottom:6px; display:flex; justify-content:space-between; gap:8px}
+.slot .sh b{color:var(--matcha); font-weight:500}
+.opt{display:block; width:100%; text-align:left; font-family:var(--f-ui); font-size:13px; line-height:1.45;
+  background:var(--paper); border:1px solid var(--rule-2); border-radius:2px; padding:7px 10px; margin-bottom:5px; cursor:pointer; color:var(--ink)}
+.opt:hover:not(:disabled){border-color:var(--indigo)}
+.opt:focus-visible{outline:2px solid var(--indigo); outline-offset:1px}
+.opt code{font-family:var(--f-mono); font-size:12px}
+.opt.on{background:var(--matcha-2); border-color:var(--matcha); font-weight:600}
+.opt.on.warn{background:var(--shu-2); border-color:var(--shu)}
+.opt.blocked{opacity:.55; border-style:dashed}
+.opt .n{display:block; font-size:11.5px; color:var(--ink-3); margin-top:2px; font-weight:400}
+.opt.blocked .n{color:var(--shu)}
+
+.dials{font-size:13px; color:var(--ink-2)}
+.dial{margin-bottom:13px}
+.dial:last-child{margin-bottom:0}
+.dial .dh{font-family:var(--f-mono); font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3); margin-bottom:6px}
+.contract{font-size:13px; color:var(--ink-2); margin-top:13px; padding-top:12px; border-top:1px dashed var(--rule)}
+.contract .row{display:grid; grid-template-columns:66px 1fr; gap:8px; padding:3px 0}
+.contract .row b{font-family:var(--f-mono); font-size:11px; letter-spacing:.07em; text-transform:uppercase; color:var(--ink-3); font-weight:500}
+.contract .row span{color:var(--ink)}
+
+.stages{display:flex; flex-direction:column; gap:6px}
+.sg{display:grid; grid-template-columns:22px 1fr; gap:9px; align-items:baseline; font-size:13px; padding:6px 8px; border-left:2px solid var(--rule-2); color:var(--ink-2)}
+.sg .n{font-family:var(--f-mono); font-size:11px; color:var(--ink-3)}
+.sg.now{border-left-color:var(--indigo); background:var(--indigo-2); font-weight:600; color:var(--ink)}
+.sg.won{border-left-color:var(--matcha); color:var(--ink-3)}
+.sg.won .nm{text-decoration:line-through}
+
+/* ── finale ────────────────────────────────────────────── */
+.final{display:none; border:2px solid var(--gold); background:var(--paper-2); padding:26px 28px; margin-bottom:20px; box-shadow:var(--shadow)}
+.final.on{display:block}
+.final .seal{display:inline-block; font-family:var(--f-disp); font-size:12px; letter-spacing:.2em; color:var(--shu); border:2px solid var(--shu); padding:6px 12px; margin-bottom:14px}
+.final h2{margin:0 0 12px; font-family:var(--f-disp); font-size:26px; font-weight:400; line-height:1.25; text-wrap:balance}
+.final h4{margin:22px 0 8px; font-family:var(--f-mono); font-size:11px; letter-spacing:.13em; text-transform:uppercase; color:var(--shu); font-weight:600}
+.final p{margin:0 0 11px; max-width:72ch; font-size:14.5px}
+.final ul{margin:0 0 11px; padding-left:20px; max-width:72ch; font-size:14.5px}
+.final li{margin-bottom:8px}
+.pre{font-family:var(--f-mono); font-size:12.5px; line-height:1.7; white-space:pre-wrap; background:var(--paper-3);
+  border-left:2px solid var(--rule-2); padding:12px 14px; margin:0 0 12px; overflow-x:auto; color:var(--ink)}
+
+.scrim{position:fixed; inset:0; z-index:30; background:rgba(20,22,18,.72); display:flex; padding:24px; overflow:auto}
+.scrim[hidden]{display:none}
+.sheet{margin:auto; max-width:760px; width:100%; background:var(--paper-2); border:1px solid var(--rule-2); box-shadow:var(--shadow); padding:26px 28px 30px}
+.sheet h3{margin:0 0 16px; font-family:var(--f-disp); font-size:24px; font-weight:400}
+.sheet h4{margin:20px 0 7px; font-family:var(--f-mono); font-size:11px; letter-spacing:.13em; text-transform:uppercase; color:var(--shu); font-weight:600}
+.sheet h4:first-of-type{margin-top:0}
+.sheet p{margin:0 0 10px; max-width:68ch; font-size:14.5px; color:var(--ink-2)}
+.sheet .close{float:right}
+figure.dia{margin:0}
+figure.dia svg{width:100%; height:auto; display:block; color:var(--ink-2)}
+figure.dia figcaption{margin-top:8px; font-size:12.5px; color:var(--ink-2); line-height:1.5}
+@media (prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="bar">
+    <span class="brand">The Hybrid Ladder</span>
+    <span class="stat">MESSAGES <b id="sT">6</b></span>
+    <span class="stat"><span class="nA">A</span> (hired) δ = <b id="sD">0.36</b></span>
+    <span class="stat"><span class="nP">A′</span> (you) δ/t = <b id="sDT">0.060</b></span>
+    <span class="right">
+      <button class="btn" id="manualBtn">Field manual</button>
+      <button class="btn" id="resetBtn">Restart</button>
+    </span>
+  </div>
+
+  <div class="mast">
+    <div class="eyebrow">CPA security implies CPA security for multiple encryptions</div>
+    <h1>One challenge ciphertext. Six slots to fill. The ladder is how you get from one to the other.</h1>
+    <p>There are two attackers on this page and everything depends on keeping them apart. <span class="nA">A</span> is the one you <i>hired</i>: it breaks the t-message game, and you never see inside it. <span class="nP">A′</span> is the one you <i>build</i>: it plays the ordinary one-message CPA game, and it runs <span class="nA">A</span> once inside itself as a subroutine. The trouble is that <span class="nP">A′</span>'s challenger deals it exactly <b>one</b> ciphertext while <span class="nA">A</span> demands <b>t</b> — so whatever <span class="nP">A′</span> builds, its two worlds differ in a single slot, and <span class="nA">A</span>'s vectors differ in all of them. The ladder is the only thing that spans that gap, and it charges a toll of <b>t</b> for the crossing.</p>
+  </div>
+
+  <div class="pan">
+    <h3>Who is who <span>two attackers, two different games</span></h3>
+    <div class="in">
+      <div class="cast">
+        <div class="cc a">
+          <div class="rl">the one you hired · never opened</div>
+          <h4>A — the vector adversary</h4>
+          <div class="tag">Already breaks multiple encryption. Its existence is the assumption you are trying to refute.</div>
+          <dl>
+            <dt>Plays</dt><dd>PrivK<sup>mult-cpa</sup> — the <i>t</i>-message game</dd>
+            <dt>Submits</dt><dd>two vectors M₀, M₁ of <i>t</i> messages</dd>
+            <dt>Receives</dt><dd><i>t</i> ciphertexts, all under one key</dd>
+            <dt>Wins with</dt><dd>probability ½ + δ/2 <span style="color:var(--ink-3)">— derived below, not assumed</span></dd>
+          </dl>
+          <p class="foot">A black box under contract. You never read its code, never rewind it, and run it exactly once. It will not tell you which slot it is reading.</p>
+        </div>
+        <div class="cc p">
+          <div class="rl">the one you build · this is you</div>
+          <h4>A′ — your machine</h4>
+          <div class="tag">Assembled in the right-hand column. Everything you click on this page is a decision about A′.</div>
+          <dl>
+            <dt>Plays</dt><dd>PrivK<sup>cpa</sup> — the <b>one</b>-message game</dd>
+            <dt>Submits</dt><dd>a single pair m₀, m₁</dd>
+            <dt>Receives</dt><dd>one challenge ciphertext, plus an oracle</dd>
+            <dt>Wins with</dt><dd>probability ½ + δ/2t <span style="color:var(--ink-3)">— the same average, over a shorter gap</span></dd>
+          </dl>
+          <p class="foot">Contains A. Its whole job is to dress one ciphertext up as a vector of <i>t</i>, hand that to A, and report A's verdict as its own.</p>
+        </div>
+      </div>
+
+      <figure class="nest">
+        <svg viewBox="0 0 780 156" role="img" aria-label="A diagram showing A-prime as an outer box that contains A as an inner box. One challenge ciphertext enters A-prime from its own CPA challenger; A-prime assembles a vector of t ciphertexts and passes it to A; A returns a guess, which A-prime relays as its own answer.">
+          <g font-family="IBM Plex Mono, monospace" font-size="11">
+            <text x="4" y="54" fill="var(--ink-3)">A&#8242;&#8217;s own</text>
+            <text x="4" y="68" fill="var(--ink-3)">CPA challenger</text>
+            <text x="4" y="86" fill="var(--gold)">hands it one</text>
+            <text x="4" y="100" fill="var(--gold)">ciphertext c</text>
+            <path d="M6 116 L138 116" stroke="var(--gold)" stroke-width="2" fill="none"/>
+            <path d="M138 116 l-9 -4.5 l0 9 z" fill="var(--gold)"/>
+
+            <rect x="148" y="14" width="472" height="128" rx="3" fill="none" stroke="var(--indigo)" stroke-width="1.8"/>
+            <text x="162" y="34" fill="var(--indigo)" font-size="12" font-weight="600">A&#8242; &#8212; your machine &#183; plays the ONE-message CPA game</text>
+            <text x="162" y="50" fill="var(--ink-3)" font-size="10">picks a rung i, buys slot i, fills the other t&#8722;1 from the oracle</text>
+
+            <rect x="310" y="66" width="192" height="60" rx="3" fill="none" stroke="var(--shu)" stroke-width="1.8"/>
+            <text x="406" y="90" text-anchor="middle" fill="var(--shu)" font-size="12" font-weight="600">A &#8212; hired, black box</text>
+            <text x="406" y="108" text-anchor="middle" fill="var(--shu)" font-size="10">plays the t-message game</text>
+
+            <path d="M168 96 L304 96" stroke="var(--ink-2)" stroke-width="1.2" fill="none"/>
+            <path d="M304 96 l-9 -4.5 l0 9 z" fill="var(--ink-2)"/>
+            <text x="236" y="88" text-anchor="middle" fill="var(--ink-2)" font-size="10">(c&#185;,&#8230;,c&#7511;)</text>
+
+            <path d="M504 96 L602 96" stroke="var(--ink-2)" stroke-width="1.2" fill="none"/>
+            <path d="M602 96 l-9 -4.5 l0 9 z" fill="var(--ink-2)"/>
+            <text x="553" y="88" text-anchor="middle" fill="var(--ink-2)" font-size="10">b&#8242;</text>
+
+            <path d="M622 96 L740 96" stroke="var(--indigo)" stroke-width="2" fill="none"/>
+            <path d="M740 96 l-9 -4.5 l0 9 z" fill="var(--indigo)"/>
+            <text x="630" y="80" fill="var(--indigo)" font-size="11">A&#8242;&#8217;s answer</text>
+            <text x="630" y="116" fill="var(--ink-3)" font-size="10">relayed, unchanged</text>
+          </g>
+        </svg>
+        <figcaption><span class="nA">A</span> sits <i>inside</i> <span class="nP">A′</span> and never learns it. Whenever the page says “<span class="nP">A′</span> sends <span class="nA">A</span>”, that arrow is the one in the middle; whenever it says “deal a trial”, one whole box runs once.</figcaption>
+      </figure>
+    </div>
+  </div>
+
+  <div class="msg" id="msg">
+    <div class="who"><b>The challenger</b> · the vectors are on the table</div>
+    <p>Start at the top: look at what A actually submitted. Then assemble A′ in the right-hand column, walk every rung of the ladder, and deal enough trials to watch your advantage land where the algebra says it must.</p>
+  </div>
+
+  <div class="final" id="final"></div>
+
+  <div class="grid">
+    <div>
+      <div class="pan">
+        <h3><span class="ttl">What <span class="nA">A</span> submitted</span> <span id="vecState">two vectors of t messages</span></h3>
+        <div class="in">
+          <div class="picker" id="diffPick"></div>
+          <div class="vecs" id="vecs"></div>
+          <div class="legend">
+            <span><i class="k0"></i>drawn from <b>M₀</b></span>
+            <span><i class="k1"></i>drawn from <b>M₁</b></span>
+          </div>
+          <p class="note" id="vecNote"></p>
+        </div>
+      </div>
+
+      <div class="pan">
+        <h3>The ladder <span id="ladState">rung 1 of 6 selected</span></h3>
+        <div class="in">
+          <div class="ladder" id="ladder"></div>
+          <div class="lad-acts">
+            <button class="btn" id="rungDown">◀ Down a rung</button>
+            <button class="btn" id="rungUp">Up a rung ▶</button>
+            <button class="btn go" id="climb">Climb the whole ladder</button>
+            <span class="stat" id="visitStat">visited 0/6</span>
+          </div>
+          <p class="note">Each <b>rung</b> is a hybrid distribution H<sub>i</sub> — a vector <span class="nA">A</span> could be handed: the first <i>i</i> slots carry messages from M₁, the rest from M₀. H₀ is exactly what <span class="nA">A</span>'s own challenger deals when its bit is 0; H<sub>t</sub> is exactly what it deals when the bit is 1. Each <b>step</b> between two rungs swaps a single slot — which is the only shape <span class="nP">A′</span> can build, since it has one challenge ciphertext to place. The step bars are the increments p<sub>i</sub> − p<sub>i−1</sub>; they sum to δ no matter how they are distributed, which is the whole content of the telescoping.</p>
+        </div>
+      </div>
+
+      <div class="pan">
+        <h3><span class="ttl">Where ½ + <span class="lc">δ</span>/2 comes from</span> <span id="algState">the two-world average, written out</span></h3>
+        <div class="in" id="algebra"></div>
+      </div>
+
+      <div class="pan">
+        <h3><span class="ttl">What <span class="nP">A′</span> sends at this rung</span> <span id="embState">embedding the challenge at slot 1</span></h3>
+        <div class="in">
+          <div class="emb" id="emb"></div>
+          <div class="legend" style="margin-top:11px">
+            <span><i class="kc"></i>the one ciphertext the CPA challenger deals you</span>
+            <span><i class="k0"></i>oracle call</span>
+            <span><i class="k1"></i>oracle call</span>
+          </div>
+          <div class="worlds2">
+            <div class="wc b0">
+              <div class="h">A′'s own challenger flips 0</div>
+              <div class="v" id="w0">—</div>
+            </div>
+            <div class="wc b1">
+              <div class="h">A′'s own challenger flips 1</div>
+              <div class="v" id="w1">—</div>
+            </div>
+          </div>
+
+          <div class="chartbox">
+            <h4>Pr[A outputs 1] along the ladder</h4>
+            <div class="sub">One point per rung. The shaded band is the increment your reduction is currently exploiting; the whole climb from p₀ to p<sub>t</sub> is δ.</div>
+            <svg id="chart" viewBox="0 0 720 250" role="img" aria-label="The probability that A outputs 1, plotted for each hybrid rung from H-zero to H-t, with the currently selected increment shaded."></svg>
+            <div class="readout" id="readout">Hover the plot to read a rung.</div>
+          </div>
+
+          <div class="tally">
+            <div><div class="k">Trials dealt</div><div class="v mut" id="tN">0</div><div class="s">one full run of A′</div></div>
+            <div><div class="k">A′ guessed right</div><div class="v mut" id="tK">0</div><div class="s">its own challenger's bit</div></div>
+            <div><div class="k">Observed rate</div><div class="v" id="tRate">—</div><div class="s" id="tRateSub">deal to measure</div></div>
+            <div><div class="k">Predicted</div><div class="v gold" id="tPred">0.5300</div><div class="s" id="tPredSub">½ + δ/2t</div></div>
+          </div>
+
+          <div class="acts">
+            <button class="btn go" id="deal1">Deal 1</button>
+            <button class="btn go" id="deal100">Deal 100</button>
+            <button class="btn go" id="deal1k">Deal 1,000</button>
+            <button class="btn go" id="deal10k">Deal 10,000</button>
+            <button class="btn" id="clearTrials">Clear</button>
+            <button class="btn call" id="proveBtn" disabled>Write the theorem</button>
+          </div>
+          <p class="note" id="dealNote"></p>
+        </div>
+      </div>
+    </div>
+
+    <aside>
+      <div class="pan">
+        <h3><span class="ttl">Build <span class="nP">A′</span> — your machine</span> <span id="dState">0/4 assembled</span></h3>
+        <div class="in" id="loadout"></div>
+      </div>
+
+      <div class="pan">
+        <h3><span class="ttl"><span class="nA">A</span> — the adversary you hired</span></h3>
+        <div class="in dials" id="dials"></div>
+      </div>
+
+      <div class="pan">
+        <h3>Four things to do</h3>
+        <div class="in stages" id="stages"></div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<div class="scrim" id="scrim" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-label="Field manual">
+    <button class="btn close" id="closeManual">Close</button>
+    <h3>Field manual</h3>
+
+    <h4>The game A plays — multiple encryptions</h4>
+    <div class="pre">PrivK^mult-cpa_{A,Π}(n):
+  1. k ← Gen(1ⁿ)
+  2. A, with oracle access to Enc_k(·), outputs two vectors
+       M₀ = (m₀¹, …, m₀ᵗ)   M₁ = (m₁¹, …, m₁ᵗ)
+     with |m₀ʲ| = |m₁ʲ| for every j
+  3. b ← {0,1};  cʲ ← Enc_k(m_bʲ) for each j;  A is given (c¹,…,cᵗ)
+  4. A keeps its oracle, outputs b′
+  5. the experiment outputs 1 iff b′ = b
+
+A is PPT, so t = t(n) is polynomial. That is not a
+convenience — it is load-bearing. See below.</div>
+
+    <h4>The game A′ plays — one message</h4>
+    <div class="pre">PrivK^cpa_{A′,Π}(n):
+  1. k ← Gen(1ⁿ)
+  2. A′, with oracle access to Enc_k(·), outputs m₀, m₁
+     with |m₀| = |m₁|
+  3. b ← {0,1};  c ← Enc_k(m_b);  A′ is given c
+  4. A′ keeps its oracle, outputs b′
+  5. the experiment outputs 1 iff b′ = b
+
+One pair in. One ciphertext back. This is the entire
+budget your reduction has to work with.</div>
+
+    <h4>The hybrids and the telescoping</h4>
+    <div class="pre">H_i  :  ( Enc(m₁¹), …, Enc(m₁ⁱ), Enc(m₀^{i+1}), …, Enc(m₀ᵗ) )
+
+  H₀ = the challenge when b = 0
+  H_t = the challenge when b = 1
+
+  p_i := Pr[ A outputs 1 in H_i ]
+
+  p_t − p₀ = Σ_{i=1..t} (p_i − p_{i−1})        ← telescoping
+
+Averaging: some single i has p_i − p_{i−1} ≥ (p_t − p₀)/t.
+You do not need to know which one. Picking i uniformly
+collects the average, which is exactly (p_t − p₀)/t.</div>
+
+    <h4>Where the oracle is load-bearing</h4>
+    <p>A′ has no key. It cannot produce <code>Enc(m₁¹), …, Enc(m₁^{i−1})</code> or <code>Enc(m₀^{i+1}), …, Enc(m₀ᵗ)</code> out of thin air. Chosen-plaintext access is the only thing that lets one challenge ciphertext be dressed as a vector of t — and it is why this theorem is true for CPA and false for eavesdropping security.</p>
+
+    <h4>The eavesdropping counterexample</h4>
+    <div class="pre">Let Π be EAV-secure and deterministic — a one-time pad,
+say, or any scheme with Enc(k,·) a function.
+
+  A submits  M₀ = (m, m)     M₁ = (m, m′),  m ≠ m′
+  A outputs  0 iff c¹ = c²
+
+Pr[success] = 1. Single-message security gives nothing.
+
+Corollary: a CPA-secure scheme must be randomized
+(or stateful). Determinism dies at t = 2.</div>
+
+    <h4>Why t must be polynomial</h4>
+    <div class="pre">Each link is negligible. You are adding t of them.
+
+  poly(n) · negl(n) = negl(n)          ✓
+  2ⁿ · negl(n)      = anything at all  ✗
+
+Indistinguishability is not transitive for free. A chain
+of superpolynomially many individually-indistinguishable
+steps can have trivially distinguishable endpoints — walk
+one bit at a time from 0ⁿ to 1ⁿ and every step is a single
+flip. Polynomiality of t is what closes the argument.</div>
+
+    <h4>The machine you are assembling</h4>
+    <figure class="dia">
+    <svg viewBox="0 0 700 320" role="img" aria-label="The reduction A-prime receives one challenge ciphertext, places it at a randomly chosen slot i, fills the slots before i with oracle encryptions of M-one messages and the slots after i with oracle encryptions of M-zero messages, hands the assembled vector to A, and relays A's output.">
+      <g font-family="IBM Plex Mono, monospace" font-size="12" fill="currentColor">
+        <rect x="52" y="26" width="524" height="266" rx="3" fill="none" stroke="#2b6aa8" stroke-width="1.6"/>
+        <text x="66" y="48" fill="#2b6aa8" font-size="13">A′ — you (polynomial time, one call to A)</text>
+
+        <text x="4" y="96" font-size="11.5">one challenge</text>
+        <text x="4" y="112" font-size="11.5">ciphertext c</text>
+        <path d="M4 128 L48 128" stroke="#93701f" stroke-width="2" fill="none"/>
+        <path d="M48 128 l-8 -4 l0 8 z" fill="#93701f"/>
+
+        <text x="4" y="212" font-size="11.5">Enc_k(·) oracle</text>
+        <path d="M4 228 L48 228" stroke="currentColor" stroke-width="1.2" fill="none"/>
+        <path d="M48 228 l-8 -4 l0 8 z" fill="currentColor"/>
+
+        <text x="70" y="86" font-size="11.5">i ← {1,…,t} uniformly</text>
+
+        <rect x="70" y="100" width="176" height="150" rx="2" fill="none" stroke="currentColor" stroke-width="1"/>
+        <text x="158" y="122" text-anchor="middle" font-size="11.5">assemble the vector</text>
+        <rect x="86" y="134" width="144" height="20" rx="2" fill="#d7e3ef" stroke="#2b6aa8" stroke-width="1"/>
+        <text x="158" y="149" text-anchor="middle" font-size="11" fill="#2b6aa8">slots 1 … i−1 : Enc(m₁ʲ)</text>
+        <rect x="86" y="160" width="144" height="20" rx="2" fill="#e9dcbb" stroke="#93701f" stroke-width="1.4"/>
+        <text x="158" y="175" text-anchor="middle" font-size="11" fill="#93701f">slot i : the challenge c</text>
+        <rect x="86" y="186" width="144" height="20" rx="2" fill="#f0dbd3" stroke="#b0442a" stroke-width="1"/>
+        <text x="158" y="201" text-anchor="middle" font-size="11" fill="#b0442a">slots i+1 … t : Enc(m₀ʲ)</text>
+        <text x="158" y="228" text-anchor="middle" font-size="10.5" fill="currentColor">every slot but i is an oracle call</text>
+
+        <path d="M250 168 L292 168" stroke="currentColor" stroke-width="1.2" fill="none"/>
+        <path d="M292 168 l-8 -4 l0 8 z" fill="currentColor"/>
+        <text x="271" y="160" text-anchor="middle" font-size="10.5">(c¹,…,cᵗ)</text>
+
+        <rect x="296" y="112" width="128" height="112" rx="2" fill="none" stroke="#b0442a" stroke-width="1.6"/>
+        <text x="360" y="160" text-anchor="middle" fill="#b0442a" font-size="17">A</text>
+        <text x="360" y="182" text-anchor="middle" fill="#b0442a" font-size="10.5">black box, run once</text>
+        <text x="360" y="200" text-anchor="middle" fill="#b0442a" font-size="10.5">its own oracle relayed</text>
+
+        <path d="M296 96 L250 96" stroke="currentColor" stroke-width="1.2" fill="none"/>
+        <path d="M250 96 l8 -4 l0 8 z" fill="currentColor"/>
+        <text x="273" y="88" text-anchor="middle" font-size="10.5">(M₀, M₁)</text>
+
+        <path d="M426 168 L470 168" stroke="currentColor" stroke-width="1.2" fill="none"/>
+        <path d="M470 168 l-8 -4 l0 8 z" fill="currentColor"/>
+        <text x="448" y="160" text-anchor="middle" font-size="11.5">b′</text>
+
+        <rect x="474" y="146" width="88" height="44" rx="2" fill="none" stroke="currentColor" stroke-width="1"/>
+        <text x="518" y="173" text-anchor="middle" font-size="11.5">relay b′</text>
+
+        <path d="M562 168 L640 168" stroke="#2b6aa8" stroke-width="2" fill="none"/>
+        <path d="M640 168 l-8 -4 l0 8 z" fill="#2b6aa8"/>
+        <text x="568" y="158" fill="#2b6aa8" font-size="11">A′'s guess</text>
+
+        <path d="M48 228 L86 228 L86 214" stroke="currentColor" stroke-width="1.2" fill="none" stroke-dasharray="4 3"/>
+        <path d="M296 214 L268 214 L268 240 L86 240" stroke="currentColor" stroke-width="1" fill="none" stroke-dasharray="4 3" opacity=".7"/>
+        <text x="192" y="256" text-anchor="middle" font-size="10.5" opacity=".8">A's own oracle queries pass straight through</text>
+      </g>
+    </svg>
+    <figcaption>A never learns it is inside anything: the vector it receives has exactly the shape its contract promised. The one thing A′ adds is the index <b>i</b> and the challenger's hidden bit — kept outside A's view, which is why A′ can grade A's answer and A cannot.</figcaption>
+    </figure>
+    <p style="margin-top:14px">Standard construction and proof: J. Katz &amp; Y. Lindell, <i>Introduction to Modern Cryptography</i>, in the section on CPA-security for multiple encryptions.</p>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+const $ = id => document.getElementById(id);
+const SUP = {"0":"⁰","1":"¹","2":"²","3":"³","4":"⁴","5":"⁵","6":"⁶","7":"⁷","8":"⁸","9":"⁹"};
+const sup = n => String(n).split("").map(c=>SUP[c]).join("");
+const reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ─────────── the adversary's dials ─────────── */
+const T_OPTS = [2,4,6,8,12];
+const D_OPTS = [
+  {v:0.60, l:"0.60", n:"brazen"},
+  {v:0.36, l:"0.36", n:"plain"},
+  {v:0.12, l:"0.12", n:"quiet"},
+  {v:0.02, l:"0.02", n:"faint"}
+];
+const LEV = [
+  {v:"even",  l:"Spread evenly",     n:"every rung contributes δ/t"},
+  {v:"spike", l:"All on one rung",   n:"one rung carries the whole δ"},
+  {v:"front", l:"Front-loaded",      n:"early rungs carry most of it"}
+];
+
+/* ─────────── the machine ─────────── */
+const SLOTS = [
+ {id:"pick", label:"1 · Which rung you attack", opts:[
+   {v:"rand", ok:true, t:"Draw <code>i ← {1,…,t}</code> uniformly", n:"You have no idea where A's leverage sits. Averaging finds it anyway."},
+   {v:"fix",  broken:"fix", t:"Always take <code>i = 1</code>", n:"Buildable. Works beautifully when the leverage happens to be there."},
+   {v:"all",  blocked:true, t:"Attack all t rungs at once",
+    n:"Cannot be built: the CPA challenger deals you one ciphertext, in one experiment, once. There is no vector to embed t challenges into."}
+ ]},
+ {id:"pair", label:"2 · The challenge pair you submit", opts:[
+   {v:"slot", ok:true, t:"<code>(m₀ⁱ, m₁ⁱ)</code> — slot i only", n:"Two equal-length messages, exactly what the game accepts."},
+   {v:"vec",  blocked:true, t:"The whole vectors <code>(M₀, M₁)</code>",
+    n:"Cannot be built: the single-message game takes two messages, not two vectors. Assuming it takes vectors assumes the theorem you are proving."},
+   {v:"dup",  broken:"dup", t:"<code>(m₀ⁱ, m₀ⁱ)</code> — the same message twice", n:"Buildable, and legal. Try it and watch what happens."}
+ ]},
+ {id:"fill", label:"3 · How you fill the other t−1 slots", opts:[
+   {v:"stair", ok:true, t:"Oracle: <code>m₁ʲ</code> for j &lt; i, <code>m₀ʲ</code> for j &gt; i", n:"The staircase. Bit 0 gives H₍ᵢ₋₁₎, bit 1 gives Hᵢ, exactly."},
+   {v:"allz",  broken:"allz", t:"Oracle: <code>m₀ʲ</code> for every j ≠ i", n:"Buildable — but see whether the rungs still join up."},
+   {v:"self",  blocked:true, t:"Encrypt them yourself with <code>k</code>",
+    n:"Cannot be built: you have no key. If you did, you would not be reducing to anything — you would just decrypt."}
+ ]},
+ {id:"out", label:"4 · What you output", opts:[
+   {v:"relay", ok:true, t:"Whatever <code>A</code> outputs", n:"A's guess about the vector is your guess about the ciphertext."},
+   {v:"flip",  ok:true, alt:true, t:"The complement of A's output", n:"Mirrored. Valid — the definition takes an absolute value."},
+   {v:"const", broken:"const", t:"<code>1</code>, always", n:"Buildable. Confident. Try it."}
+ ]}
+];
+
+const FLAWS = {
+ fix:"Nothing is wrong with this machine — it is a correct reduction. It is just aimed at one rung out of t, and A's leverage is not sitting there. A fixed index has to guess where the gap lives; a uniform index does not have to know.",
+ dup:"You submitted the same message twice, so the challenger's bit changes nothing about what A sees. Your two worlds are the same world, A's answer is independent of the bit you are trying to guess, and your rate is exactly ½ no matter which rung you sit on.",
+ allz:"Every slot but i now carries m₀, so your bit-0 world is H₀ and your bit-1 world is “H₀ with slot i swapped.” Those are the ends of t separate one-step comparisons that all start from the same place — and they do not telescope: nothing guarantees they add up to p_t − p₀. The chain works because consecutive links share an endpoint. Break the chain and the sum means nothing.",
+ "const":"Your machine outputs 1 with probability 1 regardless of the bit, so it is right exactly when the bit happens to be 1 — probability ½, in every world, forever. Certainty is not information."
+};
+
+/* ─────────── state ─────────── */
+let S, load;
+function fresh(keep){
+  const t = keep ? keep.t : 6;
+  return {
+    t, delta: keep ? keep.delta : 0.36,
+    lev: keep ? keep.lev : "even",
+    spikeAt: keep ? Math.min(keep.spikeAt, t) : Math.min(4, t),
+    diff: keep ? keep.diff : "all",
+    oneAt: keep ? Math.min(keep.oneAt, t) : Math.min(3, t),
+    rung: 1, visited: new Set(), n:0, k:0,
+    seenOne: keep ? keep.seenOne : false,
+    dealtEnough: false, proved:false, hinted:{}
+  };
+}
+function resetAll(){
+  load = {pick:null, pair:null, fill:null, out:null};
+  S = fresh(null);
+  $("final").className = "final";
+  say("The challenger","the vectors are on the table",
+    "Start at the top: look at what A actually submitted. Then assemble A′ in the right-hand column, walk every rung of the ladder, and deal enough trials to watch your advantage land where the algebra says it must.");
+  renderAll();
+}
+
+/* ─────────── the ladder's numbers ─────────── */
+function differs(j){ return S.diff === "all" || j === S.oneAt; }   /* 1-indexed slot */
+
+function gaps(){
+  const t = S.t, g = new Array(t).fill(0);
+  if(S.diff === "one"){ g[S.oneAt-1] = S.delta; return g; }
+  if(S.lev === "spike"){ g[S.spikeAt-1] = S.delta; return g; }
+  if(S.lev === "front"){
+    let w = [], s = 0;
+    for(let i=0;i<t;i++){ const x = Math.pow(0.55, i); w.push(x); s += x; }
+    return w.map(x => S.delta * x / s);
+  }
+  return g.map(()=> S.delta / t);
+}
+function probs(){
+  const g = gaps(), p = [0.5 - S.delta/2];
+  for(let i=0;i<S.t;i++) p.push(p[i] + g[i]);
+  return p;
+}
+function sign(){ return load.out === "flip" ? -1 : 1; }
+function flaw(){
+  for(const s of SLOTS){ const o = s.opts.find(o=>o.v===load[s.id]); if(o && o.broken) return o.broken; }
+  return null;
+}
+function complete(){ return SLOTS.every(s => load[s.id]); }
+function sound(){ return complete() && !flaw(); }
+
+/* success probability of A′ on one trial, per rung */
+function rungAdv(i){                    /* signed advantage over 1/2 at rung i (1-indexed) */
+  const f = flaw();
+  if(f === "dup" || f === "const" || f === "allz") return 0;
+  return sign() * gaps()[i-1] / 2;
+}
+function predicted(){
+  const f = flaw();
+  if(!complete()) return null;
+  if(f === "dup" || f === "const" || f === "allz") return 0.5;
+  if(load.pick === "fix") return 0.5 + Math.abs(rungAdv(1));
+  const g = gaps();
+  let s = 0; for(let i=1;i<=S.t;i++) s += Math.abs(rungAdv(i));
+  return 0.5 + s / S.t;
+}
+
+/* ─────────── dealing ─────────── */
+function deal(count){
+  if(!complete()) return;
+  const t = S.t;
+  for(let q=0;q<count;q++){
+    const i = (load.pick === "fix") ? 1 : 1 + Math.floor(Math.random()*t);
+    const adv = Math.abs(rungAdv(i));
+    S.n++; if(Math.random() < 0.5 + adv) S.k++;
+  }
+  if(S.n >= 1000 && sound()) S.dealtEnough = true;
+  const f = flaw();
+  if(f && S.n >= 400 && !S.hinted[f]){
+    S.hinted[f] = true;
+    say("Diagnosis", f==="fix" ? "a sound machine, badly aimed" : "your machine is measuring nothing",
+      FLAWS[f] + (f==="fix" ? "" : " More trials will not help: the two worlds your machine compares are the same world."), "bad");
+  }
+  renderPlay();
+}
+
+/* ─────────── narration ─────────── */
+function say(who, sub, html, tone){
+  $("msg").className = "msg" + (tone ? " "+tone : "");
+  $("msg").innerHTML = '<div class="who"><b>'+who+'</b> · '+sub+'</div><p>'+html+'</p>';
+}
+
+/* ─────────── render: vectors ─────────── */
+function colTemplate(t){ return "repeat("+t+", minmax(38px, 1fr))"; }
+
+function renderVecs(){
+  const t = S.t;
+  $("diffPick").innerHTML =
+    '<button class="chip'+(S.diff==="all"?" on":"")+'" data-d="all">A\'s vectors differ in every slot</button>'+
+    '<button class="chip'+(S.diff==="one"?" on":"")+'" data-d="one">…what if they differed in only one?</button>';
+  $("diffPick").querySelectorAll(".chip").forEach(b=>b.addEventListener("click", ()=>{
+    S.diff = b.dataset.d; S.n=0; S.k=0; S.dealtEnough=false;
+    if(S.diff==="one"){
+      S.seenOne = true;
+      say("The objection, answered","why the ladder is not optional",
+        "Set this way, the reduction is one line: submit <code>(m₀"+sup(S.oneAt)+", m₁"+sup(S.oneAt)+")</code>, fill everything else from the oracle, done. No ladder, no factor of t. Look at the ladder now — every step is flat except one, because swapping a slot where the two vectors agree changes nothing at all."+
+        "<br><br>And you have proved nothing. The definition quantifies over <b>every</b> PPT adversary, and the next one submits vectors differing everywhere. You do not get to legislate what A submits; you only get to build a machine that survives whatever it does. Switch back.", "gold");
+    } else {
+      say("The challenger","vectors differing in every slot",
+        "This is the case you actually have to handle. A′ can only ever move one slot — so the two ends have to be connected by a chain of one-slot moves, and the chain is the proof.");
+    }
+    renderAll();
+  }));
+
+  const nums = '<div class="slotnums" style="grid-template-columns:'+colTemplate(t)+'">'+
+    Array.from({length:t},(_,j)=>'<span>'+(j+1)+'</span>').join("")+'</div>';
+  let h = '<div class="vrow"><span class="vl"></span>'+nums+'</div>';
+  [0,1].forEach(b=>{
+    const cells = Array.from({length:t},(_,j)=>{
+      const same = !differs(j+1);
+      const cls = same ? "cell same" : (b===0 ? "cell m0" : "cell m1");
+      const lab = same ? "m"+sup(j+1) : "m"+(b===0?"₀":"₁")+sup(j+1);
+      return '<div class="'+cls+'">'+lab+'</div>';
+    }).join("");
+    h += '<div class="vrow v'+b+'"><span class="vl">M'+(b===0?"₀":"₁")+'</span>'+
+         '<div class="cells" style="grid-template-columns:'+colTemplate(t)+'">'+cells+'</div></div>';
+  });
+  $("vecs").innerHTML = h;
+  $("vecState").textContent = S.diff==="all"
+    ? "t = "+t+", differing in all "+t+" slots"
+    : "t = "+t+", differing only at slot "+S.oneAt;
+  $("vecNote").innerHTML = S.diff==="all"
+    ? "A chose these. Nothing stops it from making every slot different, and a theorem that only covered easier vectors would not be a theorem about A."
+    : "Dashed slots are identical in both vectors, so encrypting one is the same as encrypting the other. The ladder below has gone flat everywhere except slot "+S.oneAt+" — which is exactly why this case is easy, and exactly why it is not the case you were asked about.";
+}
+
+/* ─────────── render: ladder ─────────── */
+function renderLadder(){
+  const t = S.t, p = probs(), g = gaps();
+  const gmax = Math.max(1e-9, ...g);
+  const rung = i => {
+    const cells = Array.from({length:t},(_,j)=>{
+      const fromM1 = (j+1) <= i;
+      const same = !differs(j+1);
+      const cls = same ? "cell same" : (fromM1 ? "cell m1" : "cell m0");
+      const hot = ((j+1) === S.rung && (i === S.rung || i === S.rung-1)) ? " hot" : "";
+      const lab = same ? "m"+sup(j+1) : "m"+(fromM1?"₁":"₀")+sup(j+1);
+      return '<div class="'+cls+hot+'">'+lab+'</div>';
+    }).join("");
+    const selRung = (i === S.rung || i === S.rung-1);
+    return '<div class="rung'+(selRung?" sel":"")+'">'+
+      '<span class="rl">H'+subn(i)+'</span>'+
+      '<div class="cells" style="grid-template-columns:'+colTemplate(t)+'">'+cells+'</div>'+
+      '<span class="rp">'+p[i].toFixed(3)+'</span></div>';
+  };
+  let h = rung(0);
+  for(let i=1;i<=t;i++){
+    const gap = g[i-1];
+    const pct = Math.max(gap>0 ? 3 : 0, gap/gmax*100);
+    h += '<button class="step'+(i===S.rung?" sel":"")+(gap<1e-9?" zero":"")+'" data-i="'+i+'" '+
+         'aria-label="Step '+i+', swapping slot '+i+', increment '+gap.toFixed(4)+'">'+
+         '<span class="sl">step '+i+'</span>'+
+         '<span class="sd"><em>slot '+i+' · '+(differs(i)? "m₀"+sup(i)+" → m₁"+sup(i) : "no change — the vectors agree here")+'</em>'+
+         '<span class="gtrack"><i style="width:'+pct.toFixed(1)+'%"></i></span></span>'+
+         '<span class="sv">+'+gap.toFixed(4)+'</span></button>';
+    h += rung(i);
+  }
+  $("ladder").innerHTML = h;
+  $("ladder").querySelectorAll(".step").forEach(b=>b.addEventListener("click", ()=>selectRung(+b.dataset.i)));
+  $("ladState").textContent = "rung "+S.rung+" of "+t+" selected";
+  $("visitStat").textContent = "visited "+S.visited.size+"/"+t;
+}
+function subn(i){ return String(i).split("").map(c=>"₀₁₂₃₄₅₆₇₈₉"[+c]).join(""); }
+
+function selectRung(i){
+  S.rung = Math.max(1, Math.min(S.t, i));
+  S.visited.add(S.rung);
+  if(S.visited.size === S.t && !S.hinted.walked){
+    S.hinted.walked = true;
+    say("You have walked the whole ladder","every step is a single slot",
+      "Read the step bars top to bottom: they are the increments p<sub>i</sub> − p<sub>i−1</sub>, and they sum to δ. That is the telescoping — not a trick, just the observation that consecutive differences of a sequence add up to the difference of its ends. Every rung is a machine you could actually build; the sum says at least one of them is worth δ/t.", "good");
+  }
+  renderPlay();
+}
+
+/* ─────────── render: embedding ─────────── */
+function renderEmb(){
+  const t = S.t, i = S.rung;
+  const fillChosen = load.fill;
+  const cells = Array.from({length:t},(_,j)=>{
+    const s = j+1;
+    if(s === i) return '<div class="cell chal">c</div>';
+    if(!fillChosen) return '<div class="cell">?</div>';
+    const fromM1 = fillChosen === "stair" ? (s < i) : false;
+    const same = !differs(s);
+    const cls = same ? "cell same" : (fromM1 ? "cell m1" : "cell m0");
+    const lab = same ? "m"+sup(s) : "m"+(fromM1?"₁":"₀")+sup(s);
+    return '<div class="'+cls+'">'+lab+'</div>';
+  }).join("");
+  const srcs = Array.from({length:t},(_,j)=>{
+    const s = j+1;
+    return s===i ? '<span class="ch">challenge</span>' : (fillChosen ? '<span>oracle</span>' : '<span>—</span>');
+  }).join("");
+  $("emb").innerHTML =
+    '<div class="erow"><span class="el" style="color:var(--indigo)">A′ sends A</span>'+
+      '<div class="cells" style="grid-template-columns:'+colTemplate(t)+'">'+cells+'</div></div>'+
+    '<div class="erow"><span class="el">where it came from</span>'+
+      '<div class="srcs" style="grid-template-columns:'+colTemplate(t)+'">'+srcs+'</div></div>';
+  $("embState").textContent = "embedding the challenge at slot "+i;
+  if(!fillChosen){
+    $("w0").innerHTML = "Choose how to fill the other "+(t-1)+" slots and this world becomes a named hybrid.";
+    $("w1").innerHTML = "Choose how to fill the other "+(t-1)+" slots and this world becomes a named hybrid.";
+  } else if(fillChosen === "stair"){
+    $("w0").innerHTML = "A sees exactly <b>H"+subn(i-1)+"</b> — the challenge encrypted m₀"+sup(i)+", so slot "+i+" joins the M₀ side and the first "+(i-1)+" slots are already M₁.";
+    $("w1").innerHTML = "A sees exactly <b>H"+subn(i)+"</b> — the challenge encrypted m₁"+sup(i)+", so slot "+i+" flips to the M₁ side. One slot apart from the world on the left.";
+  } else {
+    $("w0").innerHTML = "A sees <b>H₀</b> — every slot from M₀. That is a rung, but it is the same rung for every choice of i.";
+    $("w1").innerHTML = "A sees <b>H₀ with slot "+i+" swapped</b> — not H"+subn(i)+", and not a link in any chain. Nothing makes these t comparisons add up to p"+subn(t)+" − p₀.";
+  }
+}
+
+/* ─────────── render: the arithmetic ─────────── */
+function renderAlgebra(){
+  const p = probs(), g = gaps(), t = S.t, i = S.rung, d = S.delta;
+  const f = x => x.toFixed(4);
+  const winA  = 0.5 + d/2;
+  const gi    = g[i-1];
+  const winPi = 0.5 + gi/2;
+  const winP  = 0.5 + d/(2*t);
+  const meter = (label, val, cls) =>
+    '<div class="meter"><span class="ml">'+label+'</span>'+
+    '<span class="mt"><span class="half"></span>'+
+      (val>0.5 ? '<span class="edge" style="width:'+((val-0.5)*100).toFixed(2)+'%"></span>' : '')+
+      '<span class="tick"></span></span>'+
+    '<span class="mv'+(cls?" "+cls:"")+'">'+f(val)+'</span></div>';
+
+  $("algState").textContent = "at rung "+i+" · δ = "+d.toFixed(2)+" · t = "+t;
+  $("algebra").innerHTML =
+  '<p class="note" style="margin:0 0 4px">Both numbers on this page come from the same one-line identity, applied to different pairs of worlds. Nothing about it is specific to encryption: it is just what “guesses right” means when a fair coin decides which of two distributions you are looking at.</p>'+
+
+  '<div class="deriv">'+
+    '<h5>Why <span class="nA">A</span> wins with probability ½ + δ/2</h5>'+
+    '<p class="note" style="margin:0">δ is <b>not</b> defined as a win rate. It is the <b>gap</b> A opens between the two worlds it might be shown — δ := p<sub>t</sub> − p₀, the two ends of the ladder. The win rate is what follows from that gap.</p>'+
+    '<table class="dt"><thead><tr><th>A&#8217;s challenger flips</th><th>so A is shown</th><th>Pr[A outputs 1]</th><th>Pr[A is right]</th></tr></thead><tbody>'+
+      '<tr class="b0"><td>b = 0, with prob ½</td><td>H₀ — every slot from M₀</td><td class="n">p₀ = '+f(p[0])+'</td><td class="n">1 − p₀ = '+f(1-p[0])+'</td></tr>'+
+      '<tr class="b1"><td>b = 1, with prob ½</td><td>H'+subn(t)+' — every slot from M₁</td><td class="n">p'+subn(t)+' = '+f(p[t])+'</td><td class="n">p'+subn(t)+' = '+f(p[t])+'</td></tr>'+
+    '</tbody></table>'+
+    '<div class="algo">Pr[A wins] = ½·Pr[A says 0 | b=0]  +  ½·Pr[A says 1 | b=1]\n'+
+    '           = ½·(1 − p₀)         +  ½·p'+subn(t)+'\n'+
+    '           = ½ + (p'+subn(t)+' − p₀)/2\n'+
+    '           = ½ + δ/2   =   '+f(winA)+'</div>'+
+    '<p class="note" style="margin-top:0">The <b>½</b> is the coin: guess blindly and you are right half the time, because the challenger’s bit is fair. The <b>δ/2</b> is everything A adds on top. It is δ over two — not δ — because A only converts its gap into a win on the half of the runs where the bit went the way its bias points; the other half it is being graded on the same p read from the other side. Only the <i>difference</i> p'+subn(t)+' − p₀ survives the subtraction, so the identity never cares what p₀ itself is; this page just centres p₀ and p'+subn(t)+' about ½ to keep the picture symmetric.</p>'+
+    '<p class="note">This is why the literature quotes the same adversary two ways. “Advantage δ” means the gap, |p'+subn(t)+' − p₀| = '+f(d)+'. “Wins with probability ½ + δ/2” means the success rate, '+f(winA)+'. They differ by exactly the factor of 2 introduced above.</p>'+
+  '</div>'+
+
+  '<div class="deriv">'+
+    '<h5>Why <span class="nP">A′</span> wins with probability ½ + δ/2t</h5>'+
+    '<p class="note" style="margin:0">Identical identity — but A′’s two worlds are one rung apart, not the whole ladder. With the sound construction (staircase fill, relay output), at rung <b>i = '+i+'</b>:</p>'+
+    '<table class="dt"><thead><tr><th>A′’s challenger flips</th><th>so A is shown</th><th>Pr[A outputs 1]</th><th>Pr[A′ is right]</th></tr></thead><tbody>'+
+      '<tr class="b0"><td>b = 0, with prob ½</td><td>H'+subn(i-1)+' — slot '+i+' took m₀'+sup(i)+'</td><td class="n">p'+subn(i-1)+' = '+f(p[i-1])+'</td><td class="n">1 − p'+subn(i-1)+' = '+f(1-p[i-1])+'</td></tr>'+
+      '<tr class="b1"><td>b = 1, with prob ½</td><td>H'+subn(i)+' — slot '+i+' took m₁'+sup(i)+'</td><td class="n">p'+subn(i)+' = '+f(p[i])+'</td><td class="n">p'+subn(i)+' = '+f(p[i])+'</td></tr>'+
+    '</tbody></table>'+
+    '<div class="algo">Pr[A′ wins | this rung] = ½·(1 − p'+subn(i-1)+') + ½·p'+subn(i)+'\n'+
+    '                       = ½ + (p'+subn(i)+' − p'+subn(i-1)+')/2\n'+
+    '                       = ½ + g'+subn(i)+'/2   =   '+f(winPi)+'\n\n'+
+    'now average over the rung A′ actually drew, i ← {1,…,'+t+'}:\n\n'+
+    'Pr[A′ wins] = ½ + (1/2t)·Σᵢ (pᵢ − pᵢ₋₁)\n'+
+    '            = ½ + (p'+subn(t)+' − p₀)/2t        ← the sum telescopes\n'+
+    '            = ½ + δ/2t   =   '+f(winP)+'</div>'+
+    '<p class="note" style="margin-top:0">A′ relays A’s bit unchanged, so A′ is right exactly when A is — which is why the right-hand column is the same quantity as A’s. The only thing that shrank is the gap: A separates H₀ from H'+subn(t)+' by δ, while A′ separates two neighbours by g'+subn(i)+' = '+f(gi)+'. Averaging those t neighbour-gaps gives δ/t, and the identity halves it once more.</p>'+
+  '</div>'+
+
+  '<div class="meters">'+
+    '<h5>The same ½, three different slivers</h5>'+
+    meter('a blind coin', 0.5)+
+    meter('A — gap δ', winA)+
+    meter('A′ — gap δ/t', winP)+
+    '<div class="mscale"><span></span><span class="sc"><span>0</span><span>½</span><span>1</span></span><span></span></div>'+
+    '<p class="note">Grey is the half you get for free from the coin. Gold is the part you had to earn. The ladder does not touch the grey — it only shortens the gold by a factor of t.</p>'+
+  '</div>';
+}
+
+/* ─────────── render: chart ─────────── */
+function drawChart(){
+  const svg = $("chart"), W=720, H=250, L=54, R=132, T=18, B=38;
+  const x0=L, x1=W-R, y0=T, y1=H-B;
+  const p = probs(), t = S.t;
+  let lo = Math.min(0.5, ...p), hi = Math.max(0.5, ...p);
+  const pad = Math.max(0.03, (hi-lo)*0.28);
+  lo = Math.max(0, lo-pad); hi = Math.min(1, hi+pad);
+  const lx = i => x0 + (t===0?0:i/t)*(x1-x0);
+  const ly = v => y1 - ((v-lo)/(hi-lo))*(y1-y0);
+
+  let g = "";
+  const span = hi-lo;
+  const stepY = span > 0.5 ? 0.1 : span > 0.25 ? 0.05 : span > 0.1 ? 0.02 : 0.01;
+  for(let v = Math.ceil(lo/stepY)*stepY; v <= hi+1e-9; v += stepY){
+    const vv = +v.toFixed(4);
+    g += '<line x1="'+x0+'" y1="'+ly(vv).toFixed(1)+'" x2="'+x1+'" y2="'+ly(vv).toFixed(1)+'" stroke="var(--rule)" stroke-width="1" opacity=".7"/>'
+       + '<text x="'+(x0-8)+'" y="'+(ly(vv)+4).toFixed(1)+'" text-anchor="end" font-size="11" font-family="IBM Plex Mono, monospace" fill="var(--ink-3)">'+vv.toFixed(2)+'</text>';
+  }
+  for(let i=0;i<=t;i++){
+    g += '<line x1="'+lx(i).toFixed(1)+'" y1="'+y1+'" x2="'+lx(i).toFixed(1)+'" y2="'+(y1+5)+'" stroke="var(--rule-2)" stroke-width="1"/>'
+       + '<text x="'+lx(i).toFixed(1)+'" y="'+(y1+19)+'" text-anchor="middle" font-size="11" font-family="IBM Plex Mono, monospace" fill="var(--ink-3)">'+i+'</text>';
+  }
+  g += '<text x="'+((x0+x1)/2).toFixed(0)+'" y="'+(H-4)+'" text-anchor="middle" font-size="11" font-family="IBM Plex Sans, sans-serif" fill="var(--ink-3)">rung i — the hybrid H'+"ᵢ"+'</text>';
+  g += '<line x1="'+x0+'" y1="'+y1+'" x2="'+x1+'" y2="'+y1+'" stroke="var(--rule-2)" stroke-width="1"/>';
+
+  /* the 1/2 reference */
+  g += '<line x1="'+x0+'" y1="'+ly(0.5).toFixed(1)+'" x2="'+x1+'" y2="'+ly(0.5).toFixed(1)+'" stroke="var(--ink-3)" stroke-width="1.5" stroke-dasharray="5 4"/>'
+     + '<text x="'+(x1+9)+'" y="'+(ly(0.5)+4).toFixed(1)+'" font-size="11" font-family="IBM Plex Mono, monospace" fill="var(--ink-3)">1/2</text>';
+
+  /* shaded increment at the selected rung */
+  const i = S.rung, ya = ly(p[i-1]), yb = ly(p[i]);
+  const top = Math.min(ya,yb), hgt = Math.max(2, Math.abs(ya-yb));
+  g += '<rect x="'+lx(i-1).toFixed(1)+'" y="'+top.toFixed(1)+'" width="'+(lx(i)-lx(i-1)).toFixed(1)+'" height="'+hgt.toFixed(1)+'" fill="var(--gold)" opacity=".22"/>';
+
+  /* the climb */
+  const pts = p.map((v,ix)=>lx(ix).toFixed(1)+","+ly(v).toFixed(1)).join(" ");
+  g += '<polyline points="'+pts+'" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
+  g += '<line x1="'+lx(i-1).toFixed(1)+'" y1="'+ya.toFixed(1)+'" x2="'+lx(i).toFixed(1)+'" y2="'+yb.toFixed(1)+'" stroke="var(--gold)" stroke-width="3.5" stroke-linecap="round"/>';
+  p.forEach((v,ix)=>{
+    const on = (ix===i-1 || ix===i);
+    g += '<circle cx="'+lx(ix).toFixed(1)+'" cy="'+ly(v).toFixed(1)+'" r="'+(on?5:3.6)+'" fill="'+(on?"var(--gold)":"var(--ink)")+'" stroke="var(--paper)" stroke-width="2"/>';
+  });
+
+  /* direct labels */
+  g += '<text x="'+(x1+9)+'" y="'+(ly(p[t])+4).toFixed(1)+'" font-size="11.5" font-weight="600" font-family="IBM Plex Sans, sans-serif" fill="var(--m1)">p'+subn(t)+' — all of M₁</text>';
+  g += '<text x="'+(x0+7)+'" y="'+(ly(p[0])+18).toFixed(1)+'" font-size="11.5" font-weight="600" font-family="IBM Plex Sans, sans-serif" fill="var(--m0)">p₀ — all of M₀</text>';
+  g += '<line id="cross" x1="0" y1="'+y0+'" x2="0" y2="'+y1+'" stroke="var(--ink-3)" stroke-width="1" stroke-dasharray="3 3" opacity="0"/>';
+  svg.innerHTML = g;
+  svg._geom = {lx, ly, t};
+  $("readout").textContent = "rung "+i+" · p"+subn(i-1)+" = "+p[i-1].toFixed(4)+" → p"+subn(i)+" = "+p[i].toFixed(4)+"  ·  increment "+(p[i]-p[i-1]).toFixed(4);
+}
+$("chart").addEventListener("pointermove", e=>{
+  const svg = $("chart"), gm = svg._geom; if(!gm) return;
+  const r = svg.getBoundingClientRect();
+  const px = (e.clientX - r.left)/r.width*720;
+  let best = 0, bd = Infinity;
+  for(let ix=0; ix<=gm.t; ix++){ const d = Math.abs(gm.lx(ix)-px); if(d<bd){bd=d; best=ix;} }
+  const p = probs();
+  const cr = svg.querySelector("#cross");
+  if(cr){ cr.setAttribute("x1", gm.lx(best).toFixed(1)); cr.setAttribute("x2", gm.lx(best).toFixed(1)); cr.setAttribute("opacity","1"); }
+  $("readout").textContent = "H"+subn(best)+" · p"+subn(best)+" = "+p[best].toFixed(4)+
+    "  ·  first "+best+" slot"+(best===1?"":"s")+" from M₁, remaining "+(gm.t-best)+" from M₀";
+});
+$("chart").addEventListener("pointerleave", ()=>{
+  const cr = $("chart").querySelector("#cross"); if(cr) cr.setAttribute("opacity","0");
+  drawChart();
+});
+
+/* ─────────── render: loadout, dials, stages ─────────── */
+function renderLoadout(){
+  const host = $("loadout"); host.innerHTML = "";
+  SLOTS.forEach(s=>{
+    const chosen = load[s.id];
+    const div = document.createElement("div"); div.className = "slot";
+    let h = '<div class="sh"><span>'+s.label+'</span>'+(chosen?'<b>set</b>':'')+'</div>';
+    s.opts.forEach(o=>{
+      const on = chosen === o.v;
+      const cls = "opt"+(on?" on":"")+(on&&o.broken?" warn":"")+(o.blocked?" blocked":"");
+      h += '<button class="'+cls+'" data-slot="'+s.id+'" data-v="'+o.v+'">'+o.t+'<span class="n">'+o.n+'</span></button>';
+    });
+    div.innerHTML = h; host.appendChild(div);
+  });
+  host.querySelectorAll(".opt").forEach(b=>b.addEventListener("click", ()=>{
+    const s = SLOTS.find(x=>x.id===b.dataset.slot);
+    const o = s.opts.find(x=>x.v===b.dataset.v);
+    if(o.blocked){
+      say("Cannot be built", s.label.replace(/^\d+ · /,""), o.n.replace(/^Cannot be built: /,""), "bad");
+      return;
+    }
+    if(load[s.id] !== o.v){ S.n=0; S.k=0; S.dealtEnough=false; }
+    load[s.id] = o.v;
+    if(complete() && sound()){
+      say("Ready","A′ is assembled and sound",
+        "Every span holds. Your machine picks a rung, buys one ciphertext for that slot, fills the rest from the oracle, and reports A's verdict as its own. Now walk the ladder and then deal — the number to watch is <b>½ + δ/2t</b>, not ½ + δ/2. The factor of t is the toll.", "good");
+    } else if(complete()){
+      say("Assembled, with a flaw","run it anyway",
+        "This machine builds and runs. Deal a few hundred trials and watch what the rate does — the failure teaches more than a warning would.", "bad");
+    }
+    renderAll();
+  }));
+  const done = SLOTS.filter(s=>load[s.id]).length;
+  $("dState").textContent = done+"/4 assembled"+(done===4 && flaw() ? " · flawed" : "");
+}
+
+function renderDials(){
+  const h =
+   '<div class="dial"><div class="dh">Messages t</div><div class="picker" id="dT">'+
+     T_OPTS.map(v=>'<button class="chip'+(S.t===v?" on":"")+'" data-t="'+v+'">'+v+'</button>').join("")+
+   '</div></div>'+
+   '<div class="dial"><div class="dh">A\'s advantage δ</div><div class="picker" id="dD">'+
+     D_OPTS.map(o=>'<button class="chip'+(S.delta===o.v?" on":"")+'" data-d="'+o.v+'">'+o.l+'</button>').join("")+
+   '</div></div>'+
+   '<div class="dial"><div class="dh">Where A\'s leverage lives</div><div class="picker" id="dL">'+
+     LEV.map(o=>'<button class="chip'+(S.lev===o.v?" on":"")+'" data-l="'+o.v+'">'+o.l+'</button>').join("")+
+   '</div><p class="note" style="margin-top:6px">'+(LEV.find(o=>o.v===S.lev)||{}).n+
+     '. However it is distributed, the increments sum to δ — and a uniformly chosen rung collects δ/t either way.</p></div>'+
+   '<div class="contract">'+
+     '<div class="row"><b>Submits</b><span>two vectors of '+S.t+' equal-length messages</span></div>'+
+     '<div class="row"><b>Holds</b><span>oracle access to Enc<sub>k</sub>(·) throughout</span></div>'+
+     '<div class="row"><b>Wins with</b><span>probability ½ + δ/2 = '+(0.5+S.delta/2).toFixed(3)+'</span></div>'+
+     '<div class="row"><b>Refuses</b><span>to say which slot it is reading</span></div>'+
+   '</div>';
+  $("dials").innerHTML = h;
+  $("dials").querySelectorAll("#dT .chip").forEach(b=>b.addEventListener("click",()=>{
+    const keep = {...S, t:+b.dataset.t}; S = fresh(keep); renderAll();
+  }));
+  $("dials").querySelectorAll("#dD .chip").forEach(b=>b.addEventListener("click",()=>{
+    S.delta = +b.dataset.d; S.n=0; S.k=0; S.dealtEnough=false; renderAll();
+  }));
+  $("dials").querySelectorAll("#dL .chip").forEach(b=>b.addEventListener("click",()=>{
+    S.lev = b.dataset.l;
+    if(S.lev==="spike") S.spikeAt = 1 + Math.floor(Math.random()*S.t);
+    S.n=0; S.k=0; S.dealtEnough=false;
+    if(S.lev==="spike" && load.pick==="fix"){
+      say("Aim matters now","the leverage moved",
+        "All of δ now sits on rung "+S.spikeAt+", and your machine is nailed to rung 1. Deal and watch it measure nothing — then switch to a uniform index and watch it recover δ/t without ever being told where the leverage went.", "bad");
+    }
+    renderAll();
+  }));
+}
+
+function renderStages(){
+  const st = [
+    {n:"Read what A submitted", done:S.seenOne},
+    {n:"Assemble a sound A′",   done:sound()},
+    {n:"Walk every rung",       done:S.visited.size === S.t},
+    {n:"Measure the loss",      done:S.dealtEnough}
+  ];
+  let firstOpen = st.findIndex(x=>!x.done);
+  $("stages").innerHTML = st.map((x,ix)=>{
+    const cls = x.done ? "sg won" : (ix===firstOpen ? "sg now" : "sg");
+    return '<div class="'+cls+'"><span class="n">'+(ix+1)+'</span><span class="nm">'+x.n+'</span></div>';
+  }).join("");
+  $("proveBtn").disabled = !st.every(x=>x.done);
+}
+
+/* ─────────── render: play ─────────── */
+function renderPlay(){
+  const ready = complete();
+  ["deal1","deal100","deal1k","deal10k"].forEach(id=>{ $(id).disabled = !ready; });
+  $("clearTrials").disabled = S.n === 0;
+
+  $("sT").textContent = S.t;
+  $("sD").textContent = S.delta.toFixed(2);
+  $("sDT").textContent = (S.delta/S.t).toFixed(3);
+
+  $("tN").textContent = S.n.toLocaleString();
+  $("tK").textContent = S.k.toLocaleString();
+  const rate = S.n ? S.k/S.n : null;
+  $("tRate").textContent = rate===null ? "—" : rate.toFixed(4);
+  const pr = predicted();
+  $("tPred").textContent = pr===null ? "—" : pr.toFixed(4);
+  const f = flaw();
+  $("tPredSub").textContent = !complete() ? "assemble A′"
+    : f==="fix" ? "½ + g" + subn(1) + "/2 — one rung only"
+    : f ? "½ — the machine is blind"
+    : "½ + δ/2t";
+  $("tRate").className = "v" + (rate===null ? " mut" : (pr && Math.abs(rate-0.5) > 0.6*Math.abs(pr-0.5) ? " good" : " mut"));
+  $("tRateSub").textContent = S.n === 0 ? "deal to measure"
+    : "A alone gets " + (0.5+S.delta/2).toFixed(4);
+
+  const eps = pr===null ? 0 : Math.abs(pr-0.5);
+  $("dealNote").innerHTML = eps > 1e-9
+    ? "<b>A′</b>'s edge per trial is <b>"+eps.toFixed(4)+"</b>, against <b>A</b>'s own "+(S.delta/2).toFixed(4)+". Reaching 20:1 evidence takes roughly 3/2ε² ≈ <b>"+Math.ceil(3/(2*eps*eps)).toLocaleString()+"</b> trials — so the ladder costs a factor of t in advantage and t² in samples. Both are polynomial, which is the only reason any of this survives."
+    : (complete() ? "<b>A′</b>'s edge per trial is exactly zero. No number of trials distinguishes two identical distributions." : "Assemble A′ to begin dealing.");
+
+  renderVecs(); renderLadder(); renderEmb(); renderAlgebra(); drawChart(); renderStages();
+}
+function renderAll(){ renderLoadout(); renderDials(); renderPlay(); }
+
+/* ─────────── the finale ─────────── */
+function finale(){
+  const t = S.t, d = S.delta;
+  $("final").className = "final on";
+  $("final").innerHTML = `
+<div class="seal">THE THEOREM</div>
+<h2>A chain of one-slot moves, each of them a machine you could actually build.</h2>
+<p>You never found the rung where A's leverage lived. You did not have to. The ladder guarantees that <i>some</i> rung is worth at least δ/t, and a uniformly chosen index collects that in expectation — which is why the reduction needs no knowledge of A beyond its contract.</p>
+
+<h4>Theorem</h4>
+<p>Let Π = (Gen, Enc, Dec) be a private-key encryption scheme. If Π is CPA-secure, then Π is CPA-secure for multiple encryptions.</p>
+
+<h4>Proof</h4>
+<p>Fix a PPT adversary A in the multiple-message experiment; since A is PPT, t = t(n) is polynomial. For i = 0,…,t define the hybrid</p>
+<div class="pre">H_i  :  challenge = ( Enc(m₁¹), …, Enc(m₁ⁱ), Enc(m₀^{i+1}), …, Enc(m₀ᵗ) )
+
+  H₀ is the experiment with b = 0,  H_t is the experiment with b = 1
+  p_i := Pr[ A outputs 1 in H_i ]</div>
+<p>Then</p>
+<div class="pre">Pr[ PrivK^mult-cpa_{A,Π}(n) = 1 ] = ½·(1 − p₀) + ½·p_t = ½ + (p_t − p₀)/2,</div>
+<p>so it suffices to bound |p<sub>t</sub> − p₀|. Build the single-message adversary A′ you assembled:</p>
+<div class="pre">A′^{Enc_k(·)}(1ⁿ):
+  1. i ← {1,…,t} uniformly
+  2. run A(1ⁿ), answering its oracle queries with A′'s own oracle,
+     until A outputs (M₀, M₁)
+  3. submit the challenge pair (m₀ⁱ, m₁ⁱ);  receive c ← Enc_k(m_bⁱ)
+  4. using the oracle, set  cʲ ← Enc_k(m₁ʲ)  for j &lt; i
+                            cʲ ← Enc_k(m₀ʲ)  for j &gt; i
+     and cⁱ := c;  hand (c¹,…,cᵗ) to A
+  5. continue relaying A's oracle queries;  output whatever A outputs</div>
+<p>A′ runs A once and makes t − 1 extra oracle calls, so A′ is PPT. Conditioned on the choice of i: if the challenger's bit is 0 then A's view is distributed exactly as H<sub>i−1</sub>; if it is 1, exactly as H<sub>i</sub>. Hence</p>
+<div class="pre">Pr[ PrivK^cpa_{A′,Π}(n) = 1 ]
+   = (1/t) Σ_{i=1..t} ½·( (1 − p_{i−1}) + p_i )
+   = ½ + (1/2t) Σ_{i=1..t} (p_i − p_{i−1})
+   = ½ + (p_t − p₀)/2t,</div>
+<p>the sum telescoping. CPA-security of Π gives a negligible negl with |(p<sub>t</sub> − p₀)/2t| ≤ negl(n), so |p<sub>t</sub> − p₀| ≤ 2t(n)·negl(n), which is negligible because t is polynomial. Therefore</p>
+<div class="pre">Pr[ PrivK^mult-cpa_{A,Π}(n) = 1 ] ≤ ½ + t(n)·negl(n) = ½ + negl(n).   ∎</div>
+
+<h4>Why the chain cannot be skipped</h4>
+<p>You asked the natural question: why not just take vectors that differ in one slot? Because A picks the vectors, not you, and the definition quantifies over every PPT A — including the one that differs everywhere. Restricting to single-slot differences proves a strictly weaker statement. Meanwhile A′ receives exactly one challenge ciphertext, so whatever it hands A, its own two worlds differ in exactly one slot. The two ends do not meet: A exploits a difference in t places, A′ can only manufacture one. The hybrid chain is the bridge, and the toll is a factor of t.</p>
+<p>The telescoping is doing real work here, not bookkeeping. It converts "A separates the endpoints by δ" into "some single-slot swap is worth δ/t" — an existence claim you cannot assume, and which the uniform choice of i cashes without ever locating the rung. You watched that happen: moving all of δ onto rung ${S.lev==="spike" ? S.spikeAt : "any single rung"} left the uniform machine's advantage at exactly δ/t.</p>
+
+<h4>Three more things the ladder showed you</h4>
+<ul>
+<li><b>The oracle is load-bearing.</b> A′ has no key, so the t − 1 non-challenge ciphertexts can only come from chosen-plaintext access. Remove it and step 4 is unimplementable — which is precisely why the analogous claim for eavesdropping security is <i>false</i>: a deterministic EAV-secure scheme dies at t = 2 against M₀ = (m, m) versus M₁ = (m, m′). Corollary: any CPA-secure scheme must be randomized or stateful.</li>
+<li><b>Polynomial t is not a technicality.</b> Each link is negligible and you are summing t of them; poly · negl = negl, and nothing stronger is true. Chain superpolynomially many individually-indistinguishable steps and the endpoints can be trivially distinguishable — walk one bit at a time from 0ⁿ to 1ⁿ and see. The bound you measured, ½ + δ/2t with roughly 3/2ε² samples, is polynomial in both directions only because t is.</li>
+<li><b>The reduction is black-box, straight-line, and single-call.</b> A′ never reads A's code, never rewinds it, runs it once, and adds only O(t·ℓ) work. The one thing it holds back is the index i and the challenger's bit — kept outside A's view, which is exactly what lets A′ grade an answer that A cannot grade itself.</li>
+</ul>`;
+  $("final").scrollIntoView({behavior: reduced ? "auto" : "smooth", block:"start"});
+  say("Proved","the ladder holds",
+    "Every efficient A against multiple encryptions yields an efficient A′ against one, losing only the factor t you just measured. Since Π is CPA-secure, A′'s advantage is negligible; since t is polynomial, so is A's.", "gold");
+}
+
+/* ─────────── wiring ─────────── */
+$("rungDown").onclick = ()=>selectRung(S.rung-1);
+$("rungUp").onclick   = ()=>selectRung(S.rung+1);
+$("climb").onclick = ()=>{
+  if(reduced){ for(let i=1;i<=S.t;i++) S.visited.add(i); selectRung(S.t); return; }
+  let i = 1;
+  const tick = ()=>{ selectRung(i); if(i++ < S.t) setTimeout(tick, 240); };
+  tick();
+};
+$("deal1").onclick   = ()=>deal(1);
+$("deal100").onclick = ()=>deal(100);
+$("deal1k").onclick  = ()=>deal(1000);
+$("deal10k").onclick = ()=>deal(10000);
+$("clearTrials").onclick = ()=>{ S.n=0; S.k=0; S.dealtEnough=false; renderPlay(); };
+$("proveBtn").onclick = finale;
+$("resetBtn").onclick = resetAll;
+$("manualBtn").onclick = ()=>{ $("scrim").hidden=false; $("closeManual").focus(); };
+$("closeManual").onclick = ()=> $("scrim").hidden = true;
+$("scrim").addEventListener("click", e=>{ if(e.target===$("scrim")) $("scrim").hidden = true; });
+document.addEventListener("keydown", e=>{
+  if(e.key==="Escape") $("scrim").hidden = true;
+  if(!$("scrim").hidden) return;
+  if(e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return;
+  if(e.key==="ArrowUp" || e.key==="ArrowRight"){ selectRung(S.rung+1); e.preventDefault(); }
+  if(e.key==="ArrowDown" || e.key==="ArrowLeft"){ selectRung(S.rung-1); e.preventDefault(); }
+});
+
+resetAll();
+selectRung(1);
+})();
+</script>
+</body>
+</html>

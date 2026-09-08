@@ -366,6 +366,26 @@
         <span class="file">prg-stretch-hybrid.html</span>
       </p>
     </li>
+
+    <li class="demo">
+      <h3><a href="cpa-multiple-encryptions.html">One challenge ciphertext, and the ladder that turns it into many</a></h3>
+      <p>
+        A scheme that hides one message under a key should hide a whole conversation under it, but the
+        definition does not say so and the proof is not free. The adversary submits two vectors that may
+        differ in every slot; the reduction you build receives exactly one challenge ciphertext, so the
+        two worlds it can manufacture differ in exactly one. Hybrids are the chain of one-slot moves that
+        joins the ends, and chosen-plaintext access is what makes each link buildable — which is why the
+        same claim is false for eavesdropping security.
+      </p>
+      <ul class="panels">
+        <li>Why one difference is not enough</li><li>Build the reduction</li><li>Walk the ladder</li><li>Where &frac12; + &delta;/2 comes from</li>
+      </ul>
+      <p class="meta">
+        <span class="topic">Hybrid argument &middot; CPA security for multiple encryptions</span>
+        <span>Week 2, Thu 9.3 &middot; KL 3.4</span>
+        <span class="file">cpa-multiple-encryptions.html</span>
+      </p>
+    </li>
   </ul>
 
   <footer>
