@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRF Oracle Room · ECE 407 · Cryptography (Fall 2026)</title>
+<meta name="description" content="ECE 407 demo: truly random functions vs. pseudorandom functions, with a prediction game and the PRF distinguishing game.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Martian+Mono:wdth,wght@75..112.5,300..800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400..700;1,8..60,400..600&display=swap">
+<style>
+:root{
+  --ground:#E8EDF1; --surface:#F8FAFB; --ink:#14223A; --muted:#566880; --rule:#C7D1DB;
+  --grid:rgba(20,34,58,.055);
+  --real:#1D6B89; --real-soft:#DCEBF1; --rand:#94397A; --rand-soft:#F2E2ED;
+  --hl:#F3DC52; --hl-ink:#14223A; --redact:#14223A;
+  --good:#2C7A4B; --good-soft:#DDEFE3; --bad:#B03A3A; --bad-soft:#F6DFDF;
+  --on-accent:#F8FAFB;
+  --lift:0 1px 0 rgba(20,34,58,.06), 0 14px 32px -18px rgba(20,34,58,.35);
+  --f-mono:"Martian Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --f-serif:"Source Serif 4", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#0D1420; --surface:#152035; --ink:#E2E8F0; --muted:#93A3B9; --rule:#2A3A55;
+    --grid:rgba(226,232,240,.04);
+    --real:#63B6D6; --real-soft:#15334A; --rand:#DA86C0; --rand-soft:#3A1D35;
+    --hl:#584D14; --hl-ink:#FFF3B0; --redact:#93A3B9;
+    --good:#6BC28C; --good-soft:#173524; --bad:#E67C7C; --bad-soft:#3E1C1F;
+    --on-accent:#0D1420;
+    --lift:0 1px 0 rgba(0,0,0,.3), 0 14px 32px -16px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0D1420; --surface:#152035; --ink:#E2E8F0; --muted:#93A3B9; --rule:#2A3A55;
+  --grid:rgba(226,232,240,.04);
+  --real:#63B6D6; --real-soft:#15334A; --rand:#DA86C0; --rand-soft:#3A1D35;
+  --hl:#584D14; --hl-ink:#FFF3B0; --redact:#93A3B9;
+  --good:#6BC28C; --good-soft:#173524; --bad:#E67C7C; --bad-soft:#3E1C1F;
+  --on-accent:#0D1420;
+  --lift:0 1px 0 rgba(0,0,0,.3), 0 14px 32px -16px rgba(0,0,0,.7);
+}
+
+*{box-sizing:border-box}
+html{color-scheme:light dark}
+.back{font-family:var(--f-mono); font-size:.78rem; font-weight:600; color:var(--muted); text-decoration:none; font-variation-settings:"wdth" 85}
+.back:hover{color:var(--ink); text-decoration:underline}
+[hidden]{display:none!important}
+body{
+  margin:0;
+  background-color:var(--ground);
+  background-image:linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size:24px 24px;
+  color:var(--ink);
+  font-family:var(--f-serif);
+  font-size:17px; line-height:1.55;
+  padding:0 20px;
+}
+.wrap{max-width:1320px; margin:0 auto; padding-block:36px 56px; display:flex; flex-direction:column; gap:28px}
+.m{font-style:italic; font-family:var(--f-serif)}
+.mono{font-family:var(--f-mono); font-variation-settings:"wdth" 90}
+.label{font-family:var(--f-mono); font-variation-settings:"wdth" 75; font-size:.7rem; letter-spacing:.09em; text-transform:uppercase; color:var(--muted); font-weight:500}
+h1,h2,h3{margin:0; text-wrap:balance}
+p{margin:0}
+button{font:inherit; color:inherit; cursor:pointer}
+button:focus-visible, input:focus-visible{outline:2px solid var(--real); outline-offset:2px}
+.real-c{color:var(--real)} .rand-c{color:var(--rand)}
+
+/* Masthead */
+.mast{display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,1fr); gap:28px 48px; align-items:end}
+.mast-h{
+  font-family:var(--f-mono); font-weight:800; font-variation-settings:"wdth" 112.5;
+  font-size:clamp(2rem, 4.6vw, 3.4rem); line-height:1.02; letter-spacing:-.03em;
+}
+.mast-h .sub{display:block; font-weight:300; font-variation-settings:"wdth" 75; letter-spacing:-.01em; color:var(--muted); font-size:.42em; margin-top:.5em; line-height:1.25}
+.lede{max-width:62ch; font-size:1.06rem; margin-top:16px}
+.lede b{font-weight:600}
+.worlds{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+.world{border:1px solid var(--rule); background:var(--surface); padding:14px 14px 12px; display:flex; flex-direction:column; gap:10px}
+.world .tag{font-family:var(--f-mono); font-variation-settings:"wdth" 80; font-size:.72rem; font-weight:700; letter-spacing:.04em}
+.flow{display:flex; align-items:center; gap:8px; font-family:var(--f-mono); font-size:.85rem}
+.flow .arr{color:var(--muted)}
+.flow .fbox{border:1.5px solid currentColor; padding:4px 10px; font-weight:600; white-space:nowrap}
+.world p{font-size:.86rem; color:var(--muted); line-height:1.4}
+
+/* Level tabs */
+.levels{display:flex; gap:0; border:1px solid var(--rule); background:var(--surface); overflow-x:auto}
+.lvl{flex:1 1 0; min-width:150px; border:0; border-right:1px solid var(--rule); background:transparent; padding:12px 14px; text-align:left; display:flex; flex-direction:column; gap:3px; position:relative}
+.lvl:last-child{border-right:0}
+.lvl .n{font-family:var(--f-mono); font-variation-settings:"wdth" 75; font-size:.68rem; letter-spacing:.08em; color:var(--muted)}
+.lvl .nm{font-family:var(--f-mono); font-weight:700; font-size:.88rem; font-variation-settings:"wdth" 95}
+.lvl .st{font-family:var(--f-mono); font-variation-settings:"wdth" 75; font-size:.66rem; letter-spacing:.06em; text-transform:uppercase}
+.lvl .st.broken{color:var(--good)} .lvl .st.holds{color:var(--real)} .lvl .st.open{color:var(--muted)}
+.lvl[aria-selected="true"]{background:var(--ink); color:var(--surface)}
+.lvl[aria-selected="true"] .n, .lvl[aria-selected="true"] .st{color:var(--surface); opacity:.8}
+.lvl:hover:not([aria-selected="true"]){background:var(--ground)}
+
+/* Board */
+.board{display:grid; gap:22px; align-items:start;
+  grid-template-columns:minmax(250px,290px) minmax(0,1fr) minmax(260px,320px);
+  grid-template-areas:"rules console level" "rules console score";
+  grid-template-rows:auto 1fr;
+}
+.a-rules{grid-area:rules} .a-console{grid-area:console} .a-level{grid-area:level} .a-score{grid-area:score}
+@media (max-width:1120px){
+  .board{grid-template-columns:minmax(0,1fr) minmax(250px,310px); grid-template-areas:"console level" "console score" "rules rules"; grid-template-rows:auto auto auto}
+}
+@media (max-width:780px){
+  .mast{grid-template-columns:1fr}
+  .board{grid-template-columns:minmax(0,1fr); grid-template-areas:"level" "console" "score" "rules"}
+}
+@media (max-width:460px){ .worlds{grid-template-columns:1fr} body{font-size:16px} }
+
+.panel{display:flex; flex-direction:column; gap:12px}
+.panel h2{font-family:var(--f-mono); font-size:1.02rem; font-weight:700; font-variation-settings:"wdth" 100}
+
+/* Rules: textbook game box */
+.gamebox{border:1.5px solid var(--ink); background:var(--surface); padding:14px 12px 14px 0; font-family:var(--f-serif); font-size:.98rem}
+.ln{padding:1px 10px 1px 14px; line-height:1.7; transition:background .25s; border-left:3px solid transparent}
+.ln.head{font-family:var(--f-mono); font-weight:700; font-size:.82rem; border-bottom:1px solid var(--rule); margin-bottom:6px; padding-bottom:6px; font-variation-settings:"wdth" 90}
+.ln.proc b{font-family:var(--f-mono); font-size:.78rem; font-weight:700; font-variation-settings:"wdth" 90; letter-spacing:.02em}
+.ln.i2{padding-left:32px} .ln.i3{padding-left:50px}
+.ln.on{background:var(--hl); color:var(--hl-ink); border-left-color:var(--hl-ink)}
+.redact .txt{background:var(--redact); color:transparent; border-radius:1px; user-select:none; transition:background .35s, color .35s}
+.redact.shown .txt{background:transparent; color:inherit}
+.redact .why{font-family:var(--f-mono); font-variation-settings:"wdth" 75; font-size:.62rem; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin-left:6px}
+.redact.shown .why{display:none}
+.fine{font-size:.9rem; color:var(--muted); line-height:1.5}
+.fine .m{color:var(--ink)}
+.advdef{font-size:.95rem; border-top:1px solid var(--rule); padding-top:10px}
+
+/* Console */
+.console{background:var(--surface); box-shadow:var(--lift); border:1px solid var(--rule); display:flex; flex-direction:column}
+.c-top{display:flex; justify-content:space-between; align-items:center; gap:12px; padding:14px 18px; border-bottom:1px solid var(--rule); flex-wrap:wrap}
+.c-top .rd{font-family:var(--f-mono); font-weight:700; font-size:.9rem}
+.budget{display:flex; align-items:center; gap:8px}
+.pips{display:flex; gap:4px}
+.pip{width:10px; height:10px; border:1.5px solid var(--ink); border-radius:50%}
+.pip.used{background:var(--ink)}
+
+.stage{display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:18px; align-items:center; padding:22px 18px}
+.slot{display:flex; flex-direction:column; gap:6px; min-width:88px}
+.slot .v{font-family:var(--f-mono); font-size:1.9rem; font-weight:700; font-variation-settings:"wdth" 85; line-height:1; font-variant-numeric:tabular-nums}
+.slot.out{text-align:right; align-items:flex-end}
+.slot.out .v{font-size:2.5rem}
+.bits{display:flex; gap:3px}
+.bit{width:12px; height:16px; border:1.5px solid var(--ink); background:transparent}
+.bit.on{background:var(--ink)}
+.oracle{position:relative; border:2px solid var(--ink); min-height:112px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; padding:14px;
+  background:repeating-linear-gradient(-45deg, transparent 0 7px, var(--grid) 7px 8px)}
+.oracle .who{font-family:var(--f-mono); font-weight:800; font-size:1.25rem; font-variation-settings:"wdth" 110; text-align:center}
+.oracle .who small{display:block; font-weight:400; font-size:.62rem; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); font-variation-settings:"wdth" 75; margin-top:4px}
+.oracle.is-real{border-color:var(--real); background:var(--real-soft)} .oracle.is-real .who{color:var(--real)}
+.oracle.is-rand{border-color:var(--rand); background:var(--rand-soft)} .oracle.is-rand .who{color:var(--rand)}
+.oracle::before, .oracle::after{content:""; position:absolute; top:50%; width:18px; height:2px; background:var(--ink)}
+.oracle::before{left:-20px} .oracle::after{right:-20px}
+.coin{width:40px; height:40px; border-radius:50%; border:2px solid var(--ink); display:grid; place-items:center; font-family:var(--f-mono); font-weight:800; font-size:.8rem; background:var(--hl); color:var(--hl-ink)}
+.coin.flip{animation:flip .7s cubic-bezier(.3,.7,.3,1)}
+@keyframes flip{0%{transform:rotateY(0) translateY(0)}45%{transform:rotateY(540deg) translateY(-14px)}100%{transform:rotateY(1080deg) translateY(0)}}
+
+.ask{display:flex; gap:10px; padding:0 18px 16px; flex-wrap:wrap; align-items:flex-end}
+.field{display:flex; flex-direction:column; gap:5px}
+.field input{font-family:var(--f-mono); font-size:1.05rem; width:120px; padding:9px 10px; border:1.5px solid var(--ink); background:var(--ground); color:var(--ink); font-variant-numeric:tabular-nums}
+.btn{border:1.5px solid var(--ink); background:transparent; padding:9px 14px; font-family:var(--f-mono); font-size:.8rem; font-weight:600; font-variation-settings:"wdth" 90; line-height:1.3}
+.btn.solid{background:var(--ink); color:var(--surface)}
+.btn:disabled{opacity:.4; cursor:not-allowed}
+.btn:hover:not(:disabled){transform:translateY(-1px)}
+.err{font-size:.86rem; color:var(--bad); min-height:1.3em; padding:0 18px}
+
+.logwrap{overflow-x:auto; border-top:1px solid var(--rule)}
+table{width:100%; border-collapse:collapse; font-family:var(--f-mono); font-size:.82rem; font-variant-numeric:tabular-nums; font-variation-settings:"wdth" 88}
+th{text-align:left; font-weight:500; font-size:.66rem; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); padding:9px 18px 7px; border-bottom:1px solid var(--rule); white-space:nowrap; font-variation-settings:"wdth" 75}
+td{padding:8px 18px; border-bottom:1px solid var(--rule); white-space:nowrap}
+td .dim{color:var(--muted)}
+td.helper{color:var(--real); font-weight:700}
+tr.rep td{background:var(--ground)}
+.note{font-family:var(--f-serif); font-size:.82rem; color:var(--muted); font-style:italic}
+.empty td{font-family:var(--f-serif); color:var(--muted); font-style:italic; white-space:normal}
+
+.guess{display:grid; grid-template-columns:1fr 1fr; gap:10px; padding:18px}
+.guess .prompt{grid-column:1 / -1; font-size:.95rem}
+.gbtn{border:0; padding:14px 14px; text-align:left; display:flex; flex-direction:column; gap:2px; font-family:var(--f-mono); color:var(--on-accent)}
+.gbtn .big{font-weight:800; font-size:1rem; font-variation-settings:"wdth" 100}
+.gbtn .sm{font-size:.7rem; opacity:.85; font-variation-settings:"wdth" 80}
+.gbtn.real{background:var(--real)} .gbtn.rand{background:var(--rand)}
+.gbtn:disabled{opacity:.35; cursor:not-allowed}
+.gbtn:hover:not(:disabled){filter:brightness(1.08)}
+
+.reveal{padding:18px; display:flex; flex-direction:column; gap:12px; border-top:1px solid var(--rule)}
+.verdict{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+.chip{font-family:var(--f-mono); font-variation-settings:"wdth" 80; font-size:.72rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:4px 9px}
+.chip.ok{background:var(--good-soft); color:var(--good)} .chip.no{background:var(--bad-soft); color:var(--bad)}
+.verdict .said{font-size:1.05rem; font-weight:600}
+.reveal p{max-width:66ch}
+.reveal .mono-inline{font-family:var(--f-mono); font-size:.85em; font-variation-settings:"wdth" 88}
+
+/* Side panels */
+.side{background:var(--surface); border:1px solid var(--rule); padding:16px}
+.formula{font-family:var(--f-serif); font-size:1.35rem; padding:10px 0 4px; border-top:1px solid var(--rule)}
+.formula .ks{display:block; font-family:var(--f-mono); font-size:.72rem; color:var(--muted); margin-top:4px; font-variation-settings:"wdth" 80}
+.hints{display:flex; flex-direction:column; gap:8px}
+.hint{font-size:.93rem; border-left:3px solid var(--hl); padding:2px 0 2px 10px}
+.linkbtn{border:0; background:none; padding:0; font-family:var(--f-mono); font-size:.76rem; font-weight:600; text-decoration:underline; text-underline-offset:3px; color:var(--real); align-self:flex-start; font-variation-settings:"wdth" 85}
+
+.stats{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:0}
+.stats div{display:flex; flex-direction:column; gap:2px}
+.stats dt{order:2} .stats dd{margin:0; font-family:var(--f-mono); font-weight:700; font-size:1.3rem; font-variant-numeric:tabular-nums; font-variation-settings:"wdth" 85}
+.streak{display:flex; gap:5px; align-items:center}
+.streak span{width:18px; height:6px; background:var(--rule)}
+.streak span.f{background:var(--good)}
+.meter{position:relative; height:14px; background:var(--ground); border:1px solid var(--rule)}
+.meter .fill{position:absolute; inset:0 auto 0 0; background:var(--ink); transition:width .5s}
+.meter .tick{position:absolute; top:-3px; bottom:-3px; width:1px; background:var(--muted)}
+.scale{display:flex; justify-content:space-between; font-family:var(--f-mono); font-size:.66rem; color:var(--muted)}
+.advval{font-family:var(--f-mono); font-weight:800; font-size:1.6rem; font-variation-settings:"wdth" 90}
+.keys{display:grid; grid-template-columns:repeat(8,1fr); gap:4px}
+.key{font-family:var(--f-mono); font-size:.8rem; font-weight:700; text-align:center; padding:6px 0; border:1.5px solid var(--ink); transition:opacity .3s}
+.key.out{opacity:.25; text-decoration:line-through}
+.key.true{background:var(--real); color:var(--on-accent); border-color:var(--real)}
+.bigkeys{font-family:var(--f-mono); font-size:1.5rem; font-weight:800; font-variation-settings:"wdth" 90}
+
+/* Primer: the two concepts */
+.toc{display:flex; flex-wrap:wrap; gap:8px 22px; margin-top:18px; font-family:var(--f-mono); font-size:.8rem; font-variation-settings:"wdth" 90}
+.toc a{color:var(--ink); text-decoration:none; border-bottom:1.5px solid var(--rule); padding-bottom:2px}
+.toc a:hover{border-bottom-color:var(--ink)}
+.toc a span{color:var(--muted); margin-right:6px}
+.part-h{display:flex; flex-direction:column; gap:6px}
+.part-h h2{font-family:var(--f-mono); font-weight:800; font-variation-settings:"wdth" 105; font-size:clamp(1.35rem, 2.6vw, 1.9rem); letter-spacing:-.02em; line-height:1.1}
+.primer{display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:22px}
+.concept{background:var(--surface); border:1px solid var(--rule); border-top:4px solid var(--c); padding:22px; display:flex; flex-direction:column; gap:14px}
+.concept.rf{--c:var(--rand)} .concept.prf{--c:var(--real)}
+.concept .part-h .label{color:var(--c)}
+.concept p{max-width:62ch}
+.concept .def{font-size:1.08rem; border-left:3px solid var(--c); padding-left:12px}
+.fig{display:grid; grid-template-columns:minmax(0, 300px) minmax(0,1fr); gap:18px; align-items:start}
+.tbl{display:grid; grid-template-columns:repeat(16, 1fr); gap:1px; background:var(--rule); border:1px solid var(--rule); aspect-ratio:1; max-width:100%; touch-action:manipulation}
+.tbl i{display:block; background:var(--surface); position:relative}
+.tbl i::after{content:""; position:absolute; inset:0; background:var(--c); opacity:var(--v)}
+.tbl i.hot{outline:2px solid var(--hl); outline-offset:-1px; z-index:1}
+.figside{display:flex; flex-direction:column; gap:10px}
+.readout{font-family:var(--f-mono); font-size:.95rem; font-weight:700; font-variation-settings:"wdth" 90; min-height:1.5em}
+.readout .dim{color:var(--muted); font-weight:400}
+.seg{display:flex; flex-wrap:wrap; gap:0; border:1.5px solid var(--ink); align-self:flex-start}
+.seg button{border:0; border-right:1.5px solid var(--ink); background:transparent; padding:7px 10px; font-family:var(--f-mono); font-size:.72rem; font-weight:600; font-variation-settings:"wdth" 85}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--ink); color:var(--surface)}
+.facts{display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:12px; margin:0; border-top:1px solid var(--rule); padding-top:14px}
+.facts div{display:flex; flex-direction:column; gap:3px}
+.facts dt{order:2}
+.facts dd{margin:0; font-family:var(--f-mono); font-weight:800; font-size:1.15rem; font-variation-settings:"wdth" 88}
+.keyline{font-family:var(--f-mono); font-size:.72rem; color:var(--muted); word-break:break-all; font-variation-settings:"wdth" 80}
+.vs{background:var(--surface); border:1px solid var(--rule)}
+.vs table{font-family:var(--f-serif); font-size:.95rem; font-variation-settings:normal}
+.vs th{font-family:var(--f-mono)}
+.vs td{white-space:normal; vertical-align:top; padding:11px 18px}
+.vs td:first-child{font-family:var(--f-mono); font-size:.74rem; font-weight:600; color:var(--muted); width:22%; font-variation-settings:"wdth" 85}
+.vs th.rf{color:var(--rand)} .vs th.prf{color:var(--real)}
+.vs tr:last-child td{border-bottom:0}
+.gameintro{display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,1fr); gap:22px 48px; align-items:end}
+@media (max-width:980px){ .primer{grid-template-columns:1fr} }
+@media (max-width:780px){ .gameintro{grid-template-columns:1fr} }
+@media (max-width:520px){ .fig{grid-template-columns:1fr} .facts{grid-template-columns:1fr 1fr} .concept{padding:16px} }
+
+/* Part 3: prediction game */
+.predict{display:flex; flex-direction:column; gap:18px}
+.pr-seg{background:var(--surface)}
+.pboard{display:grid; gap:22px; align-items:start;
+  grid-template-columns:minmax(240px,320px) minmax(0,1fr) minmax(250px,310px);
+  grid-template-areas:"fig console results"}
+.pr-fig{grid-area:fig} .pr-console{grid-area:console} .pr-results{grid-area:results}
+@media (max-width:1120px){ .pboard{grid-template-columns:minmax(220px,300px) minmax(0,1fr); grid-template-areas:"fig console" "results results"} }
+@media (max-width:780px){ .pboard{grid-template-columns:minmax(0,1fr); grid-template-areas:"console" "fig" "results"} .pr-fig .tbl{max-width:340px} }
+.pr-tbl{--c:var(--rand); cursor:pointer}
+.pr-tbl i.hole::after{opacity:0}
+.pr-tbl i.hole::before{content:""; position:absolute; left:50%; top:50%; width:2px; height:2px; margin:-1px; background:var(--rule)}
+.pr-tbl i.ch{background:var(--hl); cursor:not-allowed}
+.pr-tbl i.ch::after{opacity:0}
+.pr-tbl i.ch::before{content:"?"; position:absolute; inset:0; display:grid; place-items:center; font-family:var(--f-mono); font-weight:800; font-size:.62rem; color:var(--hl-ink); background:none; width:auto; height:auto; margin:0}
+.pr-tbl.done i.ch::after{opacity:var(--v)}
+.pr-tbl.done i.ch{outline:3px solid var(--hl); outline-offset:-1px; z-index:2; background:var(--surface)}
+.pr-tbl.done i.ch::before{content:""}
+.pr-tbl i.asked{box-shadow:inset 0 0 0 1.5px var(--ink)}
+.pr-tbl.done{cursor:default}
+.challenge{padding:18px 18px 14px; display:flex; flex-direction:column; gap:6px; border-bottom:1px solid var(--rule)}
+.chal-line{font-family:var(--f-mono); font-size:1.5rem; font-weight:700; font-variation-settings:"wdth" 90}
+.chal-line b{background:var(--hl); color:var(--hl-ink); padding:0 6px}
+.chal-line .m{font-weight:400}
+.chal-line .dim{color:var(--muted); font-size:.8rem; font-weight:500}
+.pr-console .ask{padding-top:16px}
+.seen{display:flex; flex-wrap:wrap; gap:6px; padding:0 18px 16px}
+.seen .row{font-family:var(--f-mono); font-size:.78rem; border:1px solid var(--rule); background:var(--ground); padding:4px 8px; font-variant-numeric:tabular-nums; font-variation-settings:"wdth" 85}
+.seen .row b{font-weight:700}
+.seen .none{font-size:.88rem; color:var(--muted); font-style:italic}
+.guessbox{border-top:1px solid var(--rule); padding:16px 18px; display:flex; flex-direction:column; gap:10px}
+.bitrow{display:grid; grid-template-columns:repeat(8, minmax(0, 44px)); gap:6px}
+.bitb{border:1.5px solid var(--ink); background:transparent; aspect-ratio:1/1.1; font-family:var(--f-mono); font-weight:800; font-size:1.05rem; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0; padding:0; line-height:1.1}
+.bitb small{font-size:.55rem; font-weight:500; opacity:.7}
+.bitb[aria-pressed="true"]{background:var(--ink); color:var(--surface)}
+.bitb:disabled{cursor:default}
+.bitb.hit{box-shadow:0 0 0 2px var(--good)} .bitb.miss{box-shadow:0 0 0 2px var(--bad)}
+.truthrow .tb{border:1.5px dashed var(--muted); aspect-ratio:1/1.1; display:grid; place-items:center; font-family:var(--f-mono); font-weight:800; font-size:1.05rem}
+.truthrow .tb.one{background:var(--c, var(--ink)); color:var(--on-accent); border-style:solid; border-color:transparent}
+.ghex{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+.ghex input{font-family:var(--f-mono); font-size:1rem; width:80px; padding:8px 10px; border:1.5px solid var(--ink); background:var(--ground); color:var(--ink); text-transform:uppercase}
+.guessbox .err{padding:0}
+.res{font-size:.8rem}
+.res th, .res td{padding:8px 7px}
+.res td:first-child, .res th:first-child{padding-left:0}
+.res tfoot td{color:var(--muted); border-bottom:0; font-style:italic; font-family:var(--f-serif); font-size:.88rem}
+.res tr.cur td{font-weight:700}
+.res .sw{display:inline-block; width:8px; height:8px; margin-right:6px; vertical-align:middle}
+.takeaway{border-top:1px solid var(--rule); padding-top:12px; display:flex; flex-direction:column; gap:8px; font-size:.93rem}
+
+/* Footer */
+.uses{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:22px; border-top:1.5px solid var(--ink); padding-top:18px}
+.uses h3{font-family:var(--f-mono); font-size:.85rem; font-weight:700; margin-bottom:6px; font-variation-settings:"wdth" 95}
+.uses p{font-size:.95rem; color:var(--muted)}
+@media (max-width:780px){ .uses{grid-template-columns:1fr} .stage{grid-template-columns:1fr; justify-items:stretch} .slot.out{align-items:flex-start; text-align:left} .oracle::before,.oracle::after{display:none} }
+@media (prefers-reduced-motion:reduce){ *{transition:none!important; animation:none!important} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="demos.html">← ECE 407 demos</a>
+  <header>
+    <div class="label">Pseudorandom functions · two ideas and a game</div>
+    <h1 class="mast-h">PRF Oracle Room<span class="sub">Tell the keyed function from pure chance</span></h1>
+    <p class="lede">Start with the ideal object cryptographers wish they had, a <b>truly random function</b>. Then see the practical stand-in they build instead, a <b>pseudorandom function</b>. Then play two games: first try to predict a row you haven't seen, then take the formal test of telling the two apart.</p>
+    <nav class="toc" aria-label="Contents">
+      <a href="#rf"><span>1</span>Truly random function</a>
+      <a href="#prf"><span>2</span>Pseudorandom function</a>
+      <a href="#predict"><span>3</span>Predict the unseen row</a>
+      <a href="#game"><span>4</span>Tell them apart</a>
+    </nav>
+  </header>
+
+  <section class="primer" aria-label="The two concepts">
+    <article class="concept rf" id="rf">
+      <div class="part-h"><span class="label">Part 1 · The ideal</span><h2>A truly random function</h2></div>
+      <p>A function here takes an 8-bit input <span class="m">x</span> (0–255) and returns an 8-bit output. Any such function is just a <b>table with 256 rows</b>, one output written next to each input.</p>
+      <p class="def">A <b>truly random function</b> is the table you get by flipping 8 fair coins for every row. Nobody chooses the outputs.</p>
+      <p>Two things follow. Every output is uniformly random and <b>independent</b> of every other, so learning <span class="m">f</span>(3) tells you nothing about <span class="m">f</span>(4). And once the table is written it's <b>fixed</b>: ask for <span class="m">f</span>(3) twice and you get the same answer both times. It's random, but it's still a function.</p>
+      <div class="fig">
+        <div class="tbl" id="rf-grid" role="img" aria-label="A 16 by 16 grid of the 256 outputs of a random function, shaded by value; it looks like noise."></div>
+        <div class="figside">
+          <span class="label">The whole table · darker = bigger output</span>
+          <div class="readout" id="rf-read"><span class="dim">Point at a cell to read its row.</span></div>
+          <button class="btn" id="rf-new" type="button">Flip all 2,048 coins again</button>
+          <p class="fine">Row <span class="m">x</span> sits at column <span class="m">x</span> mod 16, row ⌊<span class="m">x</span>/16⌋. Reflip as often as you like: there's never a pattern, because nothing produced one.</p>
+        </div>
+      </div>
+      <p><b>The catch is size.</b> To use a random function you have to store the whole table, and to share it you have to send the whole table. At 8 bits that's already 2,048 bits. With 128-bit inputs, the size AES uses, the table would take 2<sup>135</sup> bits, far more than all the storage on Earth.</p>
+      <dl class="facts">
+        <div><dt class="label">Rows</dt><dd>256</dd></div>
+        <div><dt class="label">Bits to store it</dt><dd>2,048</dd></div>
+        <div><dt class="label">Possible tables</dt><dd>2<sup>2048</sup></dd></div>
+      </dl>
+    </article>
+
+    <article class="concept prf" id="prf">
+      <div class="part-h"><span class="label">Part 2 · The stand-in</span><h2>A pseudorandom function</h2></div>
+      <p>Instead of storing the table, store a short secret <b>key</b> <span class="m">K</span> and a public <b>recipe</b> <span class="m">F</span>. Row <span class="m">x</span> of the table is computed on demand as <span class="m">F<sub>K</sub></span>(<span class="m">x</span>). Change the key and you get a different table.</p>
+      <p class="def"><span class="m">F</span> is a <b>pseudorandom function</b> if, for a random key <span class="m">K</span>, no efficient program that can ask for rows of the table can tell <span class="m">F<sub>K</sub></span> apart from a truly random function, except with negligible probability.</p>
+      <p>The recipe is public; only <span class="m">K</span> is secret. A 128-bit key can reach at most 2<sup>128</sup> tables, a vanishing sliver of all 2<sup>2048</sup>. That's the surprise a good PRF delivers: <b>the table is far from random, but without the key nobody can tell.</b> Try the recipes below. The weak ones show their structure right away.</p>
+      <div class="fig">
+        <div class="tbl" id="prf-grid" role="img" aria-label="A 16 by 16 grid of the 256 outputs of the selected keyed recipe, shaded by value."></div>
+        <div class="figside">
+          <span class="label">Recipe</span>
+          <div class="seg" id="prf-seg" role="group" aria-label="Recipe">
+            <button type="button" data-r="mix" aria-pressed="true">Mix</button>
+            <button type="button" data-r="xor" aria-pressed="false">x ⊕ K</button>
+            <button type="button" data-r="add" aria-pressed="false">x + K</button>
+            <button type="button" data-r="mul" aria-pressed="false">K · x</button>
+          </div>
+          <div class="readout" id="prf-read"><span class="dim">Point at a cell to read its row.</span></div>
+          <button class="btn" id="prf-new" type="button">Pick a new key</button>
+          <div class="keyline" id="prf-key"></div>
+          <p class="fine" id="prf-cap"></p>
+        </div>
+      </div>
+      <p><b>Why it matters:</b> the key is small enough to store and share, any row takes microseconds to compute, and anything proven secure using a truly random function stays secure, up to a negligible loss, when you swap in the PRF. AES and HMAC-SHA256 are the PRFs used in practice.</p>
+      <dl class="facts">
+        <div><dt class="label">Bits to store it</dt><dd>128</dd></div>
+        <div><dt class="label">Tables it can reach</dt><dd>≤ 2<sup>128</sup></dd></div>
+        <div><dt class="label">Share of all tables</dt><dd>2<sup>−1920</sup></dd></div>
+      </dl>
+    </article>
+  </section>
+
+  <div class="vs logwrap" role="region" aria-label="Side-by-side comparison" tabindex="0">
+    <table>
+      <thead><tr><th></th><th class="rf">Truly random function</th><th class="prf">Pseudorandom function <i class="m">F<sub>K</sub></i></th></tr></thead>
+      <tbody>
+        <tr><td>How it's made</td><td>Flip fresh coins for every row</td><td>Pick a random key once, then compute rows with a public recipe</td></tr>
+        <tr><td>What you store</td><td>The entire table</td><td>Just the key (for example, 128 bits)</td></tr>
+        <tr><td>Same input twice</td><td>Same output: it's a table</td><td>Same output: it's a deterministic recipe</td></tr>
+        <tr><td>Looks random to</td><td>Everyone, always</td><td>Anyone who doesn't have <i class="m">K</i> and has only limited computing power</td></tr>
+        <tr><td>Use in practice</td><td>Impossible at real sizes, but ideal for proofs</td><td>Everywhere: MACs, key derivation, encryption</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <section class="predict" id="predict" aria-labelledby="pr-h">
+    <div class="part-h">
+      <span class="label">Part 3 · Predict the unseen row</span>
+      <h2 id="pr-h">Can you guess a row you haven't looked at?</h2>
+      <p class="lede">The game circles one input <span class="m">x</span>* in yellow and hides its row. You can look up to 5 <b>other</b> rows, then guess the 8 bits of <span class="m">f</span>(<span class="m">x</span>*). Play against a truly random function, a PRF, and three broken recipes, and compare your score with blind guessing.</p>
+    </div>
+
+    <div class="seg pr-seg" id="pr-seg" role="group" aria-label="Which function to play against">
+      <button type="button" data-b="rand" aria-pressed="true">Truly random</button>
+      <button type="button" data-b="prf" aria-pressed="false">PRF · Mix, 128-bit key</button>
+      <button type="button" data-b="xor" aria-pressed="false">Broken · x ⊕ K</button>
+      <button type="button" data-b="add" aria-pressed="false">Broken · x + K</button>
+      <button type="button" data-b="mul" aria-pressed="false">Broken · K · x</button>
+    </div>
+
+    <div class="pboard">
+      <div class="panel pr-fig">
+        <span class="label" id="pr-tbl-l">The table · rows you've seen are shaded</span>
+        <div class="tbl pr-tbl" id="pr-grid" role="img" aria-label="The function's 256-row table. Shaded cells are rows you have looked up; the yellow cell is the challenge row."></div>
+        <div class="readout" id="pr-read"><span class="dim">Click any cell to look up that row.</span></div>
+        <p class="fine" id="pr-figcap">Before you guess, only the rows you asked for are visible. Afterward the whole table is revealed, so you can see whether there was a pattern to exploit.</p>
+      </div>
+
+      <div class="console pr-console" aria-labelledby="pr-round">
+        <div class="c-top">
+          <span class="rd" id="pr-round">Round 1 · Truly random function</span>
+          <div class="budget"><span class="label" id="pr-budget-l">Look-ups left</span><div class="pips" id="pr-pips" aria-labelledby="pr-budget-l"></div></div>
+        </div>
+        <div class="challenge">
+          <span class="label">Your challenge</span>
+          <div class="chal-line">Predict <span class="m" id="pr-sym">f</span>(<b id="pr-xs">0</b>) <span class="dim" id="pr-xshex"></span></div>
+          <p class="fine">You can't look up this row itself. Every other row is fair game.</p>
+        </div>
+        <div class="ask">
+          <div class="field">
+            <label class="label" for="pr-xin">Look up x (0–255)</label>
+            <input id="pr-xin" type="number" min="0" max="255" step="1" inputmode="numeric" placeholder="e.g. 1">
+          </div>
+          <button class="btn solid" id="pr-askb" type="button">Look up</button>
+          <button class="btn" id="pr-rndb" type="button">Look up a random x</button>
+        </div>
+        <div class="err" id="pr-err" role="status" aria-live="polite"></div>
+        <div class="seen" id="pr-seen"></div>
+        <div class="guessbox" id="pr-guess">
+          <span class="label">Your guess for the 8 bits · click to flip</span>
+          <div class="bitrow" id="pr-bits" role="group" aria-label="Guess bits"></div>
+          <div class="ghex">
+            <label class="label" for="pr-gh">or type hex</label>
+            <input id="pr-gh" type="text" maxlength="4" autocomplete="off" spellcheck="false" value="00">
+            <button class="btn solid" id="pr-lock" type="button">Lock in my guess</button>
+          </div>
+          <div class="err" id="pr-gerr" role="status" aria-live="polite"></div>
+        </div>
+        <div class="reveal" id="pr-reveal" hidden></div>
+      </div>
+
+      <div class="side panel pr-results">
+        <h2>Your results so far</h2>
+        <div class="logwrap res-wrap">
+          <table class="res">
+            <thead><tr><th>Function</th><th>Rounds</th><th>Exact</th><th>Bits right</th></tr></thead>
+            <tbody id="pr-res"></tbody>
+            <tfoot><tr><td>Blind guessing</td><td>—</td><td>0.4%</td><td>4.0</td></tr></tfoot>
+          </table>
+        </div>
+        <p class="fine">"Bits right" is the average number of your 8 bits that matched. A coin toss gets 4 of 8, and an exact hit happens 1 time in 256 (0.4%).</p>
+        <p class="fine" id="pr-verdict"></p>
+        <div class="takeaway">
+          <span class="label">Why this matters</span>
+          <p>With the truly random function, nothing you look up can help: the hidden row is fresh coin flips. A good PRF has to be just as hard to predict, even though it's a fixed recipe. That's what makes <span class="m">F<sub>K</sub></span>(message) a secure authentication tag: predicting it means forging it.</p>
+          <p>Predicting also breaks the formal test in Part 4. If you could guess <span class="m">f</span>(<span class="m">x</span>*), you'd ask the box for <span class="m">x</span>* and check your guess. A match points to the PRF, a miss to the random box.</p>
+        </div>
+        <button class="linkbtn" id="pr-reset" type="button">Reset results</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="gameintro" id="game" aria-labelledby="game-h">
+    <div class="part-h">
+      <span class="label">Part 4 · The formal test</span>
+      <h2 id="game-h">Can you tell them apart?</h2>
+      <p class="lede">Predicting is one way to break a PRF, but the official definition in Part 2 covers every way: <b>any</b> difference you can detect counts. You're the adversary. Each round a hidden coin <span class="m">b</span> decides which box you're questioning: a keyed recipe or a truly random table. Ask it a few inputs, then guess. If you can win reliably, that recipe is <b>not</b> a PRF. Levels 1–4 are broken recipes you can beat. Level 5 is one you can't.</p>
+    </div>
+    <div class="worlds" aria-label="The two worlds">
+      <div class="world">
+        <span class="tag real-c">b = 1 · Real world</span>
+        <div class="flow real-c"><span>x</span><span class="arr">→</span><span class="fbox"><i class="m">F</i><sub>K</sub></span><span class="arr">→</span><span>y</span></div>
+        <p>A fixed recipe with a secret key. Same key, same x, same y.</p>
+      </div>
+      <div class="world">
+        <span class="tag rand-c">b = 0 · Random world</span>
+        <div class="flow rand-c"><span>x</span><span class="arr">→</span><span class="fbox">notebook</span><span class="arr">→</span><span>y</span></div>
+        <p>A new x gets 8 fresh coin flips, written down. Ask again, get the same line back.</p>
+      </div>
+    </div>
+  </section>
+
+  <nav class="levels" id="levels" role="tablist" aria-label="Levels"></nav>
+
+  <main class="board">
+    <section class="panel a-rules" aria-labelledby="rules-h">
+      <h2 id="rules-h">The rules, as a cryptographer writes them</h2>
+      <div class="gamebox" id="code">
+        <div class="ln head">Game PRF<sub>F</sub></div>
+        <div class="ln proc" data-s="init"><b>Initialize</b></div>
+        <div class="ln i2" data-s="init"><i>K</i> ←<sub>$</sub> KeySpace</div>
+        <div class="ln i2" data-s="init"><i>b</i> ←<sub>$</sub> {0, 1}</div>
+        <div class="ln proc" data-s="fn"><b>Fn</b>(<i>x</i>)</div>
+        <div class="ln i2" data-s="fn">if <i>T</i>[<i>x</i>] = ⊥ then</div>
+        <div class="ln i3 redact" data-s="b1"><span class="txt">if <i>b</i> = 1: <i>T</i>[<i>x</i>] ← <i>F<sub>K</sub></i>(<i>x</i>)</span><span class="why">hidden</span></div>
+        <div class="ln i3 redact" data-s="b0"><span class="txt">else: <i>T</i>[<i>x</i>] ←<sub>$</sub> {0,1}<sup>8</sup></span><span class="why">hidden</span></div>
+        <div class="ln i2" data-s="fn">return <i>T</i>[<i>x</i>]</div>
+        <div class="ln proc" data-s="fin"><b>Finalize</b>(<i>b</i>′)</div>
+        <div class="ln i2" data-s="fin">return (<i>b</i>′ = <i>b</i>)</div>
+      </div>
+      <p class="fine">The highlighted lines show where the game is right now. The two lines covered by bars depend on <span class="m">b</span>, so they stay covered until you commit to a guess. The table <span class="m">T</span> is why both boxes repeat themselves: asking the same <span class="m">x</span> twice tells you nothing.</p>
+      <p class="fine advdef">Your <b>advantage</b> is <span class="m">Adv = | Pr[b′=1 | b=1] − Pr[b′=1 | b=0] |</span>. It's 0 if you're guessing blindly and 1 if you're never wrong. A PRF is <b>secure</b> when every efficient adversary's advantage is negligible.</p>
+    </section>
+
+    <section class="console a-console" aria-labelledby="console-h">
+      <div class="c-top">
+        <span class="rd" id="console-h">Round 1</span>
+        <div class="budget"><span class="label" id="budget-l">Questions left</span><div class="pips" id="pips" aria-labelledby="budget-l"></div></div>
+      </div>
+      <div class="stage">
+        <div class="slot"><span class="label">You ask x</span><span class="v" id="xv">—</span><span class="label" id="xhex">&nbsp;</span></div>
+        <div class="oracle" id="oracle">
+          <div class="coin" id="coin" aria-hidden="true">?</div>
+          <div class="who" id="who">Sealed box<small>b is hidden</small></div>
+        </div>
+        <div class="slot out"><span class="label">It answers y</span><span class="v" id="yv">—</span><div class="bits" id="ybits" aria-hidden="true"></div></div>
+      </div>
+      <div class="ask">
+        <div class="field">
+          <label class="label" for="xin">Input x (0–255)</label>
+          <input id="xin" type="number" min="0" max="255" step="1" inputmode="numeric" placeholder="e.g. 7">
+        </div>
+        <button class="btn solid" id="askb" type="button">Ask the box</button>
+        <button class="btn" id="rndb" type="button">Ask a random x</button>
+      </div>
+      <div class="err" id="err" role="status" aria-live="polite"></div>
+      <div class="logwrap"><table id="log"><thead></thead><tbody></tbody></table></div>
+      <div class="guess" id="guess">
+        <p class="prompt">Which box were you talking to?</p>
+        <button class="gbtn real" id="g1" type="button"><span class="big">Keyed function</span><span class="sm">guess b′ = 1</span></button>
+        <button class="gbtn rand" id="g0" type="button"><span class="big">Random notebook</span><span class="sm">guess b′ = 0</span></button>
+      </div>
+      <div class="reveal" id="reveal" hidden></div>
+    </section>
+
+    <section class="side panel a-level" aria-labelledby="lvl-h">
+      <span class="label" id="lvl-n">Level 1 of 5</span>
+      <h2 id="lvl-h">XOR Box</h2>
+      <div class="formula" id="formula"></div>
+      <p id="blurb" class="fine"></p>
+      <div class="hints" id="hints"></div>
+      <button class="linkbtn" id="hintb" type="button">Show a hint</button>
+    </section>
+
+    <section class="side panel a-score" aria-labelledby="score-h">
+      <h2 id="score-h">Your record on this level</h2>
+      <dl class="stats">
+        <div><dt class="label">Rounds</dt><dd id="s-n">0</dd></div>
+        <div><dt class="label">Correct</dt><dd id="s-w">0</dd></div>
+        <div><dt class="label">Streak</dt><dd id="s-s">0</dd></div>
+      </dl>
+      <div class="streak" id="streak" aria-hidden="true"></div>
+      <p class="fine" id="goal"></p>
+      <div style="display:flex; flex-direction:column; gap:6px">
+        <div style="display:flex; justify-content:space-between; align-items:baseline"><span class="label">Estimated advantage</span><span class="advval" id="advv">—</span></div>
+        <div class="meter"><div class="fill" id="advfill" style="width:0"></div><div class="tick" style="left:50%"></div></div>
+        <div class="scale"><span>0 · blind luck</span><span>1 · always right</span></div>
+      </div>
+      <p class="fine" id="advnote"></p>
+      <div id="keypanel" class="panel" hidden></div>
+      <button class="linkbtn" id="resetb" type="button">Reset this level</button>
+    </section>
+  </main>
+
+  <footer class="uses" aria-label="Where PRFs are used">
+    <div><h3>Message authentication</h3><p>Send <span class="m">F<sub>K</sub>(message)</span> as a tag. Without <span class="m">K</span>, forging a tag means predicting a random-looking value. HMAC-SHA256 is this idea in practice.</p></div>
+    <div><h3>Deriving keys</h3><p>One master secret gives many independent-looking keys: <span class="m">F<sub>K</sub>(“encrypt”)</span>, <span class="m">F<sub>K</sub>(“auth”)</span>. HKDF and the TLS 1.3 key schedule are built this way.</p></div>
+    <div><h3>Encryption</h3><p>Counter mode XORs your data with <span class="m">F<sub>K</sub>(1), F<sub>K</sub>(2), …</span>, usually with AES as <span class="m">F</span>. This only works because those outputs look random. Note: this game uses 8-bit toy sizes so the patterns are visible, and level 5's scrambler is a stand-in, not AES.</p></div>
+  </footer>
+</div>
+
+<script>
+(function(){
+const LEVELS = [
+  { id:1, name:"XOR Box", formula:'<i>F<sub>K</sub></i>(<i>x</i>) = <i>x</i> ⊕ <i>K</i>', ks:"8-bit key · 256 keys", budget:4,
+    blurb:"The key gets mixed in with a single XOR. Every output bit depends on just one input bit and one key bit.",
+    hints:["Ask two different inputs. What stays the same between the answers?",
+           "For x ⊕ K, the value y ⊕ x is always K. A y ⊕ x column is now in your log."],
+    helper:{ label:"y ⊕ x", fn:(x,y)=>y^x } },
+  { id:2, name:"Adder", formula:'<i>F<sub>K</sub></i>(<i>x</i>) = <i>x</i> + <i>K</i> mod 256', ks:"8-bit key · 256 keys", budget:4,
+    blurb:"This one adds instead of XORing. Carries spread the key across bits, so is that enough?",
+    hints:["Try asking x and x + 1.",
+           "For x + K, the difference y − x (mod 256) is always K. A y − x column is now in your log."],
+    helper:{ label:"y − x", fn:(x,y)=>(y-x+256)&255 } },
+  { id:3, name:"Multiplier", formula:'<i>F<sub>K</sub></i>(<i>x</i>) = <i>K</i> · <i>x</i> mod 256', ks:"8-bit odd key · 128 keys", budget:4,
+    blurb:"Multiplying scrambles the bits more. But some inputs don't care what the key is.",
+    hints:["What does multiplying do to zero?",
+           "Ask x = 0. The keyed function always answers 00, while a random function answers 00 only 1 time in 256. One question settles it."],
+    helper:null },
+  { id:4, name:"Tiny Key", formula:'<i>F<sub>K</sub></i>(<i>x</i>) = Mix(<i>K</i>, <i>x</i>)', ks:"4-bit key · 16 keys", budget:4,
+    blurb:"This scrambler has no pattern you can spot by eye. Its weakness is the key: there are only 16 possible keys, and you can try all of them.",
+    hints:["Watch the key-search panel. After each question, it crosses out every key that would have given a different answer.",
+           "In the real world, the true key always survives. In the random world, each key survives a question with probability 1/256, so two questions usually leave no keys at all."],
+    helper:null },
+  { id:5, name:"The Real Thing", formula:'<i>F<sub>K</sub></i>(<i>x</i>) = Mix(<i>K</i>, <i>x</i>)', ks:"128-bit key · 2¹²⁸ keys", budget:6,
+    blurb:"Same scrambler, now with a key as long as AES's. There's no pattern to spot and too many keys to search. Try anything you like.",
+    hints:["Look for any relation among the answers: XOR, differences, zeros, repeats.",
+           "You won't find one. Over many rounds your hit rate drifts toward 50% and your advantage toward 0. That's what a secure PRF means."],
+    helper:null }
+];
+const GOAL_STREAK = 5, GOAL_L5 = 10;
+const STORE = "prf-oracle-room-v1";
+
+const $ = id => document.getElementById(id);
+const hex = v => v.toString(16).toUpperCase().padStart(2,"0");
+const rnd32 = () => { const a = new Uint32Array(1); crypto.getRandomValues(a); return a[0]; };
+const r8 = () => rnd32() & 255;
+const bit = () => rnd32() & 1;
+
+function mix(k, x){
+  let h = Math.imul(x + 1, 0x01010101) ^ k[0];
+  h = Math.imul(h ^ (h>>>15), 0x2c1b3c6d) ^ k[1];
+  h = Math.imul(h ^ (h>>>12), 0x297a2d39) ^ k[2];
+  h = Math.imul(h ^ (h>>>15), 0x85ebca6b) ^ k[3];
+  h ^= h>>>16; h = Math.imul(h, 0xc2b2ae35); h ^= h>>>13;
+  return (h>>>24) & 255;
+}
+const expand4 = K => [Math.imul(K+1,0x9E3779B1), Math.imul(K+7,0x85EBCA6B), Math.imul(K+13,0xC2B2AE35), Math.imul(K+29,0x27D4EB2F)];
+
+function genKey(L){
+  switch(L.id){
+    case 1: case 2: return [r8()];
+    case 3: return [r8() | 1];
+    case 4: return [rnd32() & 15];
+    default: return [rnd32(), rnd32(), rnd32(), rnd32()];
+  }
+}
+function F(L, key, x){
+  switch(L.id){
+    case 1: return x ^ key[0];
+    case 2: return (x + key[0]) & 255;
+    case 3: return Math.imul(key[0], x) & 255;
+    case 4: return mix(expand4(key[0]), x);
+    default: return mix(key, x);
+  }
+}
+function keyText(L, key){
+  if (L.id === 4) return "K = " + key[0].toString(16).toUpperCase();
+  if (L.id === 5) return "K = " + key.map(w => w.toString(16).toUpperCase().padStart(8,"0")).join(" ");
+  return "K = " + hex(key[0]);
+}
+
+let stats = {}, cur = 1, round = null, roundNo = {};
+const blank = () => ({ n1:0, n0:0, s11:0, s10:0, wins:0, streak:0, broken:false, done:false, hints:0 });
+const S = () => (stats[cur] = stats[cur] || blank());
+const lvl = () => LEVELS[cur-1];
+
+function load(){ try { const d = JSON.parse(localStorage.getItem(STORE) || "null"); if (d && d.stats) { stats = d.stats; cur = d.cur || 1; } } catch(e){} }
+function save(){ try { localStorage.setItem(STORE, JSON.stringify({ stats, cur })); } catch(e){} }
+
+function newRound(animate){
+  const L = lvl();
+  roundNo[cur] = (roundNo[cur] || 0) + 1;
+  round = { b: bit(), key: genKey(L), T: new Map(), q: [], phase: "play", guess: null };
+  $("err").textContent = "";
+  $("xin").value = "";
+  setCode("init");
+  renderAll();
+  if (animate){ const c = $("coin"); c.classList.remove("flip"); void c.offsetWidth; c.classList.add("flip"); }
+}
+
+function ask(x){
+  const L = lvl();
+  if (round.phase !== "play") return;
+  if (round.q.length >= L.budget){ $("err").textContent = "You've used all your questions. Make your guess."; return; }
+  if (!Number.isInteger(x) || x < 0 || x > 255){ $("err").textContent = "Enter a whole number from 0 to 255."; return; }
+  $("err").textContent = "";
+  const repeat = round.T.has(x);
+  let y;
+  if (repeat) y = round.T.get(x);
+  else { y = round.b === 1 ? F(L, round.key, x) : r8(); round.T.set(x, y); }
+  round.q.push({ x, y, repeat });
+  setCode("fn");
+  renderAll();
+}
+
+function guess(g){
+  if (round.phase !== "play" || round.q.length === 0) return;
+  const s = S(), L = lvl();
+  round.guess = g; round.phase = "reveal";
+  if (round.b === 1){ s.n1++; if (g === 1) s.s11++; } else { s.n0++; if (g === 1) s.s10++; }
+  const ok = g === round.b;
+  if (ok){ s.wins++; s.streak++; } else s.streak = 0;
+  if (L.id < 5 && s.streak >= GOAL_STREAK) s.broken = true;
+  if (L.id === 5 && s.n0 + s.n1 >= GOAL_L5) s.done = true;
+  save();
+  setCode("fin", round.b);
+  renderAll();
+  const nb = $("nextb"); if (nb) nb.focus();
+}
+
+function setCode(step, b){
+  document.querySelectorAll("#code .ln").forEach(el => {
+    const s = el.dataset.s;
+    let on = s === step;
+    if (step === "fn" && s === "fn") on = true;
+    if (step === "fin" && (s === "b" + b)) on = true;
+    el.classList.toggle("on", on);
+    if (el.classList.contains("redact")) el.classList.toggle("shown", step === "fin");
+  });
+}
+
+function consistentKeys(){
+  const L = lvl(), out = [];
+  for (let K = 0; K < 16; K++){
+    if (round.q.every(q => F(L, [K], q.x) === q.y)) out.push(K);
+  }
+  return out;
+}
+
+function explain(){
+  const L = lvl(), q = round.q, uniq = [...new Map(q.map(e => [e.x, e])).values()];
+  const alt = uniq.map(e => hex(F(L, round.key, e.x)));
+  let p = "";
+  if (L.id === 1 || L.id === 2){
+    const vals = uniq.map(e => L.helper.fn(e.x, e.y));
+    const same = vals.every(v => v === vals[0]);
+    const sym = L.id === 1 ? "y ⊕ x" : "y − x";
+    if (uniq.length < 2) p = `With only one distinct input there's nothing to compare. Next time, ask two different x and check ${sym}.`;
+    else p = `Your ${sym} values: <span class="mono-inline">${vals.map(hex).join(" · ")}</span>. ` + (same
+      ? `They're all equal. That always happens with ${L.id===1?"x ⊕ K":"x + K"}, and a random function does it only about 1 time in ${Math.pow(256, uniq.length-1).toLocaleString()}.`
+      : `They differ, so no single key K explains these answers. The keyed function could never produce them.`);
+  } else if (L.id === 3){
+    const z = uniq.find(e => e.x === 0);
+    if (!z) p = `You didn't ask x = 0, and that single question settles it: K · 0 = 0 for every key.`;
+    else p = z.y === 0 ? `You asked 0 and got <span class="mono-inline">00</span>. The keyed function always does that. A random function has a 1-in-256 chance.`
+                       : `You asked 0 and got <span class="mono-inline">${hex(z.y)}</span>. A multiplier can't do that, so this has to be the notebook.`;
+  } else if (L.id === 4){
+    const ks = consistentKeys();
+    p = `After your questions, <b>${ks.length} of 16</b> keys still fit the answers. ` + (ks.length
+      ? `If any key survives, it's almost certainly the real world. A random function leaves a given key standing only 1 time in 256 per question.`
+      : `None survive, so no key could have produced these answers. It had to be the random notebook.`);
+  } else {
+    p = `There's no relation to find here: <i>F<sub>K</sub></i>'s answers look like fresh coin flips. Any single round is a coin toss for you, and over many rounds your advantage should settle near 0.`;
+  }
+  const other = round.b === 1 ? "" :
+    (L.id <= 4 ? `<p class="fine">Had it been the keyed function (${keyText(L, round.key)}), it would have answered <span class="mono-inline">${alt.join(" · ")}</span>.</p>` : "");
+  return `<p>${p}</p>${other}`;
+}
+
+/* ---------- Rendering ---------- */
+function renderTabs(){
+  $("levels").innerHTML = LEVELS.map(L => {
+    const s = stats[L.id];
+    let st = '<span class="st open">Not yet broken</span>';
+    if (s && s.broken) st = '<span class="st broken">Broken</span>';
+    if (L.id === 5) st = s && s.done ? '<span class="st holds">Holds up</span>' : '<span class="st open">Can it be broken?</span>';
+    return `<button class="lvl" role="tab" type="button" aria-selected="${L.id===cur}" data-l="${L.id}"><span class="n">LEVEL ${L.id}</span><span class="nm">${L.name}</span>${st}</button>`;
+  }).join("");
+}
+
+function renderLevel(){
+  const L = lvl(), s = S();
+  $("lvl-n").textContent = `Level ${L.id} of ${LEVELS.length}`;
+  $("lvl-h").textContent = L.name;
+  $("formula").innerHTML = `${L.formula}<span class="ks">${L.ks}</span>`;
+  $("blurb").textContent = L.blurb;
+  $("hints").innerHTML = L.hints.slice(0, s.hints).map(h => `<p class="hint">${h}</p>`).join("");
+  const hb = $("hintb");
+  hb.hidden = s.hints >= L.hints.length;
+  hb.textContent = `Show a hint (${s.hints + 1} of ${L.hints.length})`;
+}
+
+function renderConsole(){
+  const L = lvl(), q = round.q, last = q[q.length-1];
+  $("console-h").textContent = `Round ${roundNo[cur]}`;
+  $("pips").innerHTML = Array.from({length:L.budget}, (_, i) => `<span class="pip${i < q.length ? " used" : ""}"></span>`).join("");
+  $("pips").setAttribute("aria-label", `${L.budget - q.length} of ${L.budget} questions left`);
+  $("xv").textContent = last ? last.x : "—";
+  $("xhex").textContent = last ? "hex " + hex(last.x) : " ";
+  $("yv").textContent = last ? hex(last.y) : "—";
+  $("ybits").innerHTML = Array.from({length:8}, (_, i) => `<span class="bit${last && (last.y >> (7-i)) & 1 ? " on" : ""}"></span>`).join("");
+
+  const o = $("oracle"), who = $("who"), coin = $("coin");
+  o.classList.remove("is-real", "is-rand");
+  if (round.phase === "reveal"){
+    const real = round.b === 1;
+    o.classList.add(real ? "is-real" : "is-rand");
+    coin.textContent = "b=" + round.b;
+    who.innerHTML = real ? `<i class="m">F</i><sub>K</sub><small>${keyText(L, round.key)}</small>` : `Notebook<small>fresh coin flips</small>`;
+  } else {
+    coin.textContent = "?";
+    who.innerHTML = `Sealed box<small>b is hidden</small>`;
+  }
+
+  const helperOn = L.helper && S().hints >= L.hints.length;
+  const thead = `<tr><th>#</th><th>x</th><th>y (hex)</th><th>y (bits)</th>${helperOn ? `<th>${L.helper.label}</th>` : ""}<th></th></tr>`;
+  $("log").querySelector("thead").innerHTML = thead;
+  const cols = helperOn ? 6 : 5;
+  $("log").querySelector("tbody").innerHTML = q.length ? q.map((e, i) => {
+    const bits = e.y.toString(2).padStart(8, "0").replace(/(....)/, "$1 ");
+    return `<tr class="${e.repeat ? "rep" : ""}"><td class="dim">${i+1}</td><td>${e.x} <span class="dim">· ${hex(e.x)}</span></td><td><b>${hex(e.y)}</b></td><td>${bits}</td>${helperOn ? `<td class="helper">${hex(L.helper.fn(e.x, e.y))}</td>` : ""}<td>${e.repeat ? '<span class="note">repeat: same answer in both worlds</span>' : ""}</td></tr>`;
+  }).join("") : `<tr class="empty"><td colspan="${cols}">No questions yet. Try any x from 0 to 255, or ask a random one.</td></tr>`;
+
+  const playing = round.phase === "play", full = q.length >= L.budget;
+  $("askb").disabled = !playing || full;
+  $("rndb").disabled = !playing || full;
+  $("xin").disabled = !playing || full;
+  $("guess").hidden = !playing;
+  $("g1").disabled = $("g0").disabled = q.length === 0;
+  $("guess").querySelector(".prompt").textContent = q.length === 0 ? "Ask at least one question, then guess which box this is." : (full ? "Out of questions. Which box was it?" : "Which box are you talking to? You can guess now or keep asking.");
+
+  const rv = $("reveal");
+  rv.hidden = playing;
+  if (!playing){
+    const ok = round.guess === round.b, s = S();
+    const said = round.b === 1 ? `It was the <span class="real-c">keyed function</span>.` : `It was the <span class="rand-c">random notebook</span>.`;
+    let banner = "";
+    if (L.id < 5 && s.broken && s.streak === GOAL_STREAK) banner = `<p><b>${GOAL_STREAK} in a row: level broken.</b> Your advantage is close to 1, so <span class="m">${L.name}</span> is not a PRF. ${L.id < 4 ? "Move on to the next level when you're ready." : ""}</p>`;
+    if (L.id === 5 && s.done && s.n0 + s.n1 === GOAL_L5) banner = `<p><b>${GOAL_L5} rounds played.</b> Check your advantage meter: with no structure to exploit, it can only drift around 0.</p>`;
+    rv.innerHTML = `<div class="verdict"><span class="chip ${ok ? "ok" : "no"}">${ok ? "Correct" : "Wrong"}</span><span class="said">${said}</span></div>${explain()}${banner}
+      <div style="display:flex; gap:10px; flex-wrap:wrap"><button class="btn solid" id="nextb" type="button">Next round</button>${L.id < 5 && s.broken ? `<button class="btn" id="nextlvl" type="button">Go to level ${L.id + 1}</button>` : ""}</div>`;
+    $("nextb").onclick = () => newRound(true);
+    const nl = $("nextlvl"); if (nl) nl.onclick = () => switchLevel(L.id + 1);
+  }
+}
+
+function renderScore(){
+  const L = lvl(), s = S(), n = s.n0 + s.n1;
+  $("s-n").textContent = n; $("s-w").textContent = s.wins; $("s-s").textContent = s.streak;
+  $("streak").innerHTML = L.id < 5 ? Array.from({length:GOAL_STREAK}, (_, i) => `<span class="${i < Math.min(s.streak, GOAL_STREAK) ? "f" : ""}"></span>`).join("") : "";
+  $("goal").textContent = L.id < 5
+    ? (s.broken ? `Broken. You hit ${GOAL_STREAK} correct in a row. Keep playing to see your advantage climb.` : `Goal: ${GOAL_STREAK} correct guesses in a row. Blind guessing gets there only 1 time in 32.`)
+    : `Goal: play ${GOAL_L5} rounds (${Math.min(n, GOAL_L5)}/${GOAL_L5}) and see whether you beat a coin toss.`;
+  let adv = null;
+  if (s.n1 > 0 && s.n0 > 0) adv = Math.abs(s.s11 / s.n1 - s.s10 / s.n0);
+  $("advv").textContent = adv === null ? "—" : adv.toFixed(2);
+  $("advfill").style.width = adv === null ? "0" : (adv * 100).toFixed(1) + "%";
+  let note;
+  if (adv === null) note = `You need rounds in both worlds to estimate this, and the coin decides which you get. So far: ${s.n1} real, ${s.n0} random.`;
+  else if (adv >= 0.75) note = "Close to 1: you can reliably tell the worlds apart. Whatever this is, it's not a secure PRF.";
+  else if (adv >= 0.3) note = "You have a partial edge. A few more rounds will show whether it's real or luck.";
+  else note = L.id === 5 ? "Close to 0: the keyed function and pure chance look the same to you. (Guessing blindly lands here too, which is the point.)" : "Close to 0 so far. Use the hints and look for a pattern the keyed function can't avoid.";
+  if (adv !== null && n < 8) note += ` Only ${n} rounds so far, so treat this as a rough estimate.`;
+  $("advnote").textContent = note;
+
+  const kp = $("keypanel");
+  if (L.id === 4){
+    kp.hidden = false;
+    const ks = consistentKeys(), reveal = round.phase === "reveal" && round.b === 1;
+    kp.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:baseline"><span class="label">Key search · all 16 keys</span><span class="label">${ks.length} still fit</span></div>
+      <div class="keys">${Array.from({length:16}, (_, K) => `<span class="key${ks.includes(K) ? "" : " out"}${reveal && K === round.key[0] ? " true" : ""}">${K.toString(16).toUpperCase()}</span>`).join("")}</div>
+      <p class="fine">After each question, every key that would have given a different answer is crossed out.${reveal ? " The filled key is the one the box actually used." : ""}</p>`;
+  } else if (L.id === 5){
+    kp.hidden = false;
+    kp.innerHTML = `<span class="label">Key search</span><span class="bigkeys">2¹²⁸ keys</span>
+      <p class="fine">That's about 3.4 × 10³⁸. At a trillion guesses per second, trying them all would take roughly 10¹⁹ years, close to a billion times the age of the universe.</p>`;
+  } else kp.hidden = true;
+}
+
+function renderAll(){ renderTabs(); renderLevel(); renderConsole(); renderScore(); }
+
+function switchLevel(id){ cur = id; save(); newRound(true); }
+
+/* ---------- Primer tables ---------- */
+const RECIPES = {
+  mix: { name:"Mix", gen:() => [rnd32(), rnd32(), rnd32(), rnd32()], f:(k,x) => mix(k,x),
+         kt:k => "K = " + k.map(w => w.toString(16).toUpperCase().padStart(8,"0")).join(" ") + " (128 bits)",
+         cap:"Looks like noise, the same as the random table. It's really one of at most 2¹²⁸ tables, but without K you can't tell which. This is the behavior a PRF needs." },
+  xor: { name:"x ⊕ K", gen:() => [r8()], f:(k,x) => x ^ k[0], kt:k => "K = " + hex(k[0]) + " (8 bits)",
+         cap:"See the blocks? A new key only rearranges them, and it never hides the structure. Level 1 of the game exploits this." },
+  add: { name:"x + K", gen:() => [r8()], f:(k,x) => (x + k[0]) & 255, kt:k => "K = " + hex(k[0]) + " (8 bits)",
+         cap:"A smooth ramp that wraps around. Neighboring inputs give neighboring outputs, which random rows never do. That's level 2." },
+  mul: { name:"K · x", gen:() => [r8() | 1], f:(k,x) => Math.imul(k[0], x) & 255, kt:k => "K = " + hex(k[0]) + " (8 bits, odd)",
+         cap:"Stripes, and the top-left cell (x = 0) is always the lightest because K · 0 = 0 whatever the key. That's level 3." }
+};
+let rfTable = [], prfRecipe = "mix", prfKey = RECIPES.mix.gen();
+
+function paint(el, vals){
+  if (!el.children.length) el.innerHTML = Array.from({length:256}, (_, i) => `<i data-x="${i}"></i>`).join("");
+  vals.forEach((v, i) => el.children[i].style.setProperty("--v", (0.06 + 0.94 * v / 255).toFixed(3)));
+}
+function drawRF(){ rfTable = Array.from({length:256}, r8); paint($("rf-grid"), rfTable); }
+function prfVals(){ const R = RECIPES[prfRecipe]; return Array.from({length:256}, (_, x) => R.f(prfKey, x)); }
+function drawPRF(){
+  const R = RECIPES[prfRecipe];
+  paint($("prf-grid"), prfVals());
+  $("prf-key").textContent = R.kt(prfKey);
+  $("prf-cap").textContent = R.cap;
+  document.querySelectorAll("#prf-seg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.r === prfRecipe)));
+}
+function wireGrid(gridId, readId, sym, getVal){
+  const g = $(gridId), rd = $(readId);
+  const show = e => {
+    const c = e.target.closest("i[data-x]"); if (!c) return;
+    g.querySelectorAll(".hot").forEach(h => h.classList.remove("hot"));
+    c.classList.add("hot");
+    const x = +c.dataset.x;
+    rd.innerHTML = `${sym}(${x}) = ${hex(getVal(x))} <span class="dim">· row ${x}, hex ${hex(x)}</span>`;
+  };
+  g.addEventListener("pointermove", show);
+  g.addEventListener("pointerdown", show);
+}
+
+/* ---------- Part 3: predict the unseen row ---------- */
+const PBOX = {
+  rand:{ name:"Truly random", long:"Truly random function", recipe:null, color:"var(--rand)" },
+  prf: { name:"PRF (Mix)", long:"PRF · Mix, 128-bit key", recipe:"mix", color:"var(--real)" },
+  xor: { name:"x ⊕ K", long:"Broken recipe · x ⊕ K", recipe:"xor", color:"var(--muted)" },
+  add: { name:"x + K", long:"Broken recipe · x + K", recipe:"add", color:"var(--muted)" },
+  mul: { name:"K · x", long:"Broken recipe · K · x", recipe:"mul", color:"var(--muted)" }
+};
+const PBUDGET = 5, PSTORE = "prf-predict-v1";
+let pBox = "rand", pr = null, pRoundNo = 0, pStats = {};
+const pBlank = () => ({ n:0, exact:0, bits:0 });
+const popc = v => { let c = 0; while (v){ c += v & 1; v >>= 1; } return c; };
+const inv256 = a => { for (let i = 1; i < 256; i += 2) if (((a * i) & 255) === 1) return i; return 0; };
+function pLoad(){ try { const d = JSON.parse(localStorage.getItem(PSTORE) || "null"); if (d && d.stats) pStats = d.stats; } catch(e){} }
+function pSave(){ try { localStorage.setItem(PSTORE, JSON.stringify({ stats:pStats })); } catch(e){} }
+
+function pNew(){
+  const B = PBOX[pBox];
+  const key = B.recipe ? RECIPES[B.recipe].gen() : null;
+  const table = Array.from({length:256}, (_, x) => B.recipe ? RECIPES[B.recipe].f(key, x) : r8());
+  pRoundNo++;
+  pr = { box:pBox, key, table, xs:r8(), q:[], g:0, phase:"play" };
+  $("pr-err").textContent = ""; $("pr-gerr").textContent = ""; $("pr-xin").value = "";
+  pRender();
+}
+function pAsk(x){
+  if (pr.phase !== "play") return;
+  const e = $("pr-err");
+  if (!Number.isInteger(x) || x < 0 || x > 255){ e.textContent = "Enter a whole number from 0 to 255."; return; }
+  if (x === pr.xs){ e.textContent = `Row ${x} is the challenge, so it stays hidden. Look up any other row.`; return; }
+  if (pr.q.includes(x)){ e.textContent = `You've already seen row ${x}: it's ${hex(pr.table[x])}. Repeats are free.`; return; }
+  if (pr.q.length >= PBUDGET){ e.textContent = "You've used all 5 look-ups. Set your guess and lock it in."; return; }
+  e.textContent = "";
+  pr.q.push(x);
+  pRender();
+}
+function pSetGuess(v){ pr.g = v & 255; $("pr-gh").value = hex(pr.g); $("pr-gerr").textContent = ""; pRenderBits(); }
+function pLock(){
+  if (pr.phase !== "play") return;
+  const t = pr.table[pr.xs], right = 8 - popc(pr.g ^ t), s = (pStats[pr.box] = pStats[pr.box] || pBlank());
+  s.n++; s.bits += right; if (right === 8) s.exact++;
+  pr.phase = "reveal"; pr.right = right;
+  pSave(); pRender();
+  const nb = $("pr-next"); if (nb) nb.focus();
+}
+
+function pExplain(){
+  const B = PBOX[pr.box], xs = pr.xs, t = pr.table[xs], q = pr.q;
+  const first = q[0], y0 = first !== undefined ? pr.table[first] : 0;
+  const code = s => `<span class="mono-inline">${s}</span>`, hx = v => "0x" + hex(v);
+  if (pr.box === "rand")
+    return `Row ${xs} was 8 fresh coin flips, drawn independently of the ${q.length} row${q.length===1?"":"s"} you looked at. Those rows carried no information about it, so no strategy can beat an exact-hit chance of 1 in 256, or 4 bits right on average.`;
+  if (pr.box === "prf")
+    return `<i>F<sub>K</sub></i>(${xs}) is fixed by the key, but the key is one of 2¹²⁸, and a few 8-bit rows don't give it away. With no efficient way to recover <i>K</i>, the hidden row is as unpredictable as coin flips, even though it came from a fixed recipe. Compare your numbers here with the truly random row.`;
+  if (pr.box === "xor"){
+    if (first === undefined) return `One look-up would have cracked it: any row gives <i>K</i> = y ⊕ x, and then every other row follows.`;
+    const K = first ^ y0;
+    return `Row ${first} = ${code(hx(first))} → ${code(hx(y0))} gives <i>K</i> = ${code(hx(first)+" ⊕ "+hx(y0)+" = "+hx(K))}. So <i>F<sub>K</sub></i>(${code(hx(xs))}) = ${code(hx(xs)+" ⊕ "+hx(K)+" = "+hx(t))}. One look-up predicts every row in the table.`;
+  }
+  if (pr.box === "add"){
+    if (first === undefined) return `One look-up would have cracked it: any row gives <i>K</i> = y − x (mod 256), and then every other row follows.`;
+    const K = (y0 - first + 256) & 255;
+    return `Row ${first} = ${code(hx(first))} → ${code(hx(y0))} gives <i>K</i> = ${code(hx(y0)+" − "+hx(first)+" = "+hx(K))} (mod 256). So <i>F<sub>K</sub></i>(${code(hx(xs))}) = ${code(hx(xs)+" + "+hx(K)+" = "+hx(t))}. One look-up predicts every row in the table.`;
+  }
+  // mul
+  if (xs === 0) return `The challenge was x* = 0, which is a giveaway: <i>K</i> · 0 = 0 for every key, so the answer is always ${code("00")}.`;
+  const odd = q.find(x => x & 1);
+  if (odd === undefined) return q.length
+    ? `Your look-ups were all even inputs, and multiplying by an even number destroys part of <i>K</i>. Look up an odd x (x = 1 returns <i>K</i> itself) and every row follows.`
+    : `Look up x = 1: it returns <i>K</i> itself, and then every row follows.`;
+  const yo = pr.table[odd], K = (yo * inv256(odd)) & 255;
+  return `Row ${odd} = ${code(hx(odd))} → ${code(hx(yo))}. Since ${odd} is odd it can be undone: <i>K</i> = ${code(hx(yo)+" · "+odd+"⁻¹ mod 256 = "+hx(K))}. So <i>F<sub>K</sub></i>(${code(hx(xs))}) = ${code(hx(K)+" · "+xs+" mod 256 = "+hx(t))}. (Row 1 is the shortcut: it's <i>K</i> itself.)`;
+}
+
+function pRenderBits(){
+  const done = pr.phase === "reveal", t = pr.table[pr.xs];
+  $("pr-bits").innerHTML = Array.from({length:8}, (_, i) => {
+    const k = 7 - i, on = (pr.g >> k) & 1, cls = done ? (((t >> k) & 1) === on ? " hit" : " miss") : "";
+    return `<button type="button" class="bitb${cls}" data-k="${k}" aria-pressed="${!!on}" ${done ? "disabled" : ""} aria-label="bit ${k}">${on}<small>b${k}</small></button>`;
+  }).join("");
+}
+
+function pRender(){
+  const B = PBOX[pr.box], done = pr.phase === "reveal", sym = B.recipe ? "F<sub>K</sub>" : "f";
+  document.querySelectorAll("#pr-seg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.b === pBox)));
+  $("pr-round").textContent = `Round ${pRoundNo} · ${B.long}`;
+  $("pr-pips").innerHTML = Array.from({length:PBUDGET}, (_, i) => `<span class="pip${i < pr.q.length ? " used" : ""}"></span>`).join("");
+  $("pr-pips").setAttribute("aria-label", `${PBUDGET - pr.q.length} of ${PBUDGET} look-ups left`);
+  $("pr-sym").innerHTML = sym;
+  $("pr-xs").textContent = pr.xs;
+  $("pr-xshex").textContent = "hex " + hex(pr.xs);
+
+  const g = $("pr-grid");
+  g.style.setProperty("--c", B.color === "var(--muted)" ? "var(--ink)" : B.color);
+  if (!g.children.length) g.innerHTML = Array.from({length:256}, (_, i) => `<i data-x="${i}"></i>`).join("");
+  g.classList.toggle("done", done);
+  for (let x = 0; x < 256; x++){
+    const c = g.children[x], asked = pr.q.includes(x), ch = x === pr.xs;
+    c.className = ch ? "ch" : (asked ? "asked" : (done ? "" : "hole"));
+    c.style.setProperty("--v", (0.06 + 0.94 * pr.table[x] / 255).toFixed(3));
+  }
+  $("pr-tbl-l").textContent = done ? "The whole table, revealed" : "The table · rows you've seen are shaded";
+
+  $("pr-seen").innerHTML = pr.q.length
+    ? pr.q.map(x => `<span class="row">${sym === "f" ? "f" : "F"}(${x}) = <b>${hex(pr.table[x])}</b></span>`).join("")
+    : `<span class="none">No rows looked up yet. Click cells in the table or type an x.</span>`;
+
+  const full = pr.q.length >= PBUDGET;
+  $("pr-askb").disabled = $("pr-rndb").disabled = $("pr-xin").disabled = done || full;
+  $("pr-gh").disabled = $("pr-lock").disabled = done;
+  $("pr-gh").value = hex(pr.g);
+  pRenderBits();
+
+  const rv = $("pr-reveal");
+  rv.hidden = !done;
+  if (done){
+    const t = pr.table[pr.xs], exact = pr.right === 8;
+    rv.innerHTML = `<div class="verdict"><span class="chip ${exact ? "ok" : (pr.right >= 6 ? "ok" : "no")}">${exact ? "Exact hit" : pr.right + " of 8 bits"}</span>
+        <span class="said">The hidden row was ${sym}(${pr.xs}) = ${hex(t)}. You guessed ${hex(pr.g)}.</span></div>
+      <div class="bitrow truthrow" style="--c:${B.color === "var(--muted)" ? "var(--ink)" : B.color}" aria-label="Actual bits">${Array.from({length:8}, (_, i) => { const b = (t >> (7-i)) & 1; return `<span class="tb${b ? " one" : ""}">${b}</span>`; }).join("")}</div>
+      <p>${pExplain()}</p>
+      <div><button class="btn solid" id="pr-next" type="button">Next round</button></div>`;
+    $("pr-next").onclick = pNew;
+  }
+  pRenderResults();
+}
+
+function pRenderResults(){
+  $("pr-res").innerHTML = Object.keys(PBOX).map(k => {
+    const s = pStats[k] || pBlank(), B = PBOX[k];
+    return `<tr class="${k === pBox ? "cur" : ""}"><td><span class="sw" style="background:${B.color}"></span>${B.name}</td><td>${s.n}</td><td>${s.n ? Math.round(100 * s.exact / s.n) + "%" : "—"}</td><td>${s.n ? (s.bits / s.n).toFixed(1) : "—"}</td></tr>`;
+  }).join("");
+  const r = pStats.rand || pBlank(), p = pStats.prf || pBlank();
+  const broken = ["xor","add","mul"].map(k => pStats[k] || pBlank()).filter(s => s.n);
+  const parts = [];
+  if (r.n >= 3 && p.n >= 3) parts.push(`Truly random: ${(r.bits/r.n).toFixed(1)} bits on average. PRF: ${(p.bits/p.n).toFixed(1)}. Both should hover around 4, and your prediction score can't tell them apart.`);
+  else parts.push("Play at least 3 rounds against both the truly random function and the PRF to compare them.");
+  if (broken.length) parts.push("The broken recipes are a different story: after one well-chosen look-up, every row is predictable.");
+  $("pr-verdict").textContent = parts.join(" ");
+}
+
+function pWire(){
+  pLoad();
+  $("pr-seg").addEventListener("click", e => { const b = e.target.closest("button[data-b]"); if (!b) return; pBox = b.dataset.b; pRoundNo = 0; pNew(); });
+  $("pr-grid").addEventListener("click", e => { const c = e.target.closest("i[data-x]"); if (c) pAsk(+c.dataset.x); });
+  const show = e => {
+    const c = e.target.closest("i[data-x]"); if (!c) return;
+    const x = +c.dataset.x, rd = $("pr-read"), sym = PBOX[pr.box].recipe ? "F<sub>K</sub>" : "f";
+    if (x === pr.xs && pr.phase === "play") rd.innerHTML = `x* = ${x} <span class="dim">· the hidden row</span>`;
+    else if (pr.phase === "reveal" || pr.q.includes(x)) rd.innerHTML = `${sym}(${x}) = ${hex(pr.table[x])} <span class="dim">· row ${x}</span>`;
+    else rd.innerHTML = `row ${x} <span class="dim">· not seen yet, click to look up</span>`;
+  };
+  $("pr-grid").addEventListener("pointermove", show);
+  $("pr-askb").onclick = () => { const v = $("pr-xin").value.trim(); pAsk(v === "" ? NaN : Number(v)); $("pr-xin").select(); };
+  $("pr-xin").addEventListener("keydown", e => { if (e.key === "Enter"){ e.preventDefault(); $("pr-askb").click(); } });
+  $("pr-rndb").onclick = () => { let x; do { x = r8(); } while (x === pr.xs || pr.q.includes(x)); $("pr-xin").value = x; pAsk(x); };
+  $("pr-bits").addEventListener("click", e => { const b = e.target.closest(".bitb"); if (!b || pr.phase !== "play") return; pSetGuess(pr.g ^ (1 << +b.dataset.k)); });
+  $("pr-gh").addEventListener("input", e => {
+    const v = e.target.value.trim().replace(/^0x/i, "");
+    if (/^[0-9a-f]{1,2}$/i.test(v)){ pr.g = parseInt(v, 16); $("pr-gerr").textContent = ""; pRenderBits(); }
+    else if (v !== "") $("pr-gerr").textContent = "Use two hex digits, 00 to FF.";
+  });
+  $("pr-gh").addEventListener("keydown", e => { if (e.key === "Enter"){ e.preventDefault(); pLock(); } });
+  $("pr-lock").onclick = pLock;
+  $("pr-reset").onclick = () => { pStats = {}; pSave(); pRenderResults(); };
+  pNew();
+}
+
+/* ---------- Wiring ---------- */
+function start(data){
+  pWire();
+  drawRF(); drawPRF();
+  wireGrid("rf-grid", "rf-read", "f", x => rfTable[x]);
+  wireGrid("prf-grid", "prf-read", "F<sub>K</sub>", x => RECIPES[prfRecipe].f(prfKey, x));
+  $("rf-new").onclick = drawRF;
+  $("prf-new").onclick = () => { prfKey = RECIPES[prfRecipe].gen(); drawPRF(); };
+  $("prf-seg").addEventListener("click", e => { const b = e.target.closest("button[data-r]"); if (!b) return; prfRecipe = b.dataset.r; prfKey = RECIPES[prfRecipe].gen(); drawPRF(); });
+  load();
+  if (data && data.stats){ stats = data.stats; cur = data.cur || cur; }
+  $("levels").addEventListener("click", e => { const b = e.target.closest(".lvl"); if (b) switchLevel(+b.dataset.l); });
+  $("askb").onclick = () => { const v = $("xin").value.trim(); ask(v === "" ? NaN : Number(v)); $("xin").select(); };
+  $("xin").addEventListener("keydown", e => { if (e.key === "Enter"){ e.preventDefault(); $("askb").click(); } });
+  $("rndb").onclick = () => { const x = r8(); $("xin").value = x; ask(x); };
+  $("g1").onclick = () => guess(1);
+  $("g0").onclick = () => guess(0);
+  $("hintb").onclick = () => { S().hints++; save(); renderLevel(); renderConsole(); };
+  $("resetb").onclick = () => { stats[cur] = blank(); roundNo[cur] = 0; save(); newRound(false); };
+  try { window.claude && window.claude.hot && window.claude.hot.snapshot && window.claude.hot.snapshot(() => ({ stats, cur })); } catch(e){}
+  newRound(false);
+}
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>
+</body>
+</html>
