@@ -117,6 +117,94 @@
             color: #888;
             font-size: 0.88rem;
         }
+        .kagi {
+            margin: 2.5rem 0 0;
+            background: #13294b;
+            color: #f7f5ee;
+            border: 3px solid #f2f0e6;
+            border-radius: 10px;
+            box-shadow: inset 0 0 0 2px #0b1426, 0 5px 0 #0b1426;
+            padding: 1.4rem 1.5rem;
+        }
+        .kagi-eyebrow {
+            font-size: 0.78rem;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: #fcb316;
+            margin: 0;
+        }
+        .kagi h2 {
+            margin: 0.2rem 0 0.4rem;
+            font-size: clamp(1.4rem, 4vw, 1.8rem);
+            color: #fff;
+        }
+        .kagi h2 .jp {
+            font-size: 0.6em;
+            color: #faa371;
+            margin-left: 0.4em;
+            letter-spacing: 0.15em;
+            font-weight: normal;
+        }
+        .kagi p {
+            margin: 0.5rem 0;
+            color: #dfe6f2;
+        }
+        .kagi-quests {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 0.8rem;
+            margin: 1rem 0 1.2rem;
+        }
+        .kagi-quest {
+            display: flex;
+            gap: 0.8rem;
+            align-items: flex-start;
+            background: #1d3a66;
+            border-radius: 8px;
+            padding: 0.8rem;
+        }
+        .kagi-seal {
+            flex: none;
+            display: grid;
+            place-items: center;
+            width: 2.6rem;
+            height: 2.6rem;
+            border-radius: 6px;
+            background: #FF5F05;
+            color: #fff;
+            font-size: 1.5rem;
+            border: 2px solid #f2f0e6;
+        }
+        .kagi-quest strong {
+            display: block;
+            color: #fff;
+        }
+        .kagi-quest span {
+            font-size: 0.92rem;
+            color: #c9d4e6;
+        }
+        .kagi-play {
+            display: inline-block;
+            background: #FF5F05;
+            color: #13294b;
+            font-weight: bold;
+            text-decoration: none;
+            padding: 0.6rem 1.2rem;
+            border: 3px solid #f2f0e6;
+            border-radius: 6px;
+            box-shadow: 0 4px 0 #7a2a00;
+        }
+        .kagi-play:hover {
+            background: #ff7a2e;
+        }
+        .kagi-play:focus-visible {
+            outline: 3px solid #fcb316;
+            outline-offset: 3px;
+        }
+        .kagi-note {
+            font-size: 0.88rem;
+            color: #aebbd2 !important;
+        }
         footer {
             background: #FF5F05;
             color: #fff;
@@ -143,6 +231,7 @@
         <a href="index.html">Home</a>
         <a href="research.html">Research</a>
         <a href="students.html">Students</a>
+        <a href="join.html">Join</a>
         <a href="teaching.html">Teaching</a>
         <a href="service.html">Service</a>
         <a href="misc.html">Misc</a>
@@ -191,6 +280,34 @@
                 tranquility as the <em>means</em> to achievement.
             </p> -->
         </div>
+
+        <section class="kagi" id="kagi-village" aria-labelledby="kagi-title">
+            <p class="kagi-eyebrow">Outreach · A cryptography mini-game</p>
+            <h2 id="kagi-title">Kagi Village <span class="jp">暗号クエスト</span></h2>
+            <p>
+                A retro Japanese-style RPG I made to introduce high school students to modern cryptography.
+                <em>Kagi</em> (鍵) means “key” in Japanese. Walk around the village, help the villagers
+                with two puzzles, and then answer Eve the Eavesdropper's quiz questions to beat her.
+            </p>
+            <div class="kagi-quests">
+                <div class="kagi-quest">
+                    <div class="kagi-seal" aria-hidden="true">和</div>
+                    <div>
+                        <strong>The Festival Ledger</strong>
+                        <span>Multi-party computation: three merchants learn their total income without revealing their own.</span>
+                    </div>
+                </div>
+                <div class="kagi-quest">
+                    <div class="kagi-seal" aria-hidden="true">証</div>
+                    <div>
+                        <strong>The Trial of Two Orbs</strong>
+                        <span>Zero-knowledge proof: convince a color-blind sage that two orbs differ, without saying which is red.</span>
+                    </div>
+                </div>
+            </div>
+            <a class="kagi-play" href="kagi-village.html">Play Kagi Village →</a>
+            <p class="kagi-note">Takes about 10 minutes. Works on a laptop (arrow keys) or a phone (on-screen pad).</p>
+        </section>
     </div>
 
     <footer>

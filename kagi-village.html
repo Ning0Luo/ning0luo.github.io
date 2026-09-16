@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="description" content="Kagi Village: a retro RPG that teaches multi-party computation and zero-knowledge proofs.">
+<title>Kagi Village · Cipher Quest - Ning Luo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Pixelify+Sans:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --night:#0B1426; --night-2:#101d36;
+  --win-top:#1F4F94; --win-bot:#13294B;
+  --frame:#F2F0E6; --ink:#F7F5EE; --dim:#B6C4DC;
+  --orange:#FF5F05; --gold:#FCB316; --hp:#4CC38A; --danger:#FF7A7A; --eve:#B58CFF;
+  --pixel:"DotGothic16", "MS Gothic", "Osaka-Mono", ui-monospace, monospace;
+  --display:"Pixelify Sans", "DotGothic16", ui-monospace, monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+[hidden]{display:none!important}
+html,body{background:var(--night);color:var(--ink)}
+body{font-family:var(--pixel);font-size:16px;line-height:1.55;
+  background:radial-gradient(1200px 500px at 50% -10%, #1a2f57 0%, var(--night) 60%) var(--night);min-height:100%}
+#app{max-width:860px;margin:0 auto;padding-inline:16px;padding-block:14px 28px;display:flex;flex-direction:column;gap:12px}
+button{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+
+/* HUD */
+.hud{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px}
+.brand{font-family:var(--display);font-weight:700;font-size:20px;letter-spacing:.06em;color:var(--gold);text-shadow:0 2px 0 #7a2a00}
+.brand small{font-family:var(--pixel);font-weight:400;font-size:13px;color:var(--dim);letter-spacing:0;margin-left:8px;text-shadow:none}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:8px;padding:3px 10px 3px 4px;border:2px solid #3b5a8c;border-radius:6px;background:var(--night-2);font-size:13px;color:var(--dim)}
+.chip .seal{display:grid;place-items:center;width:24px;height:24px;border-radius:4px;background:#263b61;color:#6f86ad;font-size:15px}
+.chip.done{border-color:var(--gold);color:var(--ink)}
+.chip.done .seal{background:var(--orange);color:#fff}
+
+/* Windows */
+.win{background:linear-gradient(180deg,var(--win-top),var(--win-bot));border:3px solid var(--frame);border-radius:8px;
+  box-shadow:inset 0 0 0 2px #0a1630, 0 4px 0 #050a14;padding:12px 16px;color:var(--ink)}
+.eyebrow{display:block;font-size:12px;letter-spacing:.14em;color:var(--gold);text-transform:uppercase}
+h2{font-family:var(--display);font-weight:700;font-size:22px;margin:0 0 4px;letter-spacing:.02em;text-wrap:balance}
+
+/* Map screen */
+#screen{position:relative;width:100%;aspect-ratio:4/3;border:4px solid var(--frame);border-radius:10px;overflow:hidden;background:#000;box-shadow:0 6px 0 #050a14}
+#map{display:block;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges}
+.title{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(4px,1.5vw,12px);
+  background:linear-gradient(180deg,rgba(11,20,38,.55),rgba(11,20,38,.85));text-align:center;padding:12px}
+.title .jp{margin:0;font-size:clamp(14px,2.6vw,22px);color:var(--frame);letter-spacing:.3em}
+.logo{margin:0;font-family:var(--display);font-weight:700;line-height:1;font-size:clamp(34px,8.5vw,80px);color:var(--gold);letter-spacing:.04em;
+  text-shadow:0 3px 0 var(--orange),0 6px 0 #13294B,0 9px 0 #050a14}
+.title .tag{margin:0;color:var(--dim);font-size:clamp(12px,2.2vw,16px)}
+.menu{display:flex;flex-direction:column;min-width:200px;padding:8px 12px;margin-top:6px}
+
+.cmd{display:block;width:100%;text-align:left;background:none;border:0;padding:6px 8px 6px 26px;cursor:pointer;position:relative;border-radius:4px;font-size:16px}
+.cmd::before{content:"▶";position:absolute;left:6px;color:var(--orange);opacity:0}
+.cmd:hover::before,.cmd:focus-visible::before,.cmd.sel::before{opacity:1;animation:blink 1s steps(2) infinite}
+.cmd:hover,.cmd.sel{background:rgba(255,255,255,.06)}
+.cmd:focus-visible{outline:none;background:rgba(255,255,255,.1)}
+@keyframes blink{50%{opacity:.25}}
+
+/* Dialog */
+.dialog{min-height:118px;position:relative}
+.speaker{display:inline-block;font-family:var(--display);font-weight:700;color:var(--gold);margin-bottom:2px;font-size:17px}
+.dialog p{margin:0;font-size:17px;max-width:65ch}
+.dialog .hint{color:var(--dim);font-size:15px}
+.choices{margin-top:8px;display:flex;flex-direction:column;max-width:340px}
+.next{position:absolute;right:14px;bottom:8px;color:var(--orange);animation:bob .8s steps(2) infinite}
+@keyframes bob{50%{transform:translateY(3px)}}
+
+/* Pad */
+.pad{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.dpad{display:grid;grid-template-columns:repeat(3,54px);grid-template-rows:repeat(3,54px);gap:4px}
+.dpad button,.abtn{touch-action:none;user-select:none;-webkit-user-select:none;cursor:pointer}
+.dpad button{background:#1c2c4b;border:3px solid #3b5a8c;border-radius:8px;font-size:20px;color:var(--frame)}
+.dpad button:active,.dpad button.on{background:#2e4a7a;border-color:var(--frame)}
+.dpad .up{grid-column:2;grid-row:1}.dpad .left{grid-column:1;grid-row:2}.dpad .right{grid-column:3;grid-row:2}.dpad .down{grid-column:2;grid-row:3}
+.dpad .hub{grid-column:2;grid-row:2;background:#14213a;border-radius:8px}
+.pad-right{display:flex;flex-direction:column;align-items:center;gap:6px}
+.abtn{width:84px;height:84px;border-radius:50%;background:var(--orange);border:4px solid var(--frame);color:#13294B;font-family:var(--display);font-weight:700;font-size:26px;box-shadow:0 5px 0 #7a2a00}
+.abtn:active{transform:translateY(3px);box-shadow:0 2px 0 #7a2a00}
+.keys{font-size:13px;color:var(--dim);text-align:right;max-width:220px}
+
+/* Scenes */
+.scene{display:flex;flex-direction:column;gap:12px}
+.story p{margin:4px 0 0;max-width:70ch}
+.story b,.action b{color:var(--gold);font-weight:400}
+.board{display:grid;grid-template-columns:1.25fr 1fr;gap:12px}
+.side{display:flex;flex-direction:column;gap:12px}
+@media (max-width:640px){.board{grid-template-columns:1fr}.dpad{grid-template-columns:repeat(3,48px);grid-template-rows:repeat(3,48px)}.abtn{width:76px;height:76px}.keys{display:none}}
+.ring svg{display:block;width:100%;height:auto}
+.who{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+canvas.portrait{width:64px;height:64px;image-rendering:pixelated;background:#0e1a33;border:2px solid #3b5a8c;border-radius:6px}
+dl.facts{display:grid;grid-template-columns:1fr auto;gap:4px 12px;margin:0}
+dl.facts dt{color:var(--dim)} dl.facts dd{margin:0;text-align:right;font-variant-numeric:tabular-nums;color:var(--gold)}
+.eve-notes{margin:6px 0 0;padding:0;list-style:none;font-size:15px}
+.eve-notes li{display:flex;justify-content:space-between;gap:8px;border-bottom:1px dashed #3b5a8c;padding:2px 0;font-variant-numeric:tabular-nums}
+.eve-notes li span:last-child{color:var(--eve)}
+.eve-notes .empty{color:var(--dim)}
+.eve h3{margin:0;font-family:var(--display);font-size:16px;color:var(--eve)}
+
+.action{display:flex;flex-direction:column;gap:10px}
+.action p{margin:0;max-width:70ch}
+.row{display:flex;flex-wrap:wrap;gap:10px}
+.btn{background:var(--orange);color:#13294B;border:3px solid var(--frame);border-radius:6px;padding:8px 16px;cursor:pointer;font-family:var(--display);font-weight:700;font-size:17px;box-shadow:0 4px 0 #7a2a00}
+.btn:active{transform:translateY(2px);box-shadow:0 2px 0 #7a2a00}
+.btn.ghost{background:#1c2c4b;color:var(--ink);box-shadow:0 4px 0 #050a14}
+.entry{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px;font-size:26px;font-variant-numeric:tabular-nums}
+.entry output{min-width:4ch;padding:0 10px;border-bottom:3px solid var(--gold);color:var(--gold);text-align:center}
+.keypad{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;max-width:420px}
+.keypad button{background:#1c2c4b;border:2px solid #3b5a8c;border-radius:6px;padding:8px 0;font-size:18px;cursor:pointer}
+.keypad button:hover{border-color:var(--frame)}
+.keypad .ok{background:var(--orange);color:#13294B;border-color:var(--frame);font-family:var(--display);font-weight:700}
+.feedback{min-height:1.5em;color:var(--danger)}
+.feedback.good{color:var(--hp)}
+
+/* ZKP */
+.arena{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-height:260px;
+  background:linear-gradient(180deg,#1b2f58 0%,#2a3f6e 58%,#3d5a3a 58%,#2f4a2d 100%);overflow:hidden}
+.arena canvas{width:128px;height:128px;image-rendering:pixelated;margin-bottom:18px}
+.orbs{position:absolute;left:0;right:0;bottom:30px;display:flex;justify-content:center;gap:150px;transition:opacity .45s, transform .45s}
+.orbs.hiding{opacity:0;transform:translateY(-10px) scale(.4)}
+.orb{width:50px;height:50px;border-radius:50%;border:3px solid #0a1630;box-shadow:inset -6px -6px 0 rgba(0,0,0,.25), inset 5px 5px 0 rgba(255,255,255,.35)}
+.orb[data-c="red"]{background:#E53935}.orb[data-c="green"]{background:#2EAD4B}.orb[data-c="gray"]{background:#8A8F98}
+.view .dots{display:flex;gap:12px;margin-top:6px}
+.view .orb{width:34px;height:34px}
+.meter .bar{height:14px;border:2px solid var(--frame);border-radius:4px;background:#0a1630;margin-top:6px;overflow:hidden}
+.meter .bar span{display:block;height:100%;width:0;background:repeating-linear-gradient(90deg,var(--hp) 0 8px,#3aa877 8px 10px);transition:width .3s}
+.big{font-family:var(--display);font-weight:700;font-size:22px;color:var(--gold);font-variant-numeric:tabular-nums}
+
+/* Battle */
+.field{position:relative;height:250px;border:4px solid var(--frame);border-radius:10px;overflow:hidden;
+  background:linear-gradient(180deg,#2a1b47 0%,#3b2a63 45%,#23402b 45%,#1a311f 100%)}
+.field::after{content:"";position:absolute;left:0;right:0;top:45%;height:4px;background:#0b1426;opacity:.5}
+.enemy{position:absolute;left:50%;top:26px;transform:translateX(-50%)}
+.enemy canvas{width:176px;height:176px;image-rendering:pixelated;display:block}
+.enemy.hit{animation:shake .35s steps(4)}
+.field.flash{animation:flash .35s steps(2)}
+@keyframes shake{25%{transform:translateX(calc(-50% - 10px))}75%{transform:translateX(calc(-50% + 10px))}}
+@keyframes flash{50%{background:#7a1f2b}}
+.enemy-hp{position:absolute;left:12px;top:12px;padding:6px 12px;min-width:210px}
+.hpbar{height:10px;border:2px solid var(--frame);border-radius:3px;background:#0a1630;margin-top:4px;overflow:hidden}
+.hpbar span{display:block;height:100%;background:var(--eve);transition:width .4s}
+.hpbar.hero span{background:var(--hp)}
+.log{min-height:96px}
+.log p{margin:0 0 4px;max-width:70ch}
+.log .q{color:var(--gold)}
+.log .good{color:var(--hp)} .log .bad{color:var(--danger)}
+.battle-bottom{display:grid;grid-template-columns:1.6fr 1fr;gap:12px}
+@media (max-width:640px){.battle-bottom{grid-template-columns:1fr}}
+.party b{font-family:var(--display)}
+
+/* End */
+.seals{display:flex;flex-wrap:wrap;gap:16px;justify-content:center;margin:8px 0}
+.sealcard{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;max-width:240px}
+.bigseal{width:96px;height:96px;display:grid;place-items:center;border-radius:12px;background:var(--orange);color:#fff;font-size:54px;
+  border:4px solid var(--frame);box-shadow:0 6px 0 #7a2a00, inset 0 0 0 4px #c84113}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+.backlink{text-align:center;font-size:14px;color:var(--dim)}
+.backlink a{color:var(--gold)}
+</style>
+
+</head>
+<body>
+<div id="app">
+  <header class="hud">
+    <div class="brand">CIPHER QUEST<small>暗号クエスト</small></div>
+    <div class="chips" aria-label="Quest log">
+      <span class="chip" id="chip-mpc"><span class="seal">和</span>Festival Ledger · MPC</span>
+      <span class="chip" id="chip-zkp"><span class="seal">証</span>Two Orbs · ZKP</span>
+    </div>
+  </header>
+
+  <div id="world">
+    <div id="screen">
+      <canvas id="map" width="256" height="192" aria-label="Kagi Village map"></canvas>
+      <div class="title" id="title">
+        <p class="jp">暗号クエスト</p>
+        <h1 class="logo">CIPHER QUEST</h1>
+        <p class="tag">Two secrets. One village. Zero leaks.</p>
+        <div class="win menu">
+          <button class="cmd" id="btn-new" type="button">New game</button>
+          <button class="cmd" id="btn-cont" type="button" hidden>Continue</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="win dialog" id="dialog" aria-live="polite">
+    <span class="speaker" id="dlg-name" hidden></span>
+    <p id="dlg-text" class="hint">Choose “New game” to enter Kagi Village.</p>
+    <div class="choices" id="dlg-choices"></div>
+    <span class="next" id="dlg-next" hidden>▼</span>
+  </div>
+
+  <div class="pad" id="pad">
+    <div class="dpad" aria-label="Movement pad">
+      <button class="up" data-dir="up" type="button" aria-label="Up" tabindex="-1">▲</button>
+      <button class="left" data-dir="left" type="button" aria-label="Left" tabindex="-1">◀</button>
+      <span class="hub"></span>
+      <button class="right" data-dir="right" type="button" aria-label="Right" tabindex="-1">▶</button>
+      <button class="down" data-dir="down" type="button" aria-label="Down" tabindex="-1">▼</button>
+    </div>
+    <div class="keys">Keyboard: arrow keys or WASD to walk · Z, Space or Enter to talk</div>
+    <div class="pad-right">
+      <button class="abtn" id="abtn" type="button" aria-label="Talk / next" tabindex="-1">A</button>
+    </div>
+  </div>
+
+  <main id="scene" class="scene" hidden></main>
+  <footer class="backlink"><a href="misc.html">← Back to Ning Luo's page</a> · <a href="index.html">Home</a></footer>
+</div>
+
+<script>
+(() => {
+const $ = (s, r = document) => r.querySelector(s);
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const rand = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const wait = ms => new Promise(r => setTimeout(r, reduce ? 0 : ms));
+
+/* ---------------- Pixel art ---------------- */
+const TPL = {
+  person: ["................",".....oooooo.....","....ohhhhhho....","...ohhhhhhhho...","...ohssssssho...","...osesssseso...","....osssssso....","....occsscco....","...occcccccco...","..osccccccccso..","..osccccccccso..","...occcccccco...","...oppppppppo...","...opppoopppo...","...obbo..obbo...","....oo....oo...."],
+  sage: ["......oooo......",".....ohhhho.....","....ohhhhhho....","...ohhhhhhhho...","..oooooooooooo..","...osesssseso...","...owwwwwwwwo...","...ocwwwwwwco...","..occcwwwwccco..","..occcccccccco..","..osccccccccso..","..occcccccccco..","..occcccccccco..","..occcccccccco..","...occcccccco...","....oooooooo...."],
+  eve: ["................",".....oooooo.....","....ovvvvvvo....","...ovvvvvvvvo...","...ovvoooovvo...","...ovoyooyovo...","...ovvoooovvo...","...ovvvvvvvvo...","..ovvvvvvvvvvo..","..ovvvvvvvvvvo..","..ovvvvvvvvvvo..","..ovvvvvvvvvvo..","..ovvvvvvvvvvo..","..ovvvvvvvvvvo..","..oooooooooooo..","................"]
+};
+const BASE = { o:'#10131c', s:'#F2C29B', e:'#10131c', b:'#3a2a1a' };
+const PAL = {
+  hero:  { h:'#5B3A1E', c:'#FF5F05', p:'#13294B' },
+  alice: { h:'#23232f', c:'#3FA7D6', p:'#2F3E5C' },
+  bob:   { h:'#8a5a2b', c:'#FCB316', p:'#4a3b2a' },
+  carol: { h:'#b8412f', c:'#6FBF73', p:'#2F4F3A' },
+  sage:  { h:'#6B4FA0', w:'#EDEDED', c:'#3E5C9A' },
+  eve:   { v:'#5A2E7A', y:'#FFE14D' }
+};
+function drawSprite(ctx, tpl, pal, x, y, s = 1) {
+  const rows = TPL[tpl];
+  for (let r = 0; r < 16; r++) for (let c = 0; c < 16; c++) {
+    const ch = rows[r][c]; if (!ch || ch === '.') continue;
+    const col = pal[ch] || BASE[ch]; if (!col) continue;
+    ctx.fillStyle = col; ctx.fillRect(x + c * s, y + r * s, s, s);
+  }
+}
+function portrait(canvas, tpl, pal) {
+  const ctx = canvas.getContext('2d'); canvas.width = 16; canvas.height = 16;
+  ctx.clearRect(0, 0, 16, 16); drawSprite(ctx, tpl, pal, 0, 0, 1);
+}
+
+/* ---------------- Map ---------------- */
+const MAP = [
+  "TTTTTTTTTTTTTTTT",
+  "T.,....,.~..,..T",
+  "T.RRRR...~.PPP.T",
+  "T.WWDW...~.QDQ.T",
+  "T...=....~..=..T",
+  "T.,.=..S.~..=,.T",
+  "T.=======B===..T",
+  "T...=....~.....T",
+  "T.ooooo..~..TT.T",
+  "T.ooooo..~.....T",
+  "T..,.....~..,..T",
+  "TTTTTTTTTTTTTTTT"
+];
+const SOLID = new Set(['T','~','R','W','Q','P','S','D']);
+const cv = $('#map'), g = cv.getContext('2d');
+const hsh = (x, y) => (((x * 73856093) ^ (y * 19349663)) >>> 0);
+function px(c, x, y, w, h) { g.fillStyle = c; g.fillRect(x, y, w, h); }
+function grass(X, Y, x, y) {
+  px('#3F8F4E', X, Y, 16, 16);
+  for (let i = 0; i < 5; i++) { const h = hsh(x * 7 + i, y * 13 + i * 3); px(i % 2 ? '#2F7A3F' : '#58A862', X + h % 15, Y + (h >> 8) % 14, 1, i % 2 ? 2 : 1); }
+}
+function tile(ch, x, y, t) {
+  const X = x * 16, Y = y * 16;
+  switch (ch) {
+    case '.': grass(X, Y, x, y); break;
+    case ',': grass(X, Y, x, y);
+      for (let i = 0; i < 2; i++) { const h = hsh(x + i * 5, y * 3 + i); const fx = X + 3 + h % 9, fy = Y + 3 + (h >> 5) % 9;
+        px(i ? '#FFFFFF' : '#FF8A3D', fx - 1, fy, 3, 1); px(i ? '#FFFFFF' : '#FF8A3D', fx, fy - 1, 1, 3); px('#FCB316', fx, fy, 1, 1); } break;
+    case '=': px('#D2B07A', X, Y, 16, 16);
+      for (let i = 0; i < 4; i++) { const h = hsh(x * 11 + i, y * 5 + i); px('#B8935A', X + h % 15, Y + (h >> 7) % 15, 2, 1); } break;
+    case 'o': px('#8E959E', X, Y, 16, 16); px('#6F7680', X, Y + 7, 16, 1); px('#6F7680', X, Y + 15, 16, 1);
+      px('#6F7680', X + ((y % 2) ? 3 : 11), Y, 1, 7); px('#6F7680', X + ((y % 2) ? 11 : 3), Y + 8, 1, 7); px('#A9B0B8', X + 5, Y + 2, 3, 1); break;
+    case '~': case 'B': px('#2E6DB4', X, Y, 16, 16);
+      for (let k = 0; k < 3; k++) { const wy = Y + ((k * 6 + Math.floor(t / 350) + y * 3) % 16); px('#6FA8E8', X + ((k * 5 + x * 3) % 10), wy, 5, 1); }
+      if (ch === 'B') { px('#9B6A3C', X, Y + 2, 16, 12); for (let i = 0; i < 4; i++) px('#6E4722', X + i * 4, Y + 2, 1, 12); px('#5A3A1C', X, Y + 2, 16, 1); px('#5A3A1C', X, Y + 13, 16, 1); }
+      break;
+    case 'T': grass(X, Y, x, y); px('#6B4423', X + 6, Y + 10, 4, 6); px('#12391f', X + 1, Y + 1, 14, 11); px('#1F5E33', X + 2, Y + 2, 12, 9); px('#1F5E33', X + 4, Y + 1, 8, 11); px('#2E7D46', X + 4, Y + 3, 5, 3); break;
+    case 'R': px('#C84113', X, Y, 16, 16); for (let i = 3; i < 16; i += 4) px('#A33510', X, Y + i, 16, 1); px('#7D2A0C', X, Y + 15, 16, 1); break;
+    case 'P': px('#8E1F2F', X, Y, 16, 16); for (let i = 3; i < 16; i += 4) px('#6E1624', X, Y + i, 16, 1); px('#4a0f18', X, Y + 15, 16, 1); break;
+    case 'W': px('#E9DFC7', X, Y, 16, 16); px('#8B6A43', X, Y, 1, 16); px('#8B6A43', X + 15, Y, 1, 16); px('#8B6A43', X, Y, 16, 1);
+      px('#5c4630', X + 4, Y + 4, 8, 7); px('#2B4A6F', X + 5, Y + 5, 6, 5); px('#8fb3dd', X + 5, Y + 5, 2, 1); break;
+    case 'Q': px('#F2EBDD', X, Y, 16, 16); px('#B22234', X + 1, Y, 2, 16); px('#B22234', X + 13, Y, 2, 16); break;
+    case 'D': { const shrine = x > 8; px(shrine ? '#F2EBDD' : '#E9DFC7', X, Y, 16, 16); if (shrine) { px('#B22234', X, Y, 2, 16); px('#B22234', X + 14, Y, 2, 16); }
+      px('#5A3A1C', X + 3, Y + 3, 10, 13); px('#3f2812', X + 8, Y + 3, 1, 13); px('#FCB316', X + 10, Y + 9, 1, 2); break; }
+    case 'S': grass(X, Y, x, y); px('#6B4423', X + 7, Y + 8, 2, 8); px('#5a3a1c', X + 1, Y + 2, 14, 8); px('#B8864B', X + 2, Y + 3, 12, 6); px('#7A5530', X + 4, Y + 5, 8, 1); px('#7A5530', X + 4, Y + 7, 5, 1); break;
+  }
+}
+
+/* ---------------- State ---------------- */
+const SAVE_KEY = 'cipherquest.v1';
+let save = { mpc: false, zkp: false };
+try { const raw = localStorage.getItem(SAVE_KEY); if (raw) save = Object.assign(save, JSON.parse(raw)); } catch (e) {}
+function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} updateChips(); }
+function updateChips() { $('#chip-mpc').classList.toggle('done', save.mpc); $('#chip-zkp').classList.toggle('done', save.zkp); }
+
+let mode = 'title';
+const hero = { x: 6, y: 6, fx: 6, fy: 6, face: 'down', moving: null };
+const NPCS = [
+  { id: 'alice', x: 4, y: 8, tpl: 'person', pal: PAL.alice },
+  { id: 'bob', x: 6, y: 9, tpl: 'person', pal: PAL.bob },
+  { id: 'carol', x: 2, y: 9, tpl: 'person', pal: PAL.carol },
+  { id: 'sage', x: 12, y: 4, tpl: 'sage', pal: PAL.sage },
+  { id: 'eve', x: 13, y: 9, tpl: 'eve', pal: PAL.eve }
+];
+const npcAt = (x, y) => NPCS.find(n => n.x === x && n.y === y && !(n.id === 'eve' && save.mpc && save.zkp));
+const blocked = (x, y) => y < 0 || y >= 12 || x < 0 || x >= 16 || SOLID.has(MAP[y][x]) || !!npcAt(x, y);
+const DV = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+
+function frame(t) {
+  for (let y = 0; y < 12; y++) for (let x = 0; x < 16; x++) tile(MAP[y][x], x, y, t);
+  // hero movement
+  if (hero.moving) {
+    const m = hero.moving, p = Math.min(1, (t - m.start) / 150);
+    hero.fx = m.x0 + (hero.x - m.x0) * p; hero.fy = m.y0 + (hero.y - m.y0) * p;
+    if (p >= 1) { hero.moving = null; hero.fx = hero.x; hero.fy = hero.y; if (heldDir && mode === 'map') step(heldDir); }
+  }
+  const ents = NPCS.filter(n => !(n.id === 'eve' && save.mpc && save.zkp)).map(n => ({ ...n, fx: n.x, fy: n.y }));
+  ents.push({ id: 'hero', tpl: 'person', pal: PAL.hero, fx: hero.fx, fy: hero.fy });
+  ents.sort((a, b) => a.fy - b.fy);
+  for (const e of ents) {
+    const bobY = e.id === 'hero' ? (hero.moving ? (Math.floor(t / 80) % 2) : 0) : (Math.floor(t / 600 + e.x) % 2);
+    const X = Math.round(e.fx * 16), Y = Math.round(e.fy * 16) - bobY;
+    px('rgba(0,0,0,.25)', X + 4, Math.round(e.fy * 16) + 14, 8, 2);
+    drawSprite(g, e.tpl, e.pal, X, Y, 1);
+    const quest = (e.id === 'alice' && !save.mpc) || (e.id === 'sage' && !save.zkp);
+    if (quest && mode !== 'title') { const by = Y - 9 - (Math.floor(t / 400) % 2); px('#10131c', X + 5, by - 1, 7, 9); px('#FFFFFF', X + 6, by, 5, 7); px('#FF5F05', X + 8, by + 1, 1, 3); px('#FF5F05', X + 8, by + 5, 1, 1); }
+  }
+  requestAnimationFrame(frame);
+}
+
+let heldDir = null;
+function step(dir) {
+  if (mode !== 'map' || hero.moving) return;
+  hero.face = dir; const [dx, dy] = DV[dir]; const nx = hero.x + dx, ny = hero.y + dy;
+  if (blocked(nx, ny)) return;
+  hero.moving = { x0: hero.x, y0: hero.y, start: performance.now() }; hero.x = nx; hero.y = ny;
+}
+function press(dir) { heldDir = dir; step(dir); }
+function release(dir) { if (heldDir === dir) heldDir = null; }
+
+/* ---------------- Dialog ---------------- */
+const dName = $('#dlg-name'), dText = $('#dlg-text'), dChoices = $('#dlg-choices'), dNext = $('#dlg-next');
+let dlg = null;
+const IDLE = "Explore Kagi Village. Walk up to someone and press A (or Z / Enter) to talk.";
+function idle() { dName.hidden = true; dText.className = 'hint'; dText.textContent = IDLE; dChoices.innerHTML = ''; dNext.hidden = true; }
+function openDialog(name, text, opts, res) {
+  mode = 'dialog'; heldDir = null;
+  dName.hidden = !name; dName.textContent = name || ''; dText.className = ''; dText.textContent = ''; dChoices.innerHTML = ''; dNext.hidden = true;
+  dlg = { name, text, opts, res, sel: 0, i: 0, typing: true };
+  const d = dlg;
+  const tick = () => {
+    if (dlg !== d || !d.typing) return;
+    d.i += 2; dText.textContent = text.slice(0, d.i);
+    if (d.i >= text.length) finishTyping(); else setTimeout(tick, 16);
+  };
+  if (reduce) finishTyping(); else tick();
+}
+function finishTyping() {
+  const d = dlg; if (!d) return; d.typing = false; dText.textContent = d.text;
+  if (d.opts) {
+    dChoices.innerHTML = '';
+    d.opts.forEach((o, i) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'cmd' + (i === d.sel ? ' sel' : ''); b.textContent = o;
+      b.addEventListener('click', () => pick(i)); dChoices.appendChild(b); });
+  } else dNext.hidden = false;
+}
+function markSel() { [...dChoices.children].forEach((b, i) => b.classList.toggle('sel', i === dlg.sel)); }
+function pick(i) { const d = dlg; if (!d || d.typing) return; dlg = null; mode = 'map'; idle(); d.res(i); }
+function advance() {
+  const d = dlg; if (!d) return;
+  if (d.typing) return finishTyping();
+  if (d.opts) return pick(d.sel);
+  dlg = null; mode = 'map'; idle(); d.res();
+}
+const talk = (name, text) => new Promise(r => openDialog(name, text, null, r));
+const choose = (name, text, opts) => new Promise(r => openDialog(name, text, opts, r));
+
+/* ---------------- Interactions ---------------- */
+async function interact() {
+  if (mode !== 'map' || hero.moving) return;
+  const [dx, dy] = DV[hero.face];
+  let tx = hero.x + dx, ty = hero.y + dy;
+  let target = npcAt(tx, ty);
+  if (!target) for (const d of Object.values(DV)) { const n = npcAt(hero.x + d[0], hero.y + d[1]); if (n) { target = n; break; } }
+  if (target) return talkTo(target.id);
+  const ch = MAP[ty] && MAP[ty][tx];
+  if (ch === 'S') return talk('Signpost', "West: Merchants' Plaza.  East, across the bridge: the Shrine of Truth.");
+  if (ch === 'D' && tx < 8) return talk('', "A note on the guild door: “Out on the plaza, planning the Harvest Festival!”");
+  if (ch === 'D') return talk('', "The shrine doors are sealed. Sage Mido stands guard outside.");
+  if (ch === '~') return talk('', "The river sparkles. A fish glances at you and keeps its secrets.");
+}
+
+async function talkTo(id) {
+  if (id === 'alice') {
+    if (save.mpc) return talk('Alice', "We know our festival total, and nobody's income leaked. Thank you, hero!");
+    await talk('Alice', "Hero! The Harvest Festival needs a budget, so our guild must know our TOTAL income.");
+    await talk('Bob', "But I'm not telling anyone what I earned. Especially not with Eve lurking around.");
+    await talk('Carol', "Same here. Can we get the total without anyone revealing their own number?");
+    const c = await choose('Alice', "I have a plan: we pass a secret ledger scroll around our circle. Will you help?", ["Yes, let's do it!", "Not yet"]);
+    if (c === 0) startMPC();
+  } else if (id === 'bob') {
+    return talk('Bob', save.mpc ? "Eve read every number on that scroll and learned nothing. Ha!" : "Alice is organizing the secret ledger. Talk to her!");
+  } else if (id === 'carol') {
+    return talk('Carol', save.mpc ? "Only the total came out. My income is still my business." : "Numbers are fine. Nosy eavesdroppers are not. Alice has a plan.");
+  } else if (id === 'sage') {
+    if (save.zkp) return talk('Sage Mido', "I still cannot tell red from green, yet I know your orbs differ. Proof without revealing. Marvelous.");
+    await talk('Sage Mido', "Halt, traveler. I am Sage Mido, keeper of the Shrine of Truth. My eyes cannot tell red from green.");
+    await talk('Sage Mido', "You claim these two orbs are different colors. To me they look identical. Prove it, but do not tell me which is which.");
+    const c = await choose('Sage Mido', "Will you face the Trial of Two Orbs?", ["Begin the trial", "Not yet"]);
+    if (c === 0) startZKP();
+  } else if (id === 'eve') {
+    const n = (save.mpc ? 1 : 0) + (save.zkp ? 1 : 0);
+    return talk('Eve', n ? "Grr... You won that round. I'm still listening, though." : "Heh heh... I read every message that passes through this village. Every. Single. One.");
+  }
+}
+
+/* ---------------- Scene helpers ---------------- */
+const scene = $('#scene');
+let sceneKey = null;
+function showScene(html) {
+  mode = 'scene'; heldDir = null; sceneKey = null;
+  $('#world').hidden = true; $('#dialog').hidden = true; $('#pad').hidden = true;
+  scene.innerHTML = html; scene.hidden = false; window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
+}
+function backToMap() {
+  sceneKey = null; scene.hidden = true; scene.innerHTML = '';
+  $('#world').hidden = false; $('#dialog').hidden = false; $('#pad').hidden = false; mode = 'map'; idle();
+}
+function actionHTML(el, html) { el.innerHTML = html; const f = el.querySelector('button'); if (f) f.focus({ preventScroll: true }); }
+
+function keypad(el, prompt, eq, answer, onOk) {
+  el.innerHTML = `<p>${prompt}</p>
+    <div class="entry"><span>${eq}</span><output id="kp-out">?</output></div>
+    <div class="keypad">${[1,2,3,4,5,6,7,8,9,0].map(d => `<button type="button" data-k="${d}">${d}</button>`).join('')}
+      <button type="button" data-k="del" aria-label="Delete">⌫</button><button type="button" class="ok" data-k="ok">OK</button></div>
+    <p class="feedback" id="kp-fb" role="status"></p>`;
+  let val = '', misses = 0; const out = $('#kp-out', el), fb = $('#kp-fb', el);
+  const hit = k => {
+    if (k === 'del') val = val.slice(0, -1);
+    else if (k === 'ok') {
+      if (!val) return;
+      if (+val === answer) { sceneKey = null; fb.className = 'feedback good'; fb.textContent = 'The scroll glows gold. Correct!'; setTimeout(onOk, reduce ? 0 : 450); return; }
+      misses++; fb.className = 'feedback';
+      fb.textContent = misses === 1 ? "The ink fizzles. Double-check the arithmetic and try again." : `Hint: the scroll should read ${answer}.`;
+      val = '';
+    } else if (val.length < 5) val += k;
+    out.textContent = val || '?';
+  };
+  el.querySelectorAll('.keypad button').forEach(b => b.addEventListener('click', () => hit(b.dataset.k)));
+  sceneKey = e => { if (/^[0-9]$/.test(e.key)) { hit(e.key); return true; } if (e.key === 'Backspace') { hit('del'); return true; } if (e.key === 'Enter') { hit('ok'); return true; } return false; };
+  el.querySelector('.keypad button').focus({ preventScroll: true });
+}
+
+/* ---------------- Quest I: MPC ---------------- */
+function startMPC() {
+  const inc = { alice: rand(20, 99), bob: rand(20, 99), carol: rand(20, 99) };
+  const names = { alice: 'Alice', bob: 'Bob', carol: 'Carol' };
+  let mask = null, scroll = null;
+  const notes = [];
+  showScene(`
+    <section class="win story"><span class="eyebrow">Quest I · Multi-party computation</span><h2>The Festival Ledger</h2>
+      <p id="m-narr"></p></section>
+    <div class="board">
+      <div class="win ring">
+        <svg viewBox="0 0 320 264" role="img" aria-label="The ledger scroll travels Alice to Bob to Carol and back to Alice">
+          <defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#F2F0E6"/></marker></defs>
+          <line id="a-ab" x1="184" y1="72" x2="238" y2="160" stroke="#6F86AD" stroke-width="4" stroke-dasharray="6 5" marker-end="url(#ah)"/>
+          <line id="a-bc" x1="226" y1="192" x2="94" y2="192" stroke="#6F86AD" stroke-width="4" stroke-dasharray="6 5" marker-end="url(#ah)"/>
+          <line id="a-ca" x1="82" y1="160" x2="136" y2="72" stroke="#6F86AD" stroke-width="4" stroke-dasharray="6 5" marker-end="url(#ah)"/>
+          ${[['ab',226,112],['bc',160,192],['ca',94,112]].map(([k,x,y]) => `<g id="l-${k}" opacity="0"><rect x="${x-30}" y="${y-13}" width="60" height="26" rx="4" fill="#0B1426" stroke="#FCB316" stroke-width="2"/><text x="${x}" y="${y+6}" text-anchor="middle" font-family="DotGothic16, monospace" font-size="16" fill="#FCB316"></text></g>`).join('')}
+          ${[['alice',160,46,'#3FA7D6','A'],['bob',262,192,'#FCB316','B'],['carol',58,192,'#6FBF73','C']].map(([k,x,y,c,l]) => `
+            <g id="n-${k}"><circle cx="${x}" cy="${y}" r="28" fill="${c}" stroke="#F2F0E6" stroke-width="3"/>
+            <text x="${x}" y="${y+8}" text-anchor="middle" font-family="Pixelify Sans, monospace" font-weight="700" font-size="24" fill="#13294B">${l}</text>
+            <text x="${k==='alice' ? x+40 : x}" y="${k==='alice' ? y-4 : y+46}" text-anchor="${k==='alice' ? 'start' : 'middle'}" font-family="DotGothic16, monospace" font-size="14" fill="#F7F5EE">${names[k]}</text>
+            <text class="inc" x="${k==='alice' ? x+40 : x}" y="${k==='alice' ? y+14 : y+62}" text-anchor="${k==='alice' ? 'start' : 'middle'}" font-family="DotGothic16, monospace" font-size="13" fill="#B6C4DC">??? G</text></g>`).join('')}
+        </svg>
+      </div>
+      <div class="side">
+        <div class="win you">
+          <div class="who"><canvas class="portrait" id="m-face"></canvas><div><span class="eyebrow">You are playing</span><b class="big" id="m-actor">Alice</b></div></div>
+          <dl class="facts">
+            <dt>Your secret income</dt><dd id="m-inc">—</dd>
+            <dt>Scroll you received</dt><dd id="m-recv">—</dd>
+            <dt>Alice's secret mask</dt><dd id="m-mask">—</dd>
+          </dl>
+        </div>
+        <div class="win eve"><h3>Eve's spy notebook</h3><ul class="eve-notes" id="m-eve"><li class="empty">Nothing overheard yet.</li></ul></div>
+      </div>
+    </div>
+    <div class="win action" id="m-act"></div>`);
+  const narr = $('#m-narr'), act = $('#m-act');
+  function setActor(id, recv, showMask) {
+    $('#m-actor').textContent = names[id]; portrait($('#m-face'), 'person', PAL[id]);
+    $('#m-inc').textContent = inc[id] + ' G'; $('#m-recv').textContent = recv == null ? '—' : recv;
+    $('#m-mask').textContent = showMask && mask != null ? mask : (id === 'alice' ? '—' : 'hidden');
+    for (const k of ['alice', 'bob', 'carol']) {
+      const n = $('#n-' + k); n.querySelector('circle').setAttribute('stroke', k === id ? '#FF5F05' : '#F2F0E6'); n.querySelector('circle').setAttribute('stroke-width', k === id ? 6 : 3);
+      n.querySelector('.inc').textContent = k === id ? inc[k] + ' G (secret)' : '??? G';
+    }
+  }
+  function pass(edge, value, from, to) {
+    const line = $('#a-' + edge); line.setAttribute('stroke', '#FF5F05'); line.removeAttribute('stroke-dasharray');
+    const l = $('#l-' + edge); l.querySelector('text').textContent = value; l.setAttribute('opacity', '1');
+    notes.push([`${from} → ${to}`, value]);
+    $('#m-eve').innerHTML = notes.map(([a, b]) => `<li><span>${a}</span><span>${b}</span></li>`).join('');
+  }
+  // Step 1: Alice masks
+  setActor('alice', null, true);
+  narr.innerHTML = `You are <b>Alice</b>. Only you can see your income (<b>${inc.alice} G</b>). If you wrote it on the scroll directly, Eve could read it. So first, roll a secret random <b>mask</b>.`;
+  actionHTML(act, `<p>Roll a random number between 100 and 999. Only Alice will ever know it.</p><div class="row"><button class="btn" type="button" id="roll">Roll the mask die</button></div>`);
+  $('#roll').onclick = () => {
+    mask = rand(100, 999); setActor('alice', null, true);
+    narr.innerHTML = `Your secret mask is <b>${mask}</b>. Now hide your income inside it.`;
+    keypad(act, 'Write <b>your income + your mask</b> on the scroll.', `${inc.alice} + ${mask} =`, inc.alice + mask, () => {
+      scroll = inc.alice + mask; pass('ab', scroll, 'Alice', 'Bob');
+      narr.innerHTML = `The scroll travels to Bob. Eve peeks and sees <b>${scroll}</b>. Is that Alice's income? A mask? She can't tell. It looks like a random number.`;
+      actionHTML(act, `<div class="row"><button class="btn" type="button" id="go">Continue as Bob</button></div>`);
+      $('#go').onclick = bobTurn;
+    });
+  };
+  function bobTurn() {
+    setActor('bob', scroll, false);
+    narr.innerHTML = `You are <b>Bob</b>. The scroll says <b>${scroll}</b>. You don't know Alice's income or her mask, so this number tells you nothing about her.`;
+    keypad(act, 'Add <b>your income</b> to the number on the scroll.', `${scroll} + ${inc.bob} =`, scroll + inc.bob, () => {
+      scroll += inc.bob; pass('bc', scroll, 'Bob', 'Carol');
+      narr.innerHTML = `Off to Carol. Eve scribbles down <b>${scroll}</b>. Still just a random-looking number.`;
+      actionHTML(act, `<div class="row"><button class="btn" type="button" id="go">Continue as Carol</button></div>`);
+      $('#go').onclick = carolTurn;
+    });
+  }
+  function carolTurn() {
+    setActor('carol', scroll, false);
+    narr.innerHTML = `You are <b>Carol</b>. The scroll says <b>${scroll}</b>. You can't pull Alice's or Bob's income out of it.`;
+    keypad(act, 'Add <b>your income</b> to the number on the scroll.', `${scroll} + ${inc.carol} =`, scroll + inc.carol, () => {
+      scroll += inc.carol; pass('ca', scroll, 'Carol', 'Alice');
+      narr.innerHTML = `The scroll returns to Alice. Eve copies <b>${scroll}</b> and groans.`;
+      actionHTML(act, `<div class="row"><button class="btn" type="button" id="go">Continue as Alice</button></div>`);
+      $('#go').onclick = aliceFinal;
+    });
+  }
+  function aliceFinal() {
+    setActor('alice', scroll, true);
+    narr.innerHTML = `You are <b>Alice</b> again. The scroll holds everyone's income <b>plus your mask</b>. Time to remove it.`;
+    keypad(act, 'Subtract <b>your secret mask</b>.', `${scroll} − ${mask} =`, scroll - mask, () => {
+      const total = scroll - mask;
+      for (const k of ['alice', 'bob', 'carol']) { const n = $('#n-' + k); n.querySelector('circle').setAttribute('stroke', '#F2F0E6'); n.querySelector('circle').setAttribute('stroke-width', 3); n.querySelector('.inc').textContent = '??? G'; }
+      $('#m-actor').textContent = 'Everyone'; $('#m-inc').textContent = 'still secret'; $('#m-recv').textContent = '—'; $('#m-mask').textContent = 'still secret';
+      narr.innerHTML = `The guild's total income is <b>${total} G</b>! Everyone learns the total, and <b>nobody learns anyone else's income</b>. Eve's notebook is full of numbers that mean nothing to her.`;
+      actionHTML(act, `<p>Eve: “Bob earned… ${notes[1][1]} minus… ugh, what was the mask?!”  Eve leaps out of the bushes!</p><div class="row"><button class="btn" type="button" id="go">Battle Eve</button></div>`);
+      $('#go').onclick = () => startBattle('mpc');
+    });
+  }
+}
+
+/* ---------------- Quest II: ZKP ---------------- */
+function startZKP() {
+  let order = ['red', 'green'], k = 0, faker = false, streak = 0, swapped = false;
+  showScene(`
+    <section class="win story"><span class="eyebrow">Quest II · Zero-knowledge proof</span><h2>The Trial of Two Orbs</h2>
+      <p id="z-narr"></p></section>
+    <div class="board">
+      <div class="win arena"><canvas id="z-sage"></canvas>
+        <div class="orbs" id="z-orbs"><div class="orb" id="z-l"></div><div class="orb" id="z-r"></div></div></div>
+      <div class="side">
+        <div class="win view"><span class="eyebrow" id="z-you-label">Your eyes</span><div class="dots"><i class="orb" id="y-l"></i><i class="orb" id="y-r"></i></div></div>
+        <div class="win view"><span class="eyebrow">Sage Mido's eyes</span><div class="dots"><i class="orb" data-c="gray"></i><i class="orb" data-c="gray"></i></div></div>
+        <div class="win meter"><span class="eyebrow" id="z-m-label">Sage's confidence</span>
+          <div class="big" id="z-odds">No rounds yet</div><div class="bar"><span id="z-bar"></span></div></div>
+      </div>
+    </div>
+    <div class="win action" id="z-act"></div>`);
+  const sc = $('#z-sage'); sc.width = 16; sc.height = 16; drawSprite(sc.getContext('2d'), 'sage', PAL.sage, 0, 0, 1);
+  const narr = $('#z-narr'), act = $('#z-act');
+  const paint = () => {
+    const show = c => faker ? 'gray' : c;
+    $('#z-l').dataset.c = show(order[0]); $('#z-r').dataset.c = show(order[1]);
+    $('#y-l').dataset.c = show(order[0]); $('#y-r').dataset.c = show(order[1]);
+  };
+  const meter = () => {
+    if (faker) { $('#z-m-label').textContent = 'Faker streak'; $('#z-odds').textContent = streak ? `${streak} lucky guess${streak > 1 ? 'es' : ''}` : 'No guesses yet'; $('#z-bar').style.width = Math.min(100, streak * 10) + '%'; return; }
+    $('#z-m-label').textContent = "Sage's confidence";
+    $('#z-odds').textContent = k ? `Bluff chance: 1 in ${(2 ** k).toLocaleString('en-US')}` : 'No rounds yet';
+    $('#z-bar').style.width = (k ? (1 - 1 / 2 ** k) * 100 : 0) + '%';
+  };
+  paint(); meter();
+  narr.innerHTML = `Sage Mido holds a <b>red orb</b> and a <b>green orb</b>. You see two different colors. He sees two identical gray orbs. Each round he hides them, secretly swaps them <b>or not</b>, and shows them again. Tell him whether he swapped.`;
+  actionHTML(act, `<div class="row"><button class="btn" type="button" id="go">Start round 1</button></div>`);
+  $('#go').onclick = round;
+
+  async function round() {
+    const n = faker ? streak + 1 : k + 1;
+    narr.innerHTML = `Round <b>${n}</b>: the Sage hides both orbs behind his back… <i>shuffle, shuffle</i>…`;
+    act.innerHTML = '<p>…</p>';
+    $('#z-orbs').classList.add('hiding');
+    await wait(750);
+    swapped = Math.random() < 0.5; if (swapped) order.reverse(); paint();
+    $('#z-orbs').classList.remove('hiding');
+    await wait(400);
+    narr.innerHTML = faker
+      ? `Round <b>${n}</b>: the orbs are back. They look identical to you now. Did he swap them? You'll have to guess.`
+      : `Round <b>${n}</b>: the orbs are back. Look closely. Did he swap them?`;
+    actionHTML(act, `<div class="row"><button class="btn" type="button" data-a="1">Swapped!</button><button class="btn ghost" type="button" data-a="0">Not swapped</button></div>`);
+    act.querySelectorAll('button').forEach(b => b.onclick = () => answer(b.dataset.a === '1'));
+  }
+  function answer(said) {
+    const right = said === swapped;
+    if (faker) {
+      if (right) {
+        streak++; meter();
+        narr.innerHTML = `Lucky! That's <b>${streak}</b> in a row. The odds of a streak this long are 1 in <b>${(2 ** streak).toLocaleString('en-US')}</b>.`;
+        actionHTML(act, `<div class="row"><button class="btn" type="button" id="go">Guess again</button><button class="btn ghost" type="button" id="stop">Stop faking</button></div>`);
+        $('#go').onclick = round; $('#stop').onclick = convincedEnd;
+      } else {
+        narr.innerHTML = `<b>Caught!</b> Sage Mido narrows his eyes: “You guessed wrong after ${streak} lucky round${streak === 1 ? '' : 's'}.” Without really seeing the colors, every round is a coin flip, so a faker gets caught fast.`;
+        actionHTML(act, `<div class="row"><button class="btn" type="button" id="stop">Battle Eve</button></div>`);
+        $('#stop').onclick = () => startBattle('zkp');
+      }
+      return;
+    }
+    if (!right) {
+      k = 0; meter();
+      narr.innerHTML = `<b>Wrong!</b> The Sage frowns: “A true seer never misses.” In a real zero-knowledge proof, one wrong answer means the proof fails. Look carefully and start over.`;
+      actionHTML(act, `<div class="row"><button class="btn" type="button" id="go">Restart the trial</button></div>`);
+      $('#go').onclick = round; return;
+    }
+    k++; meter();
+    if (k >= 20) return convinced();
+    narr.innerHTML = `Correct! The chance you're only guessing just halved: now <b>1 in ${(2 ** k).toLocaleString('en-US')}</b>.`;
+    const ff = k >= 3 ? `<button class="btn ghost" type="button" id="ff">Fast-forward to 20 rounds</button>` : '';
+    actionHTML(act, `<div class="row"><button class="btn" type="button" id="go">Next round</button>${ff}</div>`);
+    $('#go').onclick = round;
+    if (ff) $('#ff').onclick = async () => {
+      act.innerHTML = '<p>The rounds fly by…</p>';
+      while (k < 20) { k++; meter(); await wait(90); }
+      convinced();
+    };
+  }
+  function convinced() {
+    narr.innerHTML = `Sage Mido bows. “Twenty rounds, twenty correct answers. The chance of luck is <b>1 in 1,048,576</b>. I am convinced your orbs are different colors… and yet <b>I still do not know which one is red</b>. That is zero knowledge.”`;
+    actionHTML(act, `<p>Want to see why faking doesn't work? Play a few rounds as someone who can't see the colors either.</p>
+      <div class="row"><button class="btn ghost" type="button" id="fake">Try it as a faker</button><button class="btn" type="button" id="go">Battle Eve</button></div>`);
+    $('#fake').onclick = () => { faker = true; streak = 0; paint(); meter(); $('#z-you-label').textContent = 'Your eyes (faker mode)';
+      narr.innerHTML = `<b>Faker mode.</b> Now the orbs look gray to you too, but you still claim they differ. Can you fool the Sage?`;
+      actionHTML(act, `<div class="row"><button class="btn" type="button" id="go">Start guessing</button></div>`); $('#go').onclick = round; };
+    $('#go').onclick = () => startBattle('zkp');
+  }
+  function convincedEnd() {
+    narr.innerHTML = `You stop while you're ahead. Keep guessing and your luck runs out: each extra round cuts a faker's chances in half.`;
+    actionHTML(act, `<div class="row"><button class="btn" type="button" id="go">Battle Eve</button></div>`);
+    $('#go').onclick = () => startBattle('zkp');
+  }
+}
+
+/* ---------------- Battles ---------------- */
+const QUIZ = {
+  mpc: [
+    { q: "Eve reads the scroll Bob passes to Carol. What does she learn?", o: ["Bob's income", "Nothing useful: the random mask hides everything", "Alice's secret mask"], a: 1,
+      why: "Every number on the scroll includes Alice's random mask, so to Eve each one looks like a random number." },
+    { q: "When the scroll finishes its circle, what does everyone learn?", o: ["Everyone's income", "Nothing at all", "Only the total income"], a: 2,
+      why: "Alice removes her mask at the very end, so the total comes out, and nothing else." },
+    { q: "Tricky: if Alice and Carol secretly team up, can they figure out Bob's income?", o: ["Yes, by comparing what Bob received and what he passed on", "No, never"], a: 0,
+      why: "Alice knows what Bob received; Carol knows what he sent. The difference is his income. That's why real MPC uses secret sharing, which stays safe even if a few players team up." }
+  ],
+  zkp: [
+    { q: "A faker who can't see colors survives ONE round. How likely was that?", o: ["1 in 20", "1 in 2, a coin flip", "Impossible"], a: 1,
+      why: "Each round a faker must guess “swapped” or “not swapped”: a 50/50 chance." },
+    { q: "After 20 correct rounds, what has Sage Mido learned?", o: ["Which orb is red", "Nothing at all", "That the orbs really are different colors"], a: 2,
+      why: "He's convinced the orbs differ (luck would be 1 in 1,048,576), but he never learns which is red. That's the zero-knowledge part." },
+    { q: "Why must the Sage choose to swap at random, in secret?", o: ["So a faker can't predict the answer", "To keep the orbs from getting dizzy", "It doesn't matter"], a: 0,
+      why: "If the swaps followed a pattern, a faker could learn the pattern and answer correctly without seeing any colors." }
+  ]
+};
+function startBattle(kind) {
+  const qs = QUIZ[kind]; let eveHP = 90, heroHP = 100, qi = 0;
+  showScene(`
+    <div class="field" id="b-field">
+      <div class="win enemy-hp"><b>EVE</b> <span style="color:var(--dim)">the Eavesdropper</span><div class="hpbar"><span id="b-ehp" style="width:100%"></span></div></div>
+      <div class="enemy" id="b-enemy"><canvas id="b-eve"></canvas></div>
+    </div>
+    <div class="win log" id="b-log" aria-live="polite"></div>
+    <div class="battle-bottom">
+      <div class="win cmds" id="b-cmds"></div>
+      <div class="win party"><span class="eyebrow">Party</span><b>HERO</b> Lv ${save.mpc || save.zkp ? 2 : 1}
+        <div style="display:flex;justify-content:space-between;font-variant-numeric:tabular-nums"><span>HP</span><span id="b-hpn">100 / 100</span></div>
+        <div class="hpbar hero"><span id="b-hhp" style="width:100%"></span></div></div>
+    </div>`);
+  const ec = $('#b-eve'); ec.width = 16; ec.height = 16; drawSprite(ec.getContext('2d'), 'eve', PAL.eve, 0, 0, 1);
+  const log = $('#b-log'), cmds = $('#b-cmds');
+  log.innerHTML = `<p>Eve the Eavesdropper appears! “${kind === 'mpc' ? "Let's see if you understand what you just did!" : "Proof without revealing? Prove you get it!"}”</p>`;
+  cmds.innerHTML = `<button class="cmd sel" type="button" id="b-start">Fight with knowledge</button>`;
+  $('#b-start').focus({ preventScroll: true });
+  $('#b-start').onclick = ask;
+  function ask() {
+    const q = qs[qi];
+    log.innerHTML = `<p>Eve casts <b>CONFUSE</b>!</p><p class="q">${q.q}</p>`;
+    cmds.innerHTML = q.o.map((o, i) => `<button class="cmd" type="button" data-i="${i}">${o}</button>`).join('');
+    const btns = [...cmds.children]; btns.forEach(b => b.onclick = () => choose(+b.dataset.i)); btns[0].focus({ preventScroll: true });
+    sceneKey = e => {
+      const i = btns.indexOf(document.activeElement);
+      if (e.key === 'ArrowDown' || e.key === 's') { btns[(i + 1 + btns.length) % btns.length].focus(); return true; }
+      if (e.key === 'ArrowUp' || e.key === 'w') { btns[(i - 1 + btns.length * 2) % btns.length].focus(); return true; }
+      return false;
+    };
+  }
+  function choose(i) {
+    sceneKey = null; const q = qs[qi];
+    if (i === q.a) {
+      eveHP -= 30; $('#b-ehp').style.width = Math.max(0, eveHP / 90 * 100) + '%';
+      const en = $('#b-enemy'); en.classList.remove('hit'); void en.offsetWidth; en.classList.add('hit');
+      log.innerHTML = `<p class="good">You cast TRUTH! Eve takes 30 damage.</p><p>${q.why}</p>`;
+      qi++;
+      if (eveHP <= 0) {
+        log.innerHTML += `<p class="good">Eve fled into the bushes! You gained 120 EXP and the ${kind === 'mpc' ? 'Seal of the Sum (和)' : 'Seal of Proof (証)'}.</p>`;
+        cmds.innerHTML = `<button class="cmd sel" type="button" id="b-done">Return to the village</button>`;
+        $('#b-done').focus({ preventScroll: true }); $('#b-done').onclick = () => win(kind);
+        return;
+      }
+      cmds.innerHTML = `<button class="cmd sel" type="button" id="b-next">Next turn</button>`;
+    } else {
+      heroHP = Math.max(10, heroHP - 25); $('#b-hhp').style.width = heroHP + '%'; $('#b-hpn').textContent = `${heroHP} / 100`;
+      const f = $('#b-field'); f.classList.remove('flash'); void f.offsetWidth; f.classList.add('flash');
+      log.innerHTML = `<p class="bad">Eve's trick lands! You take 25 damage.</p><p>${q.why}</p>`;
+      cmds.innerHTML = `<button class="cmd sel" type="button" id="b-next">Try that question again</button>`;
+    }
+    $('#b-next').focus({ preventScroll: true }); $('#b-next').onclick = ask;
+  }
+}
+async function win(kind) {
+  save[kind] = true; persist();
+  if (save.mpc && save.zkp) return ending();
+  backToMap();
+  if (kind === 'mpc') {
+    hero.x = 4; hero.y = 7; hero.fx = 4; hero.fy = 7; hero.face = 'down';
+    await talk('Alice', "We have our festival total, and every income is still a secret. Thank you, hero!");
+    await talk('Alice', "Sage Mido has been muttering about two orbs at the shrine. Cross the bridge to the east.");
+  } else {
+    hero.x = 12; hero.y = 5; hero.fx = 12; hero.fy = 5; hero.face = 'up';
+    await talk('Sage Mido', "You proved your claim and revealed nothing more. The village is lucky to have you.");
+    await talk('Sage Mido', "The merchants on the plaza, west of the bridge, could use a clever mind too.");
+  }
+}
+function ending() {
+  showScene(`
+    <section class="win story" style="text-align:center">
+      <span class="eyebrow">Quest complete</span><h2>Kagi Village is safe</h2>
+      <p style="margin-inline:auto">Eve slinks away for good. You earned both seals.</p>
+      <div class="seals">
+        <div class="sealcard"><div class="bigseal">和</div><b>Seal of the Sum</b><span style="color:var(--dim)">和 means “sum.” Multi-party computation: a group learns the total, and no one learns anyone's input.</span></div>
+        <div class="sealcard"><div class="bigseal">証</div><b>Seal of Proof</b><span style="color:var(--dim)">証 means “proof.” Zero-knowledge proof: convince someone a claim is true while revealing nothing else.</span></div>
+      </div>
+      <div class="row" style="justify-content:center"><button class="btn" type="button" id="again">Play again</button><button class="btn ghost" type="button" id="stay">Keep exploring</button></div>
+    </section>`);
+  $('#again').focus({ preventScroll: true });
+  $('#again').onclick = () => { save = { mpc: false, zkp: false }; persist(); hero.x = hero.fx = 6; hero.y = hero.fy = 6; backToMap(); intro(); };
+  $('#stay').onclick = () => { backToMap(); talk('', "The festival lanterns glow. Villagers wave as you pass."); };
+}
+
+/* ---------------- Boot ---------------- */
+async function intro() {
+  await talk('', "Welcome to Kagi Village. (Kagi means “key” in Japanese.)");
+  await talk('', "Two puzzles here can only be solved with cryptography. Look for the ! above a villager's head.");
+  await talk('', "West on the plaza: merchants who need a secret sum. East across the bridge: a Sage who wants proof.");
+  await talk('', "Walk with the arrow keys, WASD, or the pad. Press Z, Space, Enter, or A to talk.");
+}
+function startGame(fresh) {
+  if (fresh) { save = { mpc: false, zkp: false }; persist(); }
+  $('#title').hidden = true; mode = 'map'; idle();
+  if (fresh) intro(); else talk('', "Welcome back to Kagi Village. Your quest log is in the top corner.");
+}
+
+addEventListener('keydown', e => {
+  if (mode === 'scene') { if (sceneKey && sceneKey(e)) e.preventDefault(); return; }
+  if (mode === 'title') return;
+  const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  const dir = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right' }[k];
+  const act = k === 'z' || k === 'Enter' || k === ' ';
+  if (mode === 'dialog') {
+    if (dir && dlg && dlg.opts && !dlg.typing) { dlg.sel = (dlg.sel + (dir === 'down' || dir === 'right' ? 1 : -1) + dlg.opts.length) % dlg.opts.length; markSel(); e.preventDefault(); }
+    else if (act) { if (!e.repeat) advance(); e.preventDefault(); }
+    return;
+  }
+  if (mode === 'map') {
+    if (dir) { if (!e.repeat) press(dir); e.preventDefault(); }
+    else if (act) { if (!e.repeat) interact(); e.preventDefault(); }
+  }
+});
+addEventListener('keyup', e => {
+  const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  const dir = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right' }[k];
+  if (dir) release(dir);
+});
+document.querySelectorAll('.dpad button').forEach(b => {
+  const d = b.dataset.dir;
+  b.addEventListener('pointerdown', e => { e.preventDefault(); b.classList.add('on'); if (mode === 'map') press(d); else if (mode === 'dialog' && dlg && dlg.opts && !dlg.typing) { dlg.sel = (dlg.sel + (d === 'down' || d === 'right' ? 1 : -1) + dlg.opts.length) % dlg.opts.length; markSel(); } });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, () => { b.classList.remove('on'); release(d); }));
+});
+$('#abtn').addEventListener('pointerdown', e => { e.preventDefault(); if (mode === 'dialog') advance(); else if (mode === 'map') interact(); });
+$('#dialog').addEventListener('click', e => { if (mode === 'dialog' && !e.target.closest('button')) advance(); });
+
+$('#btn-new').onclick = () => startGame(true);
+$('#btn-cont').onclick = () => startGame(false);
+
+function boot(data) {
+  if (data && data.save) save = Object.assign({ mpc: false, zkp: false }, data.save);
+  updateChips();
+  if (save.mpc || save.zkp) $('#btn-cont').hidden = false;
+  $('#pad').hidden = false;
+  requestAnimationFrame(frame);
+  $('#btn-new').focus({ preventScroll: true });
+}
+try { window.claude?.hot?.snapshot?.(() => ({ save })); } catch (e) {}
+const hot = window.claude?.hot;
+if (hot && hot.ready) hot.ready(boot); else boot(hot?.data ?? {});
+})();
+</script>
+
+</body>
+</html>
