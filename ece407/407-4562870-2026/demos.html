@@ -211,8 +211,8 @@
   <p class="term">Fall 2026 · University of Illinois Urbana–Champaign</p>
 
   <p class="note">
-    <strong>Ten browser demos</strong> for weeks 1–3 — perfect secrecy, pseudorandomness, semantic security and pseudorandom functions
-    (<a href="https://www.cs.umd.edu/~jkatz/imc.html">Katz &amp; Lindell</a>, chapters 2 and 3). Each
+    <strong>Fourteen browser demos</strong> for weeks 1–3 — perfect secrecy, pseudorandomness, semantic security, pseudorandom functions
+    and block-cipher design (<a href="https://www.cs.umd.edu/~jkatz/imc.html">Katz &amp; Lindell</a>, chapters 2, 3 and 7). Each
     one runs entirely in your browser — nothing is installed, nothing is uploaded, and reloading the
     page starts over. Every control is keyboard reachable.
   </p>
@@ -446,6 +446,134 @@
         <span class="topic">Pseudorandom functions · unpredictability and the distinguishing game</span>
         <span>Week 3 · KL 3.5.1</span>
         <span class="file">prf-oracle-room.html</span>
+      </p>
+    </li>
+
+  </ul>
+
+  <h2 id="block-ciphers">Block ciphers</h2>
+  <p class="group-note">
+    Week 3 · KL 7.2. How a practical block cipher is actually built: a nonlinear step and a mixing
+    step, repeated, until the ciphertext hides both the key and the message.
+  </p>
+
+  <ul class="demos">
+
+    <li class="demo">
+      <h3><a href="confusion-diffusion.html">Confusion and diffusion</a></h3>
+      <p>
+        Shannon's two design principles, made concrete on a 16-bit substitution–permutation network
+        you can take apart. Inject a one-bit difference and watch it light up S-boxes round by round;
+        switch the S-box off and the difference never grows, switch the permutation off and it never
+        leaves its nibble. A key-dependency heatmap shows what “no confusion” looks like (a linear
+        system you can read off the picture), the S-box difference and linear tables show where
+        confusion is manufactured, and a letter-frequency panel shows why substitution alone and
+        transposition alone both fall to classical analysis. Ends with where each property lives in
+        AES, DES and ChaCha20.
+      </p>
+      <ul class="panels">
+        <li>Difference propagation</li><li>Avalanche tracer</li><li>Round-by-round dependency</li>
+        <li>Key-dependency map</li><li>S-box tables</li><li>Frequency survival</li>
+      </ul>
+      <p class="meta">
+        <span class="topic">Substitution–permutation networks · avalanche · S-box design</span>
+        <span>Week 3, Tue 9.8 · KL 7.2</span>
+        <span class="file">confusion-diffusion.html</span>
+      </p>
+    </li>
+
+    <li class="demo">
+      <h3><a href="spn-avalanche-lab.html">SPN Avalanche Lab: design your own S-box</a></h3>
+      <p>
+        The same 16-bit substitution–permutation network (Stinson's textbook cipher), run twice on
+        inputs that differ in a single bit of the plaintext or the key. Every round is laid out bit
+        by bit with the differences highlighted, so you can watch one flipped bit become two, then
+        seven, then about half the block. The S-box is yours to fill in: type all sixteen entries,
+        or start from the textbook box, PRESENT, identity, a linear map or a random bijection. The
+        page scores your design live — avalanche, differential uniformity, nonlinearity — and a
+        2000-trial histogram shows whether the full cipher still matches what a random function
+        would do. Try to beat the textbook box, which is decent but not optimal.
+      </p>
+      <ul class="panels">
+        <li>Design your S-box</li><li>Round-by-round trace</li><li>Differing bits per step</li>
+        <li>Hamming-distance histogram</li><li>Play round by round</li>
+      </ul>
+      <p class="meta">
+        <span class="topic">Avalanche effect · S-box design · differential uniformity and nonlinearity</span>
+        <span>Week 3, Tue 9.8 · KL 7.2</span>
+        <span class="file">spn-avalanche-lab.html</span>
+      </p>
+    </li>
+
+    <li class="demo">
+      <h3><a href="aes-diffusion.html">AES diffusion: one byte reaches the whole block</a></h3>
+      <p>
+        Where confusion and diffusion live in a real cipher. Flip a single byte of the AES state and
+        step through the round: SubBytes leaves it in place, ShiftRows carries it across columns, and
+        MixColumns fills the column it lands in — so after one round four bytes are affected, and after
+        two rounds all sixteen. The same walkthrough labels each operation by its role in the
+        substitution–permutation network (SubBytes the substitution, ShiftRows and MixColumns the
+        permutation, AddRoundKey the key mixing) and ends with why AES-128 runs ten rounds and drops
+        MixColumns from the last one.
+      </p>
+      <ul class="panels">
+        <li>Avalanche stepper</li><li>Affected bytes per operation</li>
+        <li>SPN role mapping</li><li>Ten rounds and the final round</li>
+      </ul>
+      <p class="meta">
+        <span class="topic">AES · ShiftRows and MixColumns · the diffusion layer</span>
+        <span>Week 3, Tue 9.8 · KL 7.2</span>
+        <span class="file">aes-diffusion.html</span>
+      </p>
+    </li>
+
+    <li class="demo">
+      <h3><a href="des-avalanche.html">DES avalanche: confusion and diffusion in a Feistel cipher</a></h3>
+      <p>
+        The real DES, run twice on inputs that differ in one bit. Flip a plaintext bit to see
+        diffusion, or a key bit to see confusion. A 17-row grid then shows the 64-bit state after
+        every round, with each differing bit marked, so you can watch one bit grow to about half the
+        block by round five. Click any round to open it: the expansion wiring, the round key, the
+        eight S-boxes and the P-box are drawn bit by bit, and you can see which S-boxes the
+        difference reaches and how P spreads their outputs. Flip a parity bit of the key to see
+        why DES has only 56 effective key bits.
+      </p>
+      <ul class="panels">
+        <li>Plaintext vs. key bit flip</li><li>Round-by-round difference grid</li>
+        <li>Inside one Feistel round</li><li>Where each property lives in DES</li>
+      </ul>
+      <p class="meta">
+        <span class="topic">DES · Feistel networks · avalanche effect · key schedule</span>
+        <span>Week 3, Tue 9.8 · KL 7.2</span>
+        <span class="file">des-avalanche.html</span>
+      </p>
+    </li>
+
+    <li class="demo">
+      <h3><a href="differential-attack.html">Differential cryptanalysis on a one-nibble cipher</a></h3>
+      <p>
+        The attack AES was built to resist, run end to end on a two-round cipher with a single 4-bit
+        nibble of state. Build the S-box's difference distribution table and find the entry that holds
+        half the time; push chosen-plaintext pairs through the cipher and watch the key steps leave the
+        difference untouched while the S-box does or does not cooperate. A diagram then shows why the
+        last round key is the one under attack: the difference predicted forwards from the plaintext
+        and the value computed backwards from the ciphertext meet at the input of the last S-box, and
+        only a guess of K₂ stands in the way. Step through that guess one operation at a time, with
+        every XOR written out bit by bit and every inverse S-box lookup highlighted, for the true key
+        and for a wrong one; then tally hits over all pairs and all sixteen guesses. Click any cell of
+        the table to attack with a weaker differential, or run five hundred random key sets to see how
+        often eight pairs are enough. Closes with the numbers that put the same attack out of reach for
+        AES: a 4-of-256 S-box table and at least 25 active S-boxes in four rounds.
+      </p>
+      <ul class="panels">
+        <li>Difference distribution table</li><li>Chosen pairs through the cipher</li>
+        <li>Why the last round key</li><li>Step through one guess</li>
+        <li>Worked table and key-guess bars</li><li>Why AES survives</li>
+      </ul>
+      <p class="meta">
+        <span class="topic">Differential cryptanalysis · difference distribution tables · wide-trail design</span>
+        <span>Week 3, Tue 9.8 · KL 7.2</span>
+        <span class="file">differential-attack.html</span>
       </p>
     </li>
 

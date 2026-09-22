@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Confusion &amp; Diffusion · ECE 407 · Cryptography (Fall 2026)</title>
+<meta name="description" content="ECE 407 demo: Shannon's confusion and diffusion, made concrete with a toggleable 16-bit substitution-permutation network, an avalanche tracer, key-dependency maps and S-box tables.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+.back{display:inline-block;margin-top:22px;font-family:var(--mono);font-size:12.5px;font-weight:500;letter-spacing:.04em;color:var(--muted);text-decoration:none}
+.back:hover{color:var(--ink);text-decoration:underline}
+[hidden]{display:none!important}
+img{max-width:100%}
+:root{
+  --bg:#E8EDF1;
+  --surface:#F6F8FA;
+  --surface-2:#DFE5EA;
+  --ink:#14202B;
+  --muted:#586675;
+  --line:#C3CCD5;
+  --line-strong:#93A0AC;
+  --conf:#C4581A;
+  --conf-soft:#F3DCCB;
+  --diff:#0E7C86;
+  --diff-soft:#CBE6E8;
+  --key:#14202B;
+  --focus:#2B6CB0;
+  --display:"Bricolage Grotesque","Helvetica Neue",Arial,sans-serif;
+  --body:"IBM Plex Sans","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:"IBM Plex Mono",SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F161B; --surface:#172028; --surface-2:#1F2A34; --ink:#E4EAEE; --muted:#93A1AD;
+    --line:#2A3641; --line-strong:#4A5865; --conf:#F08A4B; --conf-soft:#3B2417; --diff:#3FB8C4; --diff-soft:#0F3237; --key:#E4EAEE; --focus:#7FB3F0;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F161B; --surface:#172028; --surface-2:#1F2A34; --ink:#E4EAEE; --muted:#93A1AD;
+  --line:#2A3641; --line-strong:#4A5865; --conf:#F08A4B; --conf-soft:#3B2417; --diff:#3FB8C4; --diff-soft:#0F3237; --key:#E4EAEE; --focus:#7FB3F0;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1040px;margin:0 auto;padding-block:0 96px;padding-inline:clamp(16px,4vw,40px)}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;line-height:1.05;margin:0}
+h1{font-size:clamp(44px,8vw,96px);font-weight:800;letter-spacing:-0.02em;font-variation-settings:"opsz" 96}
+h2{font-size:clamp(28px,4vw,40px);font-weight:700;letter-spacing:-0.015em;margin-bottom:14px}
+h3{font-size:21px;font-weight:700;margin-bottom:6px}
+p{margin:0 0 16px;max-width:68ch}
+a{color:inherit;text-decoration-color:var(--line-strong);text-underline-offset:3px}
+a:hover{text-decoration-color:var(--ink)}
+code,kbd{font-family:var(--mono);font-size:0.92em;background:var(--surface-2);padding:1px 5px;border-radius:3px}
+.eyebrow{font-family:var(--mono);font-size:12.5px;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted)}
+.conf{color:var(--conf)} .diff{color:var(--diff)}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+
+/* hero */
+.hero{padding-block:56px 32px;border-bottom:1px solid var(--line);margin-bottom:48px}
+.hero .eyebrow{margin-bottom:18px}
+.hero h1 span{display:block}
+.hero h1 .amp{font-weight:500;font-style:italic;font-size:0.5em;color:var(--muted);line-height:1.2;margin:6px 0}
+.lede{font-size:clamp(18px,2.2vw,22px);line-height:1.45;max-width:36em;margin-top:26px;color:var(--ink)}
+.pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-top:36px}
+.pair .def{background:var(--surface);border-top:4px solid;padding:18px 20px 16px}
+.pair .def.c{border-color:var(--conf)} .pair .def.d{border-color:var(--diff)}
+.pair .def h3{font-size:26px;margin-bottom:8px}
+.pair .def p{font-size:16px;margin-bottom:10px}
+.pair .def .eyebrow{margin-top:8px}
+.pair .def .mech{font-family:var(--mono);font-size:13.5px;color:var(--muted)}
+
+/* sections */
+section{margin-bottom:64px}
+section > .eyebrow{margin-bottom:8px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:28px}
+.note{border-left:3px solid var(--line-strong);padding:4px 0 4px 16px;color:var(--muted);font-size:15.5px;max-width:64ch}
+.note p{margin-bottom:8px;font-size:inherit}
+.note p:last-child{margin:0}
+
+/* bench (demo panels) */
+.bench{background:var(--surface);border:1px solid var(--line);padding:20px;margin:22px 0 18px}
+.bench-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:10px 24px;margin-bottom:16px}
+.bench-head h3{margin:0}
+.controls{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center;margin-bottom:18px;font-size:14.5px}
+.controls label{display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+.controls input[type=range]{width:120px;accent-color:var(--ink)}
+.controls input[type=checkbox]{width:16px;height:16px;accent-color:var(--ink);margin:0}
+.controls .num{font-family:var(--mono);min-width:1.3em;text-align:right}
+.tog-c input{accent-color:var(--conf)} .tog-d input{accent-color:var(--diff)}
+button{font:inherit;font-size:14px;font-weight:500;color:var(--ink);background:var(--surface-2);border:1px solid var(--line-strong);border-radius:4px;padding:5px 12px;cursor:pointer}
+button:hover{background:var(--line)}
+input.hex{font-family:var(--mono);font-size:14px;width:6.5ch;padding:4px 6px;border:1px solid var(--line-strong);border-radius:4px;background:var(--surface);color:var(--ink);text-transform:uppercase}
+
+/* bit strips */
+.bits{display:inline-flex;gap:3px}
+.bits .nib{display:inline-flex;gap:3px;margin-right:7px}
+.bits .nib:last-child{margin-right:0}
+.bit{width:22px;height:22px;border:1px solid var(--line-strong);border-radius:3px;background:var(--surface);display:grid;place-items:center;font-family:var(--mono);font-size:12px;color:var(--muted);user-select:none}
+.bit.one{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.bit.hit{background:var(--diff);border-color:var(--diff);color:#fff}
+.bit.click{cursor:pointer}
+.bit.click:hover{border-color:var(--ink)}
+.row{display:grid;grid-template-columns:8.5em auto 1fr;align-items:center;gap:14px;padding:6px 0;border-top:1px solid var(--line)}
+.row:first-child{border-top:0}
+.row .lab{font-family:var(--mono);font-size:13px;color:var(--muted)}
+.row .lab b{color:var(--ink);font-weight:500}
+.row .cnt{font-family:var(--mono);font-size:13px;color:var(--muted);display:flex;align-items:center;gap:10px;font-variant-numeric:tabular-nums}
+.row .bar{height:8px;background:var(--diff);width:calc(var(--w) * 1%);max-width:160px;border-radius:2px}
+.scrollx{overflow-x:auto;padding-bottom:4px}
+.rounds{min-width:560px}
+.inputs{display:grid;gap:8px;margin-bottom:14px;min-width:560px}
+.inputs .row{grid-template-columns:8.5em auto 1fr;border:0;padding:2px 0}
+.hexv{font-family:var(--mono);font-size:13px;color:var(--muted)}
+.stat{margin-top:16px;padding-top:12px;border-top:1px dashed var(--line-strong);font-size:14.5px;color:var(--muted)}
+.stat b{font-family:var(--mono);color:var(--ink);font-weight:500;font-variant-numeric:tabular-nums}
+.stat .seq{font-family:var(--mono);color:var(--ink);font-variant-numeric:tabular-nums}
+.verdict{font-size:15px;margin-top:6px;color:var(--ink)}
+
+/* heatmap */
+.heat-wrap{display:grid;grid-template-columns:auto 1fr;gap:8px 12px;align-items:start;max-width:560px}
+.heat{display:grid;grid-template-columns:repeat(16,1fr);gap:2px;width:100%;max-width:420px;aspect-ratio:1;max-width:100%}
+.heat div{aspect-ratio:1;background:color-mix(in oklab,var(--conf) calc(var(--v) * 100%),var(--surface-2));border-radius:2px}
+.heat div.fixed{outline:1px solid var(--ink);outline-offset:-1px}
+.axis-y{writing-mode:vertical-rl;transform:rotate(180deg);font-family:var(--mono);font-size:12px;color:var(--muted);text-align:center;letter-spacing:.04em}
+.axis-x{grid-column:2;font-family:var(--mono);font-size:12px;color:var(--muted);text-align:center;letter-spacing:.04em}
+.legend{display:flex;gap:12px;align-items:center;font-size:13px;color:var(--muted);margin-top:10px;flex-wrap:wrap}
+.swatch{width:60px;height:10px;border-radius:2px;background:linear-gradient(90deg,var(--surface-2),var(--conf))}
+.heat-cols{display:grid;grid-template-columns:minmax(260px,460px) 1fr;gap:24px;align-items:start}
+@media (max-width:700px){.heat-cols{grid-template-columns:1fr}}
+.kv{font-family:var(--mono);font-size:13.5px;line-height:1.7}
+.kv div{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding:4px 0}
+.kv span:last-child{font-variant-numeric:tabular-nums;color:var(--ink)}
+.kv span:first-child{color:var(--muted)}
+.eqs{font-family:var(--mono);font-size:12.5px;line-height:1.75;color:var(--muted);margin-top:14px;max-height:190px;overflow:auto;border-top:1px solid var(--line);padding-top:8px}
+.eqs b{color:var(--ink);font-weight:500}
+
+/* frequency */
+textarea{font:inherit;font-size:14.5px;width:100%;min-height:74px;padding:8px 10px;border:1px solid var(--line-strong);border-radius:4px;background:var(--surface);color:var(--ink);resize:vertical}
+.freqs{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;margin-top:16px}
+.fq h4{font-family:var(--display);font-size:17px;margin:0 0 2px;font-weight:700}
+.fq .sub{font-size:13px;color:var(--muted);margin-bottom:8px;min-height:2.6em}
+.hist{display:grid;grid-template-columns:repeat(26,1fr);gap:1px;height:96px;align-items:end;border-bottom:1px solid var(--line-strong)}
+.hist div{background:var(--ink);height:calc(var(--h) * 1%);min-height:1px;border-radius:1px 1px 0 0}
+.hist.c div{background:var(--conf)} .hist.d div{background:var(--diff)}
+.alpha{display:grid;grid-template-columns:repeat(26,1fr);font-family:var(--mono);font-size:9px;color:var(--muted);text-align:center;margin-top:3px}
+.ctext{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:8px;word-break:break-all;line-height:1.5;max-height:3em;overflow:hidden}
+
+/* table */
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500}
+td.c{color:var(--conf)} td.d{color:var(--diff)}
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--line);font-size:15px}
+.cmp > div{padding:14px 16px}
+.cmp .h{font-family:var(--display);font-weight:700;font-size:18px;border-bottom:1px solid var(--line);background:var(--surface)}
+.cmp > div:nth-child(odd){border-right:1px solid var(--line)}
+.cmp > div:nth-child(n+3){border-top:1px solid var(--line)}
+.cmp .k{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:2px}
+@media (max-width:560px){.cmp{grid-template-columns:1fr}.cmp > div:nth-child(odd){border-right:0}.cmp > div:nth-child(n+2){border-top:1px solid var(--line)}}
+
+/* spn diagram */
+.spn{overflow-x:auto;background:var(--surface);border:1px solid var(--line);padding:12px}
+.spn svg{display:block;min-width:620px;width:100%;height:auto}
+.leg{display:flex;flex-wrap:wrap;gap:8px 20px;font-size:13.5px;color:var(--muted);margin-top:10px}
+.leg i{display:inline-block;width:14px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+ul.tight{padding-left:20px;max-width:68ch}
+ul.tight li{margin-bottom:8px}
+ol.refs{padding-left:20px;max-width:72ch;font-size:15px}
+ol.refs li{margin-bottom:8px}
+.misc{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.misc .m{padding:14px 16px;background:var(--surface);border:1px solid var(--line)}
+.misc .m .eyebrow{color:var(--conf);margin-bottom:4px}
+.misc .m p{font-size:15px;margin:0}
+@media (prefers-reduced-motion:no-preference){.bit{transition:background .18s,border-color .18s}.row .bar{transition:width .25s}.heat div{transition:background .3s}}
+/* segmented control */
+.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:4px;overflow:hidden}
+.seg button{border:0;border-radius:0;background:var(--surface);padding:5px 12px}
+.seg button+button{border-left:1px solid var(--line-strong)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+/* interactive spn */
+.spn svg .w{stroke:var(--line-strong);stroke-width:1.2;fill:none}
+.spn svg .p{stroke:var(--line-strong);stroke-width:1;fill:none;opacity:.55}
+.spn svg .w.hot,.spn svg .p.hot{stroke:var(--diff);stroke-width:2.6;opacity:1}
+.spn svg .sb{fill:var(--conf);stroke:none}
+.spn svg .sb.dim{opacity:.28}
+.spn svg .sb.act{stroke:var(--ink);stroke-width:1.5}
+.spn svg .tb{cursor:pointer}
+.spn svg .tb rect{fill:var(--surface);stroke:var(--line-strong);stroke-width:1}
+.spn svg .tb text{font:11px "IBM Plex Mono",monospace;fill:var(--muted);pointer-events:none}
+.spn svg .tb.on rect{fill:var(--diff);stroke:var(--diff)}
+.spn svg .tb.on text{fill:#fff}
+.spn svg .tb:hover rect{stroke:var(--ink)}
+.spn svg .cb rect{fill:var(--surface);stroke:var(--line-strong);stroke-width:1}
+.spn svg .cb.on rect{fill:var(--diff);stroke:var(--diff)}
+.spn svg .cb text{font:11px "IBM Plex Mono",monospace;fill:var(--muted)}
+.spn svg .cb.on text{fill:#fff}
+.spn svg .rl{font:11px "IBM Plex Mono",monospace;fill:var(--muted)}
+.spn svg .rl.hot{fill:var(--ink)}
+.spn svg .k{fill:var(--surface);stroke:var(--key);stroke-width:1.2}
+.spn svg .kx{stroke:var(--key);stroke-width:1.1}
+.spn svg .t{font:11px "IBM Plex Mono",monospace;fill:var(--muted)}
+.spn svg .tl{font:600 11px "IBM Plex Sans",sans-serif;fill:var(--ink)}
+.spn svg .sbt{font:600 11px "IBM Plex Sans",sans-serif;fill:#fff;pointer-events:none}
+@media (prefers-reduced-motion:no-preference){.spn svg .w,.spn svg .p,.spn svg .sb{transition:stroke .25s,stroke-width .25s,opacity .25s}}
+/* small multiples */
+.minis{display:flex;flex-wrap:wrap;gap:14px 18px;margin-top:6px}
+.mini{width:104px}
+.mini .g{display:grid;grid-template-columns:repeat(16,1fr);gap:1px;aspect-ratio:1;width:100%}
+.mini .g div{background:color-mix(in oklab,var(--diff) calc(var(--v) * 100%),var(--surface-2))}
+.mini .cap{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-top:5px;text-align:center;line-height:1.3;font-variant-numeric:tabular-nums}
+.mini .cap b{color:var(--ink);font-weight:500}
+.twocol{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:start}
+@media (max-width:760px){.twocol{grid-template-columns:1fr}}
+.subh{font-family:var(--display);font-size:16px;font-weight:700;margin:0 0 4px}
+.subp{font-size:13.5px;color:var(--muted);margin:0 0 10px;max-width:46ch}
+.histsvg{width:100%;max-width:420px;height:auto;display:block}
+.histsvg .b{fill:var(--diff)}
+.histsvg .ideal{fill:none;stroke:var(--ink);stroke-width:1.2;stroke-dasharray:3 2}
+.histsvg .ax{stroke:var(--line-strong);stroke-width:1}
+.histsvg .t{font:10.5px "IBM Plex Mono",monospace;fill:var(--muted)}
+/* ddt / lat */
+.ddt-cols{display:grid;grid-template-columns:minmax(280px,500px) 1fr;gap:24px;align-items:start}
+@media (max-width:760px){.ddt-cols{grid-template-columns:1fr}}
+.ddt{display:grid;grid-template-columns:repeat(17,1fr);gap:1px;width:100%;font-family:var(--mono);font-size:10.5px;font-variant-numeric:tabular-nums}
+.ddt div{aspect-ratio:1;display:grid;place-items:center;border-radius:1px;color:var(--ink)}
+.ddt .h{color:var(--muted);font-size:10px}
+.ddt .v{background:color-mix(in oklab,var(--conf) calc(var(--v) * 100%),var(--surface-2))}
+.ddt .v.top{outline:1.5px solid var(--ink);outline-offset:-1.5px}
+.ddt .z{color:var(--line-strong)}
+@media (max-width:480px){.ddt .v{font-size:0}}
+.ddt-cap{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:8px;display:flex;justify-content:space-between}
+
+</style>
+
+<div class="wrap">
+<a class="back" href="demos.html">← ECE 407 demos</a>
+<header class="hero">
+  <div class="eyebrow">Shannon, 1949 · Communication Theory of Secrecy Systems</div>
+  <h1><span>Confusion</span><span class="amp">and</span><span>Diffusion</span></h1>
+  <p class="lede">Two properties every good cipher needs, one page to make them concrete. Read the definitions, then watch each property appear, or fail, in a 16‑bit toy cipher you can switch apart piece by piece.</p>
+  <div class="pair">
+    <div class="def c">
+      <h3 class="conf">Confusion</h3>
+      <p>Make the relationship between the <em>key</em> and the ciphertext as tangled as possible, so that no amount of ciphertext statistics hands the attacker a simple set of equations to solve for the key.</p>
+      <div class="eyebrow">Produced by</div>
+      <div class="mech">nonlinear substitution · S‑boxes · modular addition</div>
+    </div>
+    <div class="def d">
+      <h3 class="diff">Diffusion</h3>
+      <p>Spread the statistical structure of the <em>plaintext</em> across the whole ciphertext, so that every plaintext symbol influences many ciphertext symbols and local redundancy is dissipated.</p>
+      <div class="eyebrow">Produced by</div>
+      <div class="mech">permutation · transposition · mixing layers · rotations</div>
+    </div>
+  </div>
+</header>
+
+<section id="why">
+  <div class="eyebrow">01 · Why two properties</div>
+  <h2>What an attacker exploits, and what each property denies them</h2>
+  <div class="grid2">
+    <div>
+      <p>Shannon asked how a cipher could resist an attacker who has unlimited ciphertext and unlimited patience for statistics. Natural language is redundant: letters, digrams and words have skewed frequencies. A cipher that leaves that redundancy intact, or maps the key to the ciphertext by a simple rule, gives the analyst something to solve.</p>
+      <p><strong class="diff">Diffusion</strong> attacks the first problem. If each plaintext symbol influences many ciphertext symbols, any one statistic of the plaintext is smeared over long stretches of ciphertext, and the analyst needs far more material to detect it. In bit terms: flipping one plaintext bit should flip about half of the ciphertext bits, in unpredictable positions. This is the <em>avalanche effect</em>.</p>
+    </div>
+    <div>
+      <p><strong class="conf">Confusion</strong> attacks the second. Even with the plaintext known, the map from key to ciphertext should not decompose into independent, simple relations. A cipher whose ciphertext bits are each a linear combination of key bits is solved by Gaussian elimination from a handful of known plaintexts, no matter how well it diffuses. Confusion means every ciphertext bit depends on many key bits <em>nonlinearly</em>.</p>
+      <div class="note">
+        <p><strong>The mnemonic and its limit.</strong> “Confusion hides the key, diffusion hides the plaintext” is the standard shorthand and it works. Just remember Shannon defined both properties in terms of ciphertext statistics, and a modern cipher wants avalanche with respect to key bits as well as plaintext bits.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="spn">
+  <div class="eyebrow">02 · The machinery</div>
+  <h2>A substitution–permutation network builds both from two small parts</h2>
+  <p>Shannon's proposal was a <em>product cipher</em>: alternate a confusing operation with a diffusing one, and repeat. The toy cipher on this page is the 16‑bit SPN from Heys' cryptanalysis tutorial. Each round XORs in a round key, pushes each 4‑bit nibble through the same 4×4 S‑box, then permutes the 16 wires so every S‑box output bit lands in a different S‑box next round.</p>
+  <div class="bench" style="padding-bottom:14px">
+    <div class="bench-head"><h3>Difference propagation</h3><span class="eyebrow">click bit labels at the top to choose the input difference</span></div>
+    <div class="controls">
+      <button id="sPlay" type="button">▶ Play rounds</button>
+      <button id="sStep" type="button">Step</button>
+      <button id="sRandP" type="button">Random plaintext</button>
+      <button id="sRandD" type="button">Random single bit</button>
+      <span class="eyebrow" id="sShown">showing all 4 rounds</span>
+    </div>
+    <div class="spn" id="spnDiagram"></div>
+    <div class="leg">
+      <span><i style="background:var(--key)"></i>Round‑key XOR (key injection)</span>
+      <span><i style="background:var(--conf)"></i>S‑box: nonlinear lookup, source of confusion. Lit = receives a difference</span>
+      <span><i style="background:var(--diff)"></i>Wires carrying a difference; permutation crossings are where they spread</span>
+    </div>
+    <div class="stat" id="sStat"></div>
+  </div>
+  <div class="grid2" style="margin-top:22px">
+    <div>
+      <h3>S‑box (Heys)</h3>
+      <div class="scrollx"><table style="font-family:var(--mono);font-size:13px;min-width:420px" id="sboxTable"></table></div>
+      <p style="font-size:15px;margin-top:8px">No affine equation over GF(2) reproduces this table. That non‑linearity is the only thing in the cipher that isn't a linear function of its inputs.</p>
+    </div>
+    <div>
+      <h3>Permutation</h3>
+      <p style="font-size:15px">Bit <code>i</code> moves to position <code>4·(i mod 4) + ⌊i/4⌋</code>: the 4×4 transpose. Output bit <em>j</em> of S‑box <em>k</em> becomes input bit <em>k</em> of S‑box <em>j</em>. A one‑bit change that an S‑box turns into two or three changed bits is scattered to two or three different S‑boxes next round, which is what makes the avalanche grow.</p>
+      <p style="font-size:15px">Round keys here come from a fixed rotate‑and‑add schedule. The schedule is linear on purpose: it keeps the demos honest about where the confusion actually comes from.</p>
+    </div>
+  </div>
+</section>
+
+<section id="diffusion">
+  <div class="eyebrow">03 · Watch diffusion</div>
+  <h2 class="diff">Flip one plaintext bit and follow the difference through the rounds</h2>
+  <p>Two plaintexts that differ in the highlighted bits are encrypted side by side under the same key. Each row shows the XOR of the two internal states after that round: teal cells are bits that differ. Switch off the permutation and the difference stays trapped in one nibble. Switch off the S‑box and the single difference just wanders, one bit forever.</p>
+  <div class="bench">
+    <div class="bench-head"><h3>Avalanche tracer</h3><span class="eyebrow">16‑bit SPN · click Δ cells to choose which plaintext bits to flip</span></div>
+    <div class="controls">
+      <label class="tog-c"><input type="checkbox" id="dSbox" checked> S‑box</label>
+      <label class="tog-d"><input type="checkbox" id="dPerm" checked> Permutation</label>
+      <label>Rounds <input type="range" id="dRounds" min="1" max="8" value="4"> <span class="num" id="dRoundsV">4</span></label>
+      <label>Key <input class="hex" id="dKey" value="3A94" maxlength="4" spellcheck="false"></label>
+      <button id="dRandP" type="button">Random plaintext</button>
+      <button id="dRandK" type="button">Random key</button>
+    </div>
+    <div class="scrollx">
+      <div class="inputs">
+        <div class="row"><span class="lab"><b>P</b> plaintext</span><span id="dP"></span><span class="hexv" id="dPhex"></span></div>
+        <div class="row"><span class="lab"><b>Δ</b> bits to flip</span><span id="dDelta"></span><span class="hexv" id="dDhex"></span></div>
+      </div>
+      <div class="rounds" id="dRoundsOut"></div>
+    </div>
+    <div class="stat" id="dStat"></div>
+  </div>
+  <div class="bench">
+    <div class="bench-head"><h3>Diffusion, round by round</h3><span class="eyebrow">same settings as the tracer above</span></div>
+    <div class="twocol">
+      <div>
+        <div class="subh">Which ciphertext bits depend on which plaintext bits</div>
+        <p class="subp">Rows: state bit after that round. Columns: plaintext bit flipped. Colour: how often it changes, over 96 random plaintexts. Full diffusion is a uniform mid‑teal square.</p>
+        <div class="minis" id="dMinis"></div>
+      </div>
+      <div>
+        <div class="subh">How many output bits flip, over 2 000 single‑bit trials</div>
+        <p class="subp">Bars: observed count of flipped ciphertext bits. Dashed outline: the ideal Binomial(16, ½) a random permutation would give. Diffusion means matching the outline, not maximising the flips.</p>
+        <svg class="histsvg" id="dHist" viewBox="0 0 400 170" role="img" aria-label="Histogram of flipped ciphertext bits"></svg>
+      </div>
+    </div>
+  </div>
+  <div class="grid2">
+    <div>
+      <p><strong>What good looks like.</strong> After enough rounds the last row shows about 8 of 16 bits differing, with the positions changing as you move Δ. The average in the panel converges toward 8.0 under the full cipher. It is not 16: a cipher that flipped <em>every</em> bit would be just as predictable as one that flipped none.</p>
+    </div>
+    <div>
+      <p><strong>Two ways to break it.</strong> Without the permutation, each nibble is its own independent 4‑bit cipher and the difference never leaves its lane. Without the S‑box, the whole cipher is <code>C = P ⊕ f(K)</code> for some fixed linear <code>f</code>, so the difference between two ciphertexts equals the difference between the plaintexts, moved around. Diffusion needs the nonlinear step to multiply differences and the permutation to spread them.</p>
+    </div>
+  </div>
+</section>
+
+<section id="confusion">
+  <div class="eyebrow">04 · Watch confusion</div>
+  <h2 class="conf">How does each ciphertext bit depend on each key bit?</h2>
+  <p>For a batch of random plaintexts, flip one key bit at a time and record which ciphertext bits change. Each cell is the probability that flipping key bit <em>j</em> (column) flips ciphertext bit <em>i</em> (row). A cipher with confusion paints the whole square a uniform mid‑tone: every key bit affects every ciphertext bit, about half the time, and no cell is predictable. A linear cipher paints a crisp pattern of certain and never, which is a system of equations written out in colour.</p>
+  <div class="bench">
+    <div class="bench-head"><h3>Key‑dependency map</h3><span class="eyebrow">128 random plaintexts per cell</span></div>
+    <div class="controls">
+      <label class="tog-c"><input type="checkbox" id="cSbox" checked> S‑box</label>
+      <label class="tog-d"><input type="checkbox" id="cPerm" checked> Permutation</label>
+      <label>Rounds <input type="range" id="cRounds" min="1" max="8" value="4"> <span class="num" id="cRoundsV">4</span></label>
+      <label>Key <input class="hex" id="cKey" value="3A94" maxlength="4" spellcheck="false"></label>
+      <button id="cResample" type="button">Resample</button>
+    </div>
+    <div class="heat-cols">
+      <div>
+        <div class="heat-wrap">
+          <div class="axis-y">ciphertext bit · 15 → 0</div>
+          <div class="heat" id="cHeat"></div>
+          <div></div>
+          <div class="axis-x">key bit · 15 → 0</div>
+        </div>
+        <div class="legend"><span>P(flip) = 0</span><span class="swatch"></span><span>1</span><span style="margin-left:8px">▢ outlined = exactly 0 or 1 (predictable)</span></div>
+      </div>
+      <div>
+        <div class="kv" id="cStats"></div>
+        <div class="verdict" id="cVerdict"></div>
+        <div class="eqs" id="cEqs"></div>
+      </div>
+    </div>
+  </div>
+  <div class="grid2">
+    <div>
+      <p><strong>Reading the linear case.</strong> Turn the S‑box off. Every cell becomes exactly 0 or 1, and the panel lists the equations the map encodes: ciphertext bit <em>i</em> equals plaintext bit <em>i</em> XOR a fixed subset of key bits. One known plaintext–ciphertext pair gives 16 linear equations in 16 unknown key bits. Solve, done. The permutation slider changes <em>which</em> key bits appear in each equation, never the fact that they are equations.</p>
+    </div>
+    <div>
+      <p><strong>Reading the confused case.</strong> With the S‑box on and a few rounds, the cells settle near 0.5 and none is outlined. There is still a deterministic function from key to ciphertext, but it has no short algebraic description: the attacker's “equations” are the cipher itself. That is what confusion means in practice, and it is why cryptanalysis of real ciphers has to settle for statistical approximations (linear and differential cryptanalysis) rather than direct solving.</p>
+    </div>
+  </div>
+</section>
+
+<section id="sbox">
+  <div class="eyebrow">05 · Inside the S‑box</div>
+  <h2 class="conf">Where confusion is manufactured: the difference and linear tables</h2>
+  <p>Zoom into one 4×4 S‑box. The <em>difference distribution table</em> counts, for each input difference Δin (row) and output difference Δout (column), how many of the 16 inputs produce that pair. The <em>linear approximation table</em> counts, for each input mask (row) and output mask (column), how far the parity relation “mask·x = mask·S(x)” departs from holding half the time. A good S‑box keeps every entry small. Swap in an affine S‑box and watch each row collapse to a single certain entry: that is the picture of no confusion.</p>
+  <div class="bench">
+    <div class="bench-head"><h3>S‑box tables</h3><span class="eyebrow">rows Δin / input mask · columns Δout / output mask · hex</span></div>
+    <div class="controls">
+      <span class="seg" id="tblSeg"><button type="button" data-t="ddt" aria-pressed="true">Difference table</button><button type="button" data-t="lat" aria-pressed="false">Linear table</button></span>
+      <span class="seg" id="boxSeg"><button type="button" data-b="heys" aria-pressed="true">Heys S‑box</button><button type="button" data-b="aff" aria-pressed="false">Affine S‑box</button></span>
+    </div>
+    <div class="ddt-cols">
+      <div>
+        <div class="ddt" id="ddtGrid"></div>
+        <div class="ddt-cap" id="ddtCap"></div>
+      </div>
+      <div>
+        <div class="kv" id="ddtStats"></div>
+        <div class="verdict" id="ddtVerdict"></div>
+      </div>
+    </div>
+  </div>
+  <div class="grid2">
+    <div>
+      <p><strong>Difference table.</strong> The top row is trivial (no input difference, no output difference). Everywhere else, a large entry is a differential that holds with high probability through one S‑box; differential cryptanalysis chains such entries across rounds. The largest entry off the top row, divided by 16, is the best single‑round differential probability. AES's S‑box holds this to 4/256.</p>
+    </div>
+    <div>
+      <p><strong>Linear table.</strong> An entry of ±8 means a linear relation between input and output bits holds always or never: the S‑box is affine along that mask. Entries near 0 mean the relation is a coin flip. Linear cryptanalysis needs about 1/ε² known plaintexts for a bias ε, so small entries here translate directly into more material than an attacker can get.</p>
+    </div>
+  </div>
+</section>
+
+<section id="both">
+  <div class="eyebrow">06 · Why you need both</div>
+  <h2>Classical ciphers each have one property, and each is broken by the missing one</h2>
+  <p>Type any English text. A monoalphabetic substitution replaces letters but leaves each ciphertext letter depending on exactly one plaintext letter, so the frequency profile survives with the bars relabelled. A columnar transposition scatters positions but never touches letter values, so the histogram is <em>identical</em>. Either way the analyst starts with the same letter counts they would have had for the plaintext.</p>
+  <div class="bench">
+    <div class="bench-head"><h3>Letter‑frequency survival</h3><span class="eyebrow">A–Z counts, case‑folded</span></div>
+    <textarea id="fText" spellcheck="false">The enemy knows the system. Kerckhoffs wrote it in eighteen eighty three and Shannon repeated it: assume the attacker has everything except the key, then ask what the ciphertext still leaks.</textarea>
+    <div class="freqs">
+      <div class="fq"><h4>Plaintext</h4><div class="sub">The natural profile: E, T, A, O and friends tower over the rest.</div><div class="hist" id="fPlain"></div><div class="alpha" id="alpha1"></div><div class="ctext" id="fPlainT"></div></div>
+      <div class="fq"><h4 class="conf">Simple substitution</h4><div class="sub">Weak confusion, no diffusion. Same bars, permuted: match tall bars to E and T and the key falls out.</div><div class="hist c" id="fSub"></div><div class="alpha" id="alpha2"></div><div class="ctext" id="fSubT"></div></div>
+      <div class="fq"><h4 class="diff">Columnar transposition</h4><div class="sub">Diffusion, no confusion. The histogram is unchanged, which itself identifies the cipher; then you anagram.</div><div class="hist d" id="fTrans"></div><div class="alpha" id="alpha3"></div><div class="ctext" id="fTransT"></div></div>
+    </div>
+  </div>
+  <p>Combining the two is Shannon's product cipher, and a product of a <em>weak</em> substitution with a <em>weak</em> transposition is already much harder than either: the substitution stops the histogram from being trivially the plaintext's, and the transposition stops each ciphertext symbol from being a function of one plaintext symbol. Iterate the pair with a fresh key contribution each round and you arrive at the SPN above.</p>
+</section>
+
+<section id="real">
+  <div class="eyebrow">07 · In deployed ciphers</div>
+  <h2>Where each property lives in AES, DES and ChaCha20</h2>
+  <div class="scrollx"><table style="min-width:640px">
+    <thead><tr><th>Cipher</th><th>Confusion comes from</th><th>Diffusion comes from</th><th>Key enters via</th></tr></thead>
+    <tbody>
+      <tr><td><strong>AES</strong> (SPN, 128‑bit block)</td><td class="c">SubBytes: the byte‑wise S‑box built from inversion in GF(2⁸) plus an affine map, chosen for low differential and linear bias.</td><td class="d">ShiftRows moves bytes across columns; MixColumns multiplies each column by an MDS matrix so one changed byte affects all four. Full diffusion in two rounds.</td><td>AddRoundKey, XOR of a 128‑bit round key each round.</td></tr>
+      <tr><td><strong>DES</strong> (Feistel, 64‑bit block)</td><td class="c">Eight 6→4 S‑boxes in the round function <em>f</em>, the only nonlinear component.</td><td class="d">The expansion E duplicates bits into two S‑boxes, and the permutation P scatters S‑box outputs; the Feistel swap carries them to the other half.</td><td>XOR of a 48‑bit subkey with the expanded half‑block inside <em>f</em>.</td></tr>
+      <tr><td><strong>ChaCha20</strong> (ARX stream cipher)</td><td class="c">32‑bit modular addition: carries make it nonlinear over GF(2), which is the only nonlinearity in ARX designs.</td><td class="d">Rotations and XORs in the quarter‑round move bits across word positions; the column/diagonal round schedule spreads across the 16‑word state.</td><td>Key, nonce and counter fill the initial state; the final feed‑forward addition makes the permutation one‑way.</td></tr>
+    </tbody>
+  </table></div>
+  <p style="margin-top:14px">The pattern is constant across designs: one cheap nonlinear operation supplies confusion, one cheap linear operation supplies diffusion, and rounds multiply their effect. Designers choose S‑boxes for resistance to differential and linear cryptanalysis, and linear layers for a high <em>branch number</em>, which is a guarantee about how many S‑boxes any difference must pass through.</p>
+</section>
+
+<section id="formal">
+  <div class="eyebrow">08 · Measuring it</div>
+  <h2>The criteria that put numbers on Shannon's words</h2>
+  <div class="cmp">
+    <div class="h">Diffusion criteria</div>
+    <div class="h">Confusion criteria</div>
+    <div><span class="k">Completeness · Kam &amp; Davida 1979</span>Every output bit depends on every input bit: for each pair (<em>i</em>, <em>j</em>) there exist inputs where flipping bit <em>i</em> changes output bit <em>j</em>. The dependency map above shows completeness as “no empty cell”.</div>
+    <div><span class="k">Nonlinearity</span>Distance from the nearest affine function over GF(2). A cipher whose components are affine is solvable by linear algebra regardless of how many rounds it runs; the S‑box toggle above makes exactly that failure visible.</div>
+    <div><span class="k">Avalanche effect · Feistel 1973</span>Flipping one input bit flips about half of the output bits on average. The tracer's average converges on 8 of 16.</div>
+    <div><span class="k">Differential uniformity</span>For any input difference, no output difference should occur much more often than others. Low uniformity denies differential cryptanalysis its high‑probability characteristics.</div>
+    <div><span class="k">Strict avalanche criterion · Webster &amp; Tavares 1985</span>Stronger: each output bit flips with probability exactly ½ whenever any single input bit flips. In the dependency map, SAC is “every cell reads 0.5”.</div>
+    <div><span class="k">Linear bias</span>No linear combination of input bits should agree with a linear combination of output bits noticeably more than half the time. Small bias is what makes linear cryptanalysis need more known plaintexts than exist.</div>
+  </div>
+  <p style="margin-top:16px">All of these are necessary, none sufficient. A cipher can pass every avalanche test and still fall to an attack that exploits algebraic structure, weak key schedules or side channels. Confusion and diffusion tell you what a cipher must at least do; cryptanalysis tells you whether it did it well enough.</p>
+</section>
+
+<section id="misc">
+  <div class="eyebrow">09 · Common misreadings</div>
+  <h2>Three things the definitions do not say</h2>
+  <div class="misc">
+    <div class="m"><div class="eyebrow">Misreading</div><p><strong>“More rounds means more diffusion.”</strong> Diffusion saturates: once every bit depends on every other with probability ½, extra rounds do not add more. They add <em>security margin</em> against attacks that trace probabilistic paths through the rounds, which is a different quantity.</p></div>
+    <div class="m"><div class="eyebrow">Misreading</div><p><strong>“Diffusion means a small change changes everything.”</strong> It means about half, at unpredictable positions. A cipher that reliably flipped all 16 bits would be one XOR away from leaking the difference unchanged.</p></div>
+    <div class="m"><div class="eyebrow">Misreading</div><p><strong>“Confusion and diffusion are separate layers you can grade separately.”</strong> The demos let you toggle them for teaching, but in practice each depends on the other: the S‑box only multiplies differences that the permutation delivers, and the permutation only spreads differences the S‑box created.</p></div>
+  </div>
+</section>
+
+<section id="refs">
+  <div class="eyebrow">10 · Reading</div>
+  <h2>Sources</h2>
+  <ol class="refs">
+    <li>C. E. Shannon, “Communication Theory of Secrecy Systems,” <em>Bell System Technical Journal</em> 28(4), 1949. The origin of both terms, of the product‑cipher idea, and of the argument that redundancy is what the analyst lives on.</li>
+    <li>H. Feistel, “Cryptography and Computer Privacy,” <em>Scientific American</em>, May 1973. Introduces the avalanche effect and the Feistel structure that became DES.</li>
+    <li>J. B. Kam and G. I. Davida, “Structured Design of Substitution‑Permutation Encryption Networks,” <em>IEEE Transactions on Computers</em> C‑28(10), 1979. Completeness.</li>
+    <li>A. F. Webster and S. E. Tavares, “On the Design of S‑Boxes,” CRYPTO 1985. The strict avalanche criterion and bit‑independence criterion.</li>
+    <li>H. M. Heys, “A Tutorial on Linear and Differential Cryptanalysis,” <em>Cryptologia</em> 26(3), 2002. The 16‑bit SPN and S‑box used throughout this page.</li>
+    <li>J. Daemen and V. Rijmen, <em>The Design of Rijndael</em>, Springer, 2002. The wide‑trail strategy: how AES chooses its S‑box and linear layer together.</li>
+  </ol>
+</section>
+</div>
+
+<script>
+(function(){
+'use strict';
+/* ---------- toy SPN (Heys) ---------- */
+const SBOX=[0xE,0x4,0xD,0x1,0x2,0xF,0xB,0x8,0x3,0xA,0x6,0xC,0x5,0x9,0x0,0x7];
+const PERM=[];for(let i=0;i<16;i++)PERM[i]=(i%4)*4+Math.floor(i/4);
+function sub(x){let y=0;for(let n=0;n<4;n++)y|=SBOX[(x>>(4*n))&0xF]<<(4*n);return y;}
+function perm(x){let y=0;for(let i=0;i<16;i++)if((x>>i)&1)y|=1<<PERM[i];return y;}
+function rotl(x,r){r%=16;return ((x<<r)|(x>>(16-r)))&0xFFFF;}
+function roundKeys(K,R){const ks=[];for(let r=0;r<=R;r++)ks.push((rotl(K,3*r)+((0x9E37*(r+1))&0xFFFF))&0xFFFF);return ks;}
+function trace(P,K,o){const ks=roundKeys(K,o.rounds);let s=P;const t=[s];
+  for(let r=1;r<=o.rounds;r++){s^=ks[r-1];if(o.sbox)s=sub(s);if(o.perm&&r<o.rounds)s=perm(s);if(r===o.rounds)s^=ks[r];t.push(s);}return t;}
+function enc(P,K,o){const t=trace(P,K,o);return t[t.length-1];}
+function pop(x){let c=0;while(x){x&=x-1;c++;}return c;}
+function rnd16(){return Math.floor(Math.random()*65536);}
+function hex4(x){return x.toString(16).toUpperCase().padStart(4,'0');}
+function parseHex(el,fallback){const v=parseInt(el.value,16);if(Number.isNaN(v)||el.value.length===0)return fallback;return v&0xFFFF;}
+
+/* ---------- bit strip rendering ---------- */
+function bitStrip(x,opts){opts=opts||{};const wrap=document.createElement('span');wrap.className='bits';
+  for(let n=3;n>=0;n--){const nib=document.createElement('span');nib.className='nib';
+    for(let b=3;b>=0;b--){const i=n*4+b;const c=document.createElement('span');c.className='bit';const on=(x>>i)&1;
+      if(opts.mode==='diff'){if(on)c.classList.add('hit');c.textContent=on?'1':'·';}
+      else{if(on)c.classList.add('one');c.textContent=on?'1':'0';}
+      if(opts.onClick){c.classList.add('click');c.title='bit '+i;c.addEventListener('click',()=>opts.onClick(i));}
+      nib.appendChild(c);}wrap.appendChild(nib);}return wrap;}
+
+/* ---------- S-box table ---------- */
+(function(){const t=document.getElementById('sboxTable');let h='<tr><th style="padding:4px 8px">in</th>';for(let i=0;i<16;i++)h+='<td style="padding:4px 8px;color:var(--muted)">'+i.toString(16).toUpperCase()+'</td>';h+='</tr><tr><th style="padding:4px 8px">out</th>';for(let i=0;i<16;i++)h+='<td style="padding:4px 8px;color:var(--conf);font-weight:500">'+SBOX[i].toString(16).toUpperCase()+'</td>';h+='</tr>';t.innerHTML=h;})();
+
+/* ---------- interactive SPN diagram ---------- */
+const S={delta:0x0001,P:0x2B3C,K:0x3A94,shown:4,timer:null};
+const NR=4;
+(function build(){const W=660,left=40,right=44,gap=(W-left-right)/15,rH=112,top=44;const H=top+NR*rH+66;const x=i=>left+i*gap;
+  let s='<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four rounds of a 16-bit substitution-permutation network with a difference propagating through it">';
+  for(let i=0;i<16;i++){const bit=15-i;s+='<g class="tb" data-i="'+bit+'"><rect x="'+(x(i)-8)+'" y="4" width="16" height="16" rx="3"/><text x="'+x(i)+'" y="16" text-anchor="middle">'+bit+'</text></g>';}
+  s+='<text class="t" x="'+(W-right+6)+'" y="16">Δ in</text>';
+  let y=top;
+  for(let r=1;r<=NR;r++){
+    const y0=y,yk=y+14,ys=y+34,ysH=28,yo=ys+ysH,yp0=yo+12,yp1=y+rH;
+    for(let i=0;i<16;i++){const bit=15-i;s+='<line class="w" data-r="'+r+'" data-st="in" data-i="'+bit+'" x1="'+x(i)+'" y1="'+y0+'" x2="'+x(i)+'" y2="'+ys+'"/>';
+      s+='<circle class="k" cx="'+x(i)+'" cy="'+yk+'" r="5"/><line class="kx" x1="'+(x(i)-3.2)+'" y1="'+yk+'" x2="'+(x(i)+3.2)+'" y2="'+yk+'"/><line class="kx" x1="'+x(i)+'" y1="'+(yk-3.2)+'" x2="'+x(i)+'" y2="'+(yk+3.2)+'"/>';}
+    s+='<text class="tl" x="'+(W-right+6)+'" y="'+(yk+4)+'">K'+r+'</text>';
+    for(let b=0;b<4;b++){const xa=x(b*4)-gap*0.42,xb=x(b*4+3)+gap*0.42;s+='<rect class="sb" data-r="'+r+'" data-n="'+(3-b)+'" x="'+xa+'" y="'+ys+'" width="'+(xb-xa)+'" height="'+ysH+'" rx="3"/>';
+      s+='<text class="sbt" x="'+((xa+xb)/2)+'" y="'+(ys+ysH/2+4)+'" text-anchor="middle">S'+(4-b)+'</text>';}
+    s+='<text class="rl" data-r="'+r+'" x="'+(left-34)+'" y="'+(ys+ysH/2+4)+'">r'+r+'</text>';
+    for(let i=0;i<16;i++){const bit=15-i,dst=PERM[bit];const xs=x(i),xd=x(15-dst);
+      s+='<line class="w" data-r="'+r+'" data-st="out" data-i="'+bit+'" x1="'+xs+'" y1="'+yo+'" x2="'+xs+'" y2="'+yp0+'"/>';
+      if(r<NR)s+='<path class="p" data-r="'+r+'" data-i="'+bit+'" d="M'+xs+' '+yp0+' C '+xs+' '+(yp0+26)+', '+xd+' '+(yp1-26)+', '+xd+' '+yp1+'"/>';
+      else s+='<line class="w" data-r="'+r+'" data-st="fin" data-i="'+bit+'" x1="'+xs+'" y1="'+yp0+'" x2="'+xs+'" y2="'+(yp0+30)+'"/>';}
+    if(r<NR)s+='<text class="tl" x="'+(W-right+6)+'" y="'+((yp0+yp1)/2+4)+'">P</text>';
+    y+=rH;}
+  const yk=y-rH+34+28+12+30+2;
+  for(let i=0;i<16;i++){s+='<circle class="k" cx="'+x(i)+'" cy="'+(yk)+'" r="5"/><line class="kx" x1="'+(x(i)-3.2)+'" y1="'+yk+'" x2="'+(x(i)+3.2)+'" y2="'+yk+'"/><line class="kx" x1="'+x(i)+'" y1="'+(yk-3.2)+'" x2="'+x(i)+'" y2="'+(yk+3.2)+'"/>';
+    s+='<line class="w" data-r="5" data-st="c" data-i="'+(15-i)+'" x1="'+x(i)+'" y1="'+(yk+5)+'" x2="'+x(i)+'" y2="'+(yk+14)+'"/>';
+    s+='<g class="cb" data-i="'+(15-i)+'"><rect x="'+(x(i)-8)+'" y="'+(yk+14)+'" width="16" height="16" rx="3"/><text x="'+x(i)+'" y="'+(yk+26)+'" text-anchor="middle">·</text></g>';}
+  s+='<text class="tl" x="'+(W-right+6)+'" y="'+(yk+4)+'">K5</text><text class="t" x="'+(W-right+6)+'" y="'+(yk+26)+'">Δ out</text>';
+  s+='</svg>';const host=document.getElementById('spnDiagram');host.innerHTML=s;
+  host.querySelectorAll('.tb').forEach(g=>g.addEventListener('click',()=>{S.delta^=1<<(+g.dataset.i);stopPlay();S.shown=NR;paintS();}));
+})();
+function spnDiffs(){const ks=roundKeys(S.K,NR);let a=S.P,b=S.P^S.delta;const inD=[],outD=[];
+  for(let r=1;r<=NR;r++){a^=ks[r-1];b^=ks[r-1];inD.push(a^b);a=sub(a);b=sub(b);outD.push(a^b);if(r<NR){a=perm(a);b=perm(b);}}
+  a^=ks[NR];b^=ks[NR];return {inD,outD,cD:a^b};}
+function paintS(){const host=document.getElementById('spnDiagram');const d=spnDiffs();
+  host.querySelectorAll('.tb').forEach(g=>g.classList.toggle('on',!!((S.delta>>(+g.dataset.i))&1)));
+  host.querySelectorAll('[data-st]').forEach(el=>{const r=+el.dataset.r,i=+el.dataset.i,st=el.dataset.st;let hot=false;
+    if(st==='in')hot=r<=S.shown&&!!((d.inD[r-1]>>i)&1);else if(st==='out'||st==='fin')hot=r<=S.shown&&!!((d.outD[r-1]>>i)&1);else if(st==='c')hot=S.shown>=NR&&!!((d.cD>>i)&1);
+    el.classList.toggle('hot',hot);});
+  host.querySelectorAll('.p').forEach(el=>{const r=+el.dataset.r,i=+el.dataset.i;el.classList.toggle('hot',r<=S.shown&&!!((d.outD[r-1]>>i)&1));});
+  host.querySelectorAll('.sb').forEach(el=>{const r=+el.dataset.r,n=+el.dataset.n;const vis=r<=S.shown;const act=vis&&((d.inD[r-1]>>(4*n))&0xF)!==0;el.classList.toggle('act',act);el.classList.toggle('dim',vis&&!act);});
+  host.querySelectorAll('.rl').forEach(el=>el.classList.toggle('hot',+el.dataset.r<=S.shown));
+  host.querySelectorAll('.cb').forEach(g=>{const on=S.shown>=NR&&!!((d.cD>>(+g.dataset.i))&1);g.classList.toggle('on',on);g.querySelector('text').textContent=on?'1':'·';});
+  const act=d.inD.map(v=>{let c=0;for(let n=0;n<4;n++)if((v>>(4*n))&0xF)c++;return c;});
+  document.getElementById('sShown').textContent=S.shown>=NR?'showing all 4 rounds':'showing '+S.shown+' of 4 rounds';
+  document.getElementById('sStat').innerHTML='Plaintext <b>0x'+hex4(S.P)+'</b>, key <b>0x'+hex4(S.K)+'</b>, input difference <b>0x'+hex4(S.delta)+'</b>. Active S‑boxes per round: <span class="seq">'+act.join(' → ')+'</span>. Differing bits entering each round: <span class="seq">'+d.inD.map(pop).join(' → ')+'</span>, leaving the S‑boxes: <span class="seq">'+d.outD.map(pop).join(' → ')+'</span>, ciphertext: <b>'+pop(d.cD)+' / 16</b>.';}
+function stopPlay(){if(S.timer){clearInterval(S.timer);S.timer=null;}}
+document.getElementById('sPlay').addEventListener('click',()=>{stopPlay();S.shown=0;paintS();S.timer=setInterval(()=>{S.shown++;paintS();if(S.shown>=NR)stopPlay();},650);});
+document.getElementById('sStep').addEventListener('click',()=>{stopPlay();S.shown=S.shown>=NR?1:S.shown+1;paintS();});
+document.getElementById('sRandP').addEventListener('click',()=>{stopPlay();S.P=rnd16();S.shown=NR;paintS();});
+document.getElementById('sRandD').addEventListener('click',()=>{stopPlay();S.delta=1<<Math.floor(Math.random()*16);S.shown=NR;paintS();});
+paintS();
+
+/* ---------- demo 1: avalanche tracer ---------- */
+const D={P:0x2B3C,K:0x3A94,delta:0x0001,rounds:4,sbox:true,perm:true};
+const dEl={sbox:document.getElementById('dSbox'),perm:document.getElementById('dPerm'),rounds:document.getElementById('dRounds'),roundsV:document.getElementById('dRoundsV'),key:document.getElementById('dKey'),P:document.getElementById('dP'),Phex:document.getElementById('dPhex'),delta:document.getElementById('dDelta'),Dhex:document.getElementById('dDhex'),out:document.getElementById('dRoundsOut'),stat:document.getElementById('dStat')};
+function renderD(){
+  D.sbox=dEl.sbox.checked;D.perm=dEl.perm.checked;D.rounds=+dEl.rounds.value;dEl.roundsV.textContent=D.rounds;D.K=parseHex(dEl.key,D.K);
+  dEl.P.replaceChildren(bitStrip(D.P,{onClick:i=>{D.P^=1<<i;renderD();}}));dEl.Phex.textContent='0x'+hex4(D.P)+' · click to toggle';
+  dEl.delta.replaceChildren(bitStrip(D.delta,{mode:'diff',onClick:i=>{D.delta^=1<<i;renderD();}}));dEl.Dhex.textContent='0x'+hex4(D.delta)+' · '+pop(D.delta)+' bit'+(pop(D.delta)===1?'':'s')+' flipped';
+  const o={rounds:D.rounds,sbox:D.sbox,perm:D.perm};const a=trace(D.P,D.K,o),b=trace(D.P^D.delta,D.K,o);
+  const frag=document.createDocumentFragment();
+  for(let r=0;r<a.length;r++){const d=a[r]^b[r];const n=pop(d);const row=document.createElement('div');row.className='row';
+    const lab=document.createElement('span');lab.className='lab';lab.innerHTML=r===0?'<b>input</b> P ⊕ P′':(r===a.length?'':'')+'<b>round '+r+'</b>'+(r===a.length-1?' + final key':'');
+    const cnt=document.createElement('span');cnt.className='cnt';cnt.innerHTML='<span class="bar" style="--w:'+(n/16*100)+'"></span>'+n+' / 16';
+    row.append(lab,bitStrip(d,{mode:'diff'}),cnt);frag.appendChild(row);}
+  dEl.out.replaceChildren(frag);
+  /* statistic: avg bits flipped per round over random single-bit flips */
+  const N=256;const sums=new Array(D.rounds+1).fill(0);
+  for(let t=0;t<N;t++){const P=rnd16(),dl=1<<Math.floor(Math.random()*16);const ta=trace(P,D.K,o),tb=trace(P^dl,D.K,o);for(let r=0;r<=D.rounds;r++)sums[r]+=pop(ta[r]^tb[r]);}
+  const means=sums.map(s=>(s/N).toFixed(1));
+  const fin=+means[means.length-1];
+  let verdict;
+  if(!D.sbox)verdict='Linear cipher: the difference never grows. Ciphertext difference = plaintext difference, relocated.';
+  else if(!D.perm)verdict='No permutation: each nibble is an isolated 4‑bit cipher, so at most 4 bits can ever differ.';
+  else if(fin<6)verdict='Too few rounds for full diffusion. Add rounds and watch the average climb toward 8.';
+  else verdict='Full diffusion: about half the bits differ, at positions that depend on everything.';
+  dEl.stat.innerHTML='Average bits flipped per round, over '+N+' random single‑bit plaintext flips under this key: <span class="seq">'+means.join(' → ')+'</span> &nbsp;(ideal end state <b>8.0</b>)<div class="verdict">'+verdict+'</div>';
+  renderMinis(o);renderHist(o);
+}
+function renderMinis(o){const M=96;const R=o.rounds;const cnt=[];for(let r=0;r<=R;r++)cnt.push(Array.from({length:16},()=>new Array(16).fill(0)));
+  for(let n=0;n<M;n++){const P=rnd16();const ta=trace(P,D.K,o);for(let j=0;j<16;j++){const tb=trace(P^(1<<j),D.K,o);for(let r=1;r<=R;r++){const d=ta[r]^tb[r];for(let i=0;i<16;i++)if((d>>i)&1)cnt[r][i][j]++;}}}
+  const host=document.getElementById('dMinis');const frag=document.createDocumentFragment();
+  for(let r=1;r<=R;r++){const m=document.createElement('div');m.className='mini';const g=document.createElement('div');g.className='g';let dep=0,sum=0;
+    for(let i=15;i>=0;i--)for(let j=15;j>=0;j--){const p=cnt[r][i][j]/M;if(p>0)dep++;sum+=p;const c=document.createElement('div');c.style.setProperty('--v',p.toFixed(3));g.appendChild(c);}
+    const cap=document.createElement('div');cap.className='cap';cap.innerHTML='<b>round '+r+'</b><br>'+dep+'/256 dep · '+(sum/256).toFixed(2);m.append(g,cap);frag.appendChild(m);}
+  host.replaceChildren(frag);}
+function renderHist(o){const T=2000;const h=new Array(17).fill(0);for(let t=0;t<T;t++){const P=rnd16();const d=enc(P,D.K,o)^enc(P^(1<<Math.floor(Math.random()*16)),D.K,o);h[pop(d)]++;}
+  const C=[1,16,120,560,1820,4368,8008,11440,12870,11440,8008,4368,1820,560,120,16,1];const ideal=C.map(c=>c/65536*T);
+  const mx=Math.max(...h,...ideal);const W=400,H=170,l=30,b=28,tp=10,bw=(W-l-10)/17;const sy=v=>H-b-(v/mx)*(H-b-tp);
+  let s='';for(let k=0;k<=16;k++){const x0=l+k*bw;s+='<rect class="b" x="'+(x0+2)+'" y="'+sy(h[k])+'" width="'+(bw-4)+'" height="'+(H-b-sy(h[k]))+'"/>';}
+  let path='';for(let k=0;k<=16;k++){const x0=l+k*bw;path+=(k?'L':'M')+(x0+2)+' '+sy(ideal[k])+' L'+(x0+bw-2)+' '+sy(ideal[k])+' ';}
+  s+='<path class="ideal" d="'+path+'"/>';
+  s+='<line class="ax" x1="'+l+'" y1="'+(H-b)+'" x2="'+(W-10)+'" y2="'+(H-b)+'"/>';
+  [0,4,8,12,16].forEach(k=>{s+='<text class="t" x="'+(l+k*bw+bw/2)+'" y="'+(H-b+14)+'" text-anchor="middle">'+k+'</text>';});
+  s+='<text class="t" x="'+(W-10)+'" y="'+(H-2)+'" text-anchor="end">bits flipped in ciphertext</text>';
+  s+='<text class="t" x="'+(l-4)+'" y="'+(tp+8)+'" text-anchor="end">'+mx+'</text><text class="t" x="'+(l-4)+'" y="'+(H-b)+'" text-anchor="end">0</text>';
+  document.getElementById('dHist').innerHTML=s;}
+['change','input'].forEach(ev=>{dEl.sbox.addEventListener(ev,renderD);dEl.perm.addEventListener(ev,renderD);dEl.rounds.addEventListener(ev,renderD);dEl.key.addEventListener(ev,renderD);});
+document.getElementById('dRandP').addEventListener('click',()=>{D.P=rnd16();renderD();});
+document.getElementById('dRandK').addEventListener('click',()=>{D.K=rnd16();dEl.key.value=hex4(D.K);renderD();});
+renderD();
+
+/* ---------- demo 2: key dependency map ---------- */
+const C={K:0x3A94,rounds:4,sbox:true,perm:true};
+const cEl={sbox:document.getElementById('cSbox'),perm:document.getElementById('cPerm'),rounds:document.getElementById('cRounds'),roundsV:document.getElementById('cRoundsV'),key:document.getElementById('cKey'),heat:document.getElementById('cHeat'),stats:document.getElementById('cStats'),verdict:document.getElementById('cVerdict'),eqs:document.getElementById('cEqs')};
+function renderC(){
+  C.sbox=cEl.sbox.checked;C.perm=cEl.perm.checked;C.rounds=+cEl.rounds.value;cEl.roundsV.textContent=C.rounds;C.K=parseHex(cEl.key,C.K);
+  const o={rounds:C.rounds,sbox:C.sbox,perm:C.perm};const N=128;
+  const cnt=Array.from({length:16},()=>new Array(16).fill(0));
+  for(let n=0;n<N;n++){const P=rnd16();const c0=enc(P,C.K,o);for(let j=0;j<16;j++){const d=c0^enc(P,C.K^(1<<j),o);for(let i=0;i<16;i++)if((d>>i)&1)cnt[i][j]++;}}
+  const frag=document.createDocumentFragment();let fixed=0,balanced=0,empty=0,sum=0,mx=0;
+  for(let i=15;i>=0;i--)for(let j=15;j>=0;j--){const p=cnt[i][j]/N;sum+=p;if(p===0||p===1)fixed++;if(Math.abs(p-0.5)<0.1)balanced++;if(p===0)empty++;mx=Math.max(mx,Math.abs(p-0.5));
+    const c=document.createElement('div');c.style.setProperty('--v',p.toFixed(3));if(p===0||p===1)c.classList.add('fixed');c.title='key bit '+j+' → ciphertext bit '+i+': '+p.toFixed(2);frag.appendChild(c);}
+  cEl.heat.replaceChildren(frag);
+  cEl.stats.innerHTML='<div><span>cells that are exactly 0 or 1</span><span>'+fixed+' / 256</span></div><div><span>cells within 0.4–0.6</span><span>'+balanced+' / 256</span></div><div><span>cells that never flip</span><span>'+empty+' / 256</span></div><div><span>mean P(flip)</span><span>'+(sum/256).toFixed(3)+'</span></div><div><span>max |P − ½|</span><span>'+mx.toFixed(3)+'</span></div>';
+  let v,eq='';
+  if(!C.sbox){v='<strong class="conf">No confusion.</strong> Every cell is certain. Each ciphertext bit is plaintext bit ⊕ a fixed set of key bits, so one known plaintext yields 16 linear equations in the key.';
+    /* derive equations: C = P ^ L(K) with L linear; read off columns */
+    const base=enc(0,0,o);
+    for(let i=15;i>=0;i--){const ks=[];for(let j=15;j>=0;j--){if(((enc(0,1<<j,o)^base)>>i)&1)ks.push('k'+j);}
+      const constBit=(base>>i)&1;eq+='<b>c'+i+'</b> = p'+i+(ks.length?' ⊕ '+ks.join(' ⊕ '):'')+(constBit?' ⊕ 1':'')+'<br>';}
+    eq='<div style="color:var(--ink);margin-bottom:4px">Equations read off the map (constants come from the schedule):</div>'+eq;}
+  else if(fixed>0){v='<strong class="conf">Partial confusion.</strong> '+fixed+' cells are still certain: some key bits reach some ciphertext bits only through a linear path. More rounds, or the permutation, will erase them.';}
+  else{v='<strong class="conf">Confusion.</strong> No cell is predictable; every key bit influences every ciphertext bit about half the time. There is no shortcut equation to write down.';}
+  cEl.verdict.innerHTML=v;cEl.eqs.innerHTML=eq;
+}
+['change','input'].forEach(ev=>{cEl.sbox.addEventListener(ev,renderC);cEl.perm.addEventListener(ev,renderC);cEl.rounds.addEventListener(ev,renderC);cEl.key.addEventListener(ev,renderC);});
+document.getElementById('cResample').addEventListener('click',renderC);
+renderC();
+
+/* ---------- S-box tables ---------- */
+const SBOX_AFF=[];for(let x=0;x<16;x++)SBOX_AFF[x]=(x^((x<<1)&0xF)^0x9)&0xF;
+function ddt(Sb){const t=Array.from({length:16},()=>new Array(16).fill(0));for(let a=0;a<16;a++)for(let x=0;x<16;x++)t[a][Sb[x]^Sb[x^a]]++;return t;}
+function par4(x){x^=x>>2;x^=x>>1;return x&1;}
+function lat(Sb){const t=Array.from({length:16},()=>new Array(16).fill(0));for(let a=0;a<16;a++)for(let b=0;b<16;b++){let c=0;for(let x=0;x<16;x++)if(par4(a&x)===par4(b&Sb[x]))c++;t[a][b]=c-8;}return t;}
+const T={tbl:'ddt',box:'heys'};
+function renderT(){const Sb=T.box==='heys'?SBOX:SBOX_AFF;const isD=T.tbl==='ddt';const t=isD?ddt(Sb):lat(Sb);const scale=isD?16:8;
+  let mxv=0;for(let a=0;a<16;a++)for(let b=0;b<16;b++){if(isD&&a===0)continue;if(!isD&&(a===0||b===0))continue;mxv=Math.max(mxv,Math.abs(t[a][b]));}
+  const g=document.getElementById('ddtGrid');const frag=document.createDocumentFragment();const hx=v=>v.toString(16).toUpperCase();
+  const corner=document.createElement('div');corner.className='h';corner.textContent=isD?'Δ':'m';frag.appendChild(corner);
+  for(let b=0;b<16;b++){const d=document.createElement('div');d.className='h';d.textContent=hx(b);frag.appendChild(d);}
+  let certain=0,zeros=0;
+  for(let a=0;a<16;a++){const rh=document.createElement('div');rh.className='h';rh.textContent=hx(a);frag.appendChild(rh);
+    for(let b=0;b<16;b++){const v=t[a][b];const c=document.createElement('div');c.className='v';c.style.setProperty('--v',(Math.abs(v)/scale).toFixed(3));c.textContent=v===0?'·':v;if(v===0)c.classList.add('z');
+      const excl=isD?(a===0):(a===0||b===0);if(!excl&&Math.abs(v)===mxv)c.classList.add('top');if(!excl&&Math.abs(v)===scale)certain++;if(v===0)zeros++;
+      c.title=(isD?'Δin '+hx(a)+' → Δout '+hx(b)+': '+v+' of 16':'mask '+hx(a)+' · '+hx(b)+': bias '+(v/16).toFixed(3));frag.appendChild(c);}}
+  g.replaceChildren(frag);
+  document.getElementById('ddtCap').innerHTML='<span>'+(isD?'entries count inputs, out of 16':'entries are (matches − 8); ±8 = always/never')+'</span><span>outlined = largest</span>';
+  let st,vd;
+  if(isD){st='<div><span>differential uniformity (max entry, Δin ≠ 0)</span><span>'+mxv+' / 16</span></div><div><span>best one‑round differential probability</span><span>'+(mxv/16).toFixed(3)+'</span></div><div><span>certain entries (16)</span><span>'+certain+'</span></div><div><span>impossible differentials (0 entries)</span><span>'+zeros+' / 256</span></div>';
+    vd=T.box==='heys'?'<strong class="conf">Nonlinear.</strong> Differences spread over several output differences; the best one holds only '+mxv+' times in 16, so an attacker must chain probabilities across rounds and pay for it in chosen plaintexts.':'<strong class="conf">Affine: no confusion.</strong> Each input difference maps to exactly one output difference, always. Differences pass through the S‑box deterministically, so the whole cipher becomes a linear map plus a constant.';}
+  else{st='<div><span>max |entry| (nontrivial masks)</span><span>'+mxv+' / 8</span></div><div><span>max linear bias ε</span><span>'+(mxv/16).toFixed(3)+'</span></div><div><span>known plaintexts ≈ 1/ε² per S‑box</span><span>'+Math.round(1/Math.pow(mxv/16,2))+'</span></div><div><span>exact relations (±8)</span><span>'+certain+'</span></div>';
+    vd=T.box==='heys'?'<strong class="conf">Nonlinear.</strong> No nontrivial parity relation between input and output bits is certain; the best is biased by '+(mxv/16).toFixed(3)+', and biases multiply down through rounds (the piling‑up lemma), shrinking fast.':'<strong class="conf">Affine: no confusion.</strong> Every output mask has an input mask that agrees always or never. Those ±8 entries are linear equations with certainty, and equations compose across rounds without loss.';}
+  document.getElementById('ddtStats').innerHTML=st;document.getElementById('ddtVerdict').innerHTML=vd;}
+function seg(id,key,attr){document.getElementById(id).querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{T[key]=b.dataset[attr];document.getElementById(id).querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));renderT();}));}
+seg('tblSeg','tbl','t');seg('boxSeg','box','b');renderT();
+
+/* ---------- demo 3: letter frequency survival ---------- */
+const AZ='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const SUBKEY='QWERTYUIOPASDFGHJKLZXCVBNM';
+['alpha1','alpha2','alpha3'].forEach(id=>{document.getElementById(id).innerHTML=AZ.split('').map(c=>'<span>'+c+'</span>').join('');});
+function letters(s){return s.toUpperCase().replace(/[^A-Z]/g,'');}
+function counts(s){const c=new Array(26).fill(0);for(const ch of s)c[AZ.indexOf(ch)]++;return c;}
+function substitute(s){return s.split('').map(ch=>SUBKEY[AZ.indexOf(ch)]).join('');}
+function transpose(s,cols){let out='';for(let c=0;c<cols;c++)for(let i=c;i<s.length;i+=cols)out+=s[i];return out;}
+function hist(el,c){const m=Math.max(1,...c);el.innerHTML=c.map((v,i)=>'<div style="--h:'+(v/m*100)+'" title="'+AZ[i]+': '+v+'"></div>').join('');}
+function grp(s){return s.replace(/(.{5})/g,'$1 ').trim();}
+function renderF(){const raw=letters(document.getElementById('fText').value);const sb=substitute(raw),tr=transpose(raw,7);
+  hist(document.getElementById('fPlain'),counts(raw));hist(document.getElementById('fSub'),counts(sb));hist(document.getElementById('fTrans'),counts(tr));
+  document.getElementById('fPlainT').textContent=grp(raw)||'(type some letters)';document.getElementById('fSubT').textContent=grp(sb);document.getElementById('fTransT').textContent=grp(tr);}
+document.getElementById('fText').addEventListener('input',renderF);renderF();
+})();
+</script>
+
+</body>
+</html>
