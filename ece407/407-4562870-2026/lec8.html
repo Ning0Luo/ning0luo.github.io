@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="ECE 407 Lecture 8: block ciphers (SPN, AES, Feistel, DES, modes of operation, and what AI can and cannot do against AES), with the interactive demos placed where they come up in the slides.">
+<title>Lecture 8 · Block Ciphers · ECE 407</title>
+<style>
+  :root{
+    --illini-orange:#FF5F05;
+    --orange-text:#B03A00;
+    --illini-blue:#13294B;
+    --ink:#1b1f27;
+    --muted:#565f6d;
+    --link:#0b5fa5;
+    --rule:#dfe3ea;
+    --bg:#eef1f5;
+    --panel:#ffffff;
+    --tint:#f5f7fa;
+    --focus:#0b5fa5;
+    --demo:#FF5F05;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --orange-text:#FF9550;
+      --illini-blue:#9FC0EE;
+      --ink:#e8ebf0;
+      --muted:#a9b2c0;
+      --link:#7fb6ee;
+      --rule:#333b48;
+      --bg:#0f1216;
+      --panel:#1b1f26;
+      --tint:#1b1f26;
+      --focus:#8ec2ff;
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    display:flex;flex-direction:column;overflow:hidden;
+  }
+  a{color:var(--link)}
+  button{font:inherit;color:inherit}
+  :focus-visible{outline:3px solid var(--focus);outline-offset:2px;border-radius:3px}
+
+  /* ---------- top bar ---------- */
+  .nav{
+    flex:none;display:flex;align-items:center;gap:.25rem 1rem;flex-wrap:wrap;
+    padding:.35rem 1rem;background:var(--illini-blue);
+    border-bottom:3px solid var(--illini-orange);
+  }
+  @media (prefers-color-scheme: dark){ .nav{background:#0d1420} }
+  .nav .brand{color:#fff;font-weight:700;letter-spacing:.02em;margin-right:auto;padding:.35rem 0}
+  .nav .brand span{font-weight:400;color:#c9d3e2}
+  .nav a{color:#e4eaf3;text-decoration:none;font-size:.9rem;padding:.35rem .2rem;border-bottom:2px solid transparent}
+  .nav a:hover{color:#fff;border-bottom-color:var(--illini-orange)}
+
+  /* ---------- body layout ---------- */
+  .wrap{flex:1;min-height:0;display:flex}
+  aside{
+    flex:none;width:17rem;overflow:auto;background:var(--panel);
+    border-right:1px solid var(--rule);padding:.5rem 0 1rem;
+  }
+  aside[hidden]{display:none}
+  aside h2{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:.6rem 1rem .3rem}
+  aside ol{list-style:none;margin:0;padding:0}
+  aside button{
+    display:flex;gap:.55rem;width:100%;text-align:left;border:0;background:none;cursor:pointer;
+    padding:.3rem 1rem;font-size:.86rem;line-height:1.35;border-left:3px solid transparent;
+  }
+  aside button:hover{background:var(--tint)}
+  aside button[aria-current="true"]{background:var(--tint);border-left-color:var(--illini-orange);font-weight:600}
+  aside .n{flex:none;width:1.6rem;color:var(--muted);font-variant-numeric:tabular-nums}
+  aside .demo button{color:var(--orange-text)}
+  aside .demo .n::before{content:"▶";font-size:.7rem}
+
+  main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:1rem}
+  .slide{
+    width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+  }
+  .slide img{
+    max-width:100%;max-height:100%;aspect-ratio:16/9;object-fit:contain;
+    background:#fff;border-radius:4px;box-shadow:0 2px 14px rgba(0,0,0,.14);
+  }
+  /* slides authored in HTML: always a white 16:9 page like the exported ones */
+  .hslide{
+    container-type:inline-size;aspect-ratio:16/9;background:#fff;color:#1b1f27;
+    border-radius:4px;box-shadow:0 2px 14px rgba(0,0,0,.14);overflow:hidden;
+    padding:4.2cqw 5.2cqw 3cqw;display:flex;flex-direction:column;position:relative;
+    font-family:Aptos,"Segoe UI",-apple-system,Helvetica,Arial,sans-serif;
+  }
+  .hslide h2{font-size:4.1cqw;font-weight:400;margin:0 0 2.2cqw;line-height:1.1;color:#111}
+  .hslide .cols{display:grid;grid-template-columns:1fr 1fr;gap:4cqw;flex:1;min-height:0}
+  .hslide h3{font-size:2.05cqw;margin:0 0 .8cqw;color:#13294B}
+  .hslide ul{margin:0;padding-left:2.4cqw;font-size:1.85cqw;line-height:1.45}
+  .hslide li{margin-bottom:.9cqw}
+  .hslide li li{font-size:.9em;margin-bottom:.4cqw}
+  .hslide b{color:#13294B}
+  .hslide .hl{color:#B03A00;font-weight:600}
+  .hslide .take{margin-top:auto;padding:1.1cqw 1.6cqw;background:#fff4ec;border-left:.5cqw solid #FF5F05;font-size:1.8cqw}
+  .hslide .refs{margin-top:1.2cqw;font-size:1.15cqw;color:#565f6d;line-height:1.4}
+  .hslide .tag{position:absolute;top:1.6cqw;right:2cqw;font-size:1.1cqw;letter-spacing:.08em;text-transform:uppercase;color:#B03A00;font-weight:700}
+  .demo-view{width:100%;height:100%;display:flex;flex-direction:column;gap:.5rem}
+  .demo-head{
+    flex:none;display:flex;flex-wrap:wrap;align-items:baseline;gap:.2rem 1rem;
+    padding:.55rem .9rem;background:var(--panel);border-left:4px solid var(--demo);border-radius:0 6px 6px 0;
+  }
+  .demo-head .tag{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--orange-text)}
+  .demo-head h1{font-size:1.02rem;margin:0;color:var(--illini-blue)}
+  .demo-head p{flex-basis:100%;margin:0;color:var(--muted);font-size:.88rem}
+  .demo-head a{margin-left:auto;font-size:.86rem}
+  .demo-tabs{flex-basis:100%;display:flex;flex-wrap:wrap;gap:.4rem;margin:.25rem 0 .1rem}
+  .demo-tabs button{
+    border:1px solid var(--rule);background:var(--bg);border-radius:999px;padding:.2rem .85rem;
+    font-size:.86rem;cursor:pointer;
+  }
+  .demo-tabs button:hover{border-color:var(--illini-orange)}
+  .demo-tabs button[aria-selected="true"]{background:var(--illini-blue);border-color:var(--illini-blue);color:var(--panel);font-weight:600}
+  .demo-view iframe[hidden]{display:none}
+  .demo-view iframe{flex:1;min-height:0;width:100%;border:1px solid var(--rule);border-radius:6px;background:#fff}
+
+  /* ---------- bottom controls ---------- */
+  .controls{
+    flex:none;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;
+    padding:.45rem 1rem;background:var(--panel);border-top:1px solid var(--rule);
+  }
+  .controls button{
+    border:1px solid var(--rule);background:var(--bg);border-radius:6px;padding:.3rem .8rem;cursor:pointer;
+  }
+  .controls button:hover{border-color:var(--illini-orange)}
+  .controls button:disabled{opacity:.4;cursor:default}
+  .count{font-variant-numeric:tabular-nums;color:var(--muted);min-width:9rem;text-align:center}
+  .progress{flex:1;min-width:6rem;height:6px;background:var(--rule);border-radius:3px;position:relative;overflow:hidden}
+  .progress i{position:absolute;inset:0 auto 0 0;background:var(--illini-orange);border-radius:3px}
+  .progress b{position:absolute;top:0;bottom:0;width:3px;background:var(--illini-blue);opacity:.7}
+  .hint{font-size:.78rem;color:var(--muted)}
+  @media (max-width:760px){
+    aside{position:fixed;z-index:20;top:0;bottom:0;left:0;box-shadow:4px 0 20px rgba(0,0,0,.25)}
+    .hint{display:none}
+    .stage{padding:.5rem}
+  }
+</style>
+</head>
+<body>
+<nav class="nav" aria-label="Site">
+  <div class="brand">ECE 407 <span>· Lecture 8: Block ciphers</span></div>
+  <a href="index.html">Syllabus</a>
+  <a href="demos.html">Demos</a>
+  <a href="games.html">Games</a>
+</nav>
+
+<div class="wrap">
+  <aside id="outline" aria-label="Outline">
+    <h2>Slides and demos</h2>
+    <ol id="list"></ol>
+  </aside>
+  <main>
+    <div class="stage" id="stage" aria-live="polite"></div>
+    <div class="controls">
+      <button id="toggle" aria-controls="outline" aria-expanded="true" title="Outline (O)">☰ Outline</button>
+      <button id="prev" title="Previous (←)">← Prev</button>
+      <span class="count" id="count"></span>
+      <button id="next" title="Next (→)">Next →</button>
+      <div class="progress" id="progress" aria-hidden="true"><i id="bar"></i></div>
+      <button id="full" title="Fullscreen (F)">⛶</button>
+      <span class="hint">← → keys · click outside a demo to use them</span>
+    </div>
+  </main>
+</div>
+
+<script>
+// Slide images come from the PowerPoint export (lec8-slides/s-NN.jpg, NN = page in the deck).
+const img = (p, title) => ({kind:"slide", title, src:`lec8-slides/s-${String(p).padStart(2,"0")}.jpg`});
+const demo = (src, title, blurb) => ({kind:"demo", src, title, blurb});
+const html = (title, body) => ({kind:"html", title, body});
+
+const AI_SLIDES = [
+html("Can AI break AES?", `
+  <span class="tag">AI and cryptanalysis</span>
+  <h2>Can AI break AES?</h2>
+  <div class="cols">
+    <div>
+      <h3>What “break” means here</h3>
+      <ul>
+        <li>Tell AES<sub>k</sub> from a random permutation with non-negligible advantage, or</li>
+        <li>Recover k with much less work than trying all 2<sup>128</sup> keys</li>
+        <li>Best known attack on full AES-128 (biclique, 2011): about <b>2<sup>126</sup></b> operations. That is 4× faster than brute force and still far out of reach</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Where machine learning actually helps</h3>
+      <ul>
+        <li><b>Attacks on the math:</b> neural distinguishers and automated trail search, on <span class="hl">reduced-round</span> ciphers</li>
+        <li><b>Attacks on the device:</b> deep-learning side-channel analysis recovers keys from power or EM traces</li>
+        <li><b>Attacks on the code around AES:</b> finding (and introducing) ECB, reused IVs, hard-coded keys</li>
+      </ul>
+    </div>
+  </div>
+  <div class="take">No AI has broken AES the function. Every AI-assisted attack on AES so far goes around it: fewer rounds, a leaky chip, or a misused mode.</div>`),
+
+html("Neural distinguishers", `
+  <span class="tag">AI and cryptanalysis</span>
+  <h2>Neural distinguishers: learning the DDT</h2>
+  <div class="cols">
+    <div>
+      <h3>The same game as the differential demo</h3>
+      <ul>
+        <li>Encrypt pairs (x, x ⊕ Δ) and look at the output difference</li>
+        <li>Train a network to label a pair <i>real cipher</i> or <i>random</i>. That is a distinguisher in exactly the sense of our PRP definition</li>
+        <li>Gohr (CRYPTO 2019), round-reduced Speck32/64: the network beat the classical differential distinguisher at 7 rounds, and powered a faster <b>11-round</b> key recovery</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Why AES is out of reach</h3>
+      <ul>
+        <li>Neural distinguishers for AES are reported only for a few rounds; AES-128 has 10</li>
+        <li>Wide-trail design: any 4-round differential trail has ≥ 25 active S-boxes, each passing a difference with probability ≤ 2<sup>−6</sup></li>
+        <li>So every 4-round trail has probability ≤ 2<sup>−150</sup>, far below the 2<sup>−128</sup> that a useful attack would need</li>
+      </ul>
+    </div>
+  </div>
+  <div class="take">A network can only learn structure that is there. The S-box and MixColumns were designed so that almost none is.</div>
+  <div class="refs">A. Gohr, “Improving Attacks on Round-Reduced Speck32/64 Using Deep Learning,” CRYPTO 2019. J. Daemen and V. Rijmen, <i>The Design of Rijndael</i>, 2002.</div>`),
+
+html("Deep learning against AES implementations", `
+  <span class="tag">AI and cryptanalysis</span>
+  <h2>Deep learning against AES implementations</h2>
+  <div class="cols">
+    <div>
+      <h3>Side channels</h3>
+      <ul>
+        <li>Round 1 computes SBOX[x ⊕ k] on real hardware. The power draw and EM radiation depend on that value, so they depend on k</li>
+        <li><b>Profiled attack:</b> collect traces from a copy of the device, train a CNN to predict SBOX[x ⊕ k], then rank all 256 guesses for each key byte on the victim's traces</li>
+        <li>CNNs tolerate misaligned traces, which defeats jitter countermeasures without hand-tuned preprocessing</li>
+      </ul>
+    </div>
+    <div>
+      <h3>What it means for our model</h3>
+      <ul>
+        <li>The PRP assumption is about the function F<sub>k</sub>. It says nothing about an attacker who measures the chip</li>
+        <li>Defenses live in the implementation: masking, constant-time code, noise, hardware AES instructions</li>
+        <li>Benchmark: ASCAD, a masked AES-128 on an 8-bit AVR microcontroller</li>
+      </ul>
+    </div>
+  </div>
+  <div class="take">AES stayed secure; the device leaked. Security proofs hold only inside the model you proved them in.</div>
+  <div class="refs">E. Cagli, C. Dumas, E. Prouff, “Convolutional Neural Networks with Data Augmentation against Jitter-Based Countermeasures,” CHES 2017. R. Benadjila et al., “Deep learning for side-channel analysis and introduction to ASCAD database,” J. Cryptographic Engineering, 2020.</div>`),
+
+html("LLMs and crypto code", `
+  <span class="tag">AI and cryptanalysis</span>
+  <h2>LLMs and the code around AES</h2>
+  <div class="cols">
+    <div>
+      <h3>Helpful</h3>
+      <ul>
+        <li>Writing attack scripts and DDT or trail search code (for example, turning a trail search into a MILP or SAT instance)</li>
+        <li>Auditing code for the mistakes in this lecture: ECB mode, a fixed or reused IV or nonce, unauthenticated CBC</li>
+      </ul>
+      <h3 style="margin-top:1.6cqw">Harmful</h3>
+      <ul>
+        <li>Generated code can contain the same mistakes. Pearce et al. (IEEE S&amp;P 2022) found about 40% of Copilot's completions in security-relevant scenarios were vulnerable</li>
+        <li>Review it like any untrusted code. <b>Don't roll your own crypto</b> applies to AI-written crypto too</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Discussion</h3>
+      <ul>
+        <li>An AI tool claims a distinguisher for 7-round AES. What would you ask for before believing it?
+          <ul>
+            <li>Advantage measured on fresh keys, never the training keys</li>
+            <li>Number of samples, compared with the random baseline</li>
+            <li>Does it beat known classical results on the same rounds?</li>
+          </ul></li>
+        <li>Which modes on the next slides could an LLM misuse without any test failing?</li>
+      </ul>
+    </div>
+  </div>`)
+];
+
+const ITEMS = [
+  img(1,"Lecture 8: Block ciphers"), img(2,"Designing block ciphers"), img(3,"Confusion-diffusion paradigm"),
+  img(4,"Substitution-permutation networks"), img(5,"Multi-round design"), img(6,"Avalanche effect"),
+  img(7,"Avalanche effect: S-boxes and mixing"), img(8,"Avalanche effect across rounds"),
+  {kind:"demo", title:"Confusion, diffusion and the SPN avalanche lab", tabs:[
+    {src:"confusion-diffusion.html", label:"1 · Confusion and diffusion",
+     blurb:"Shannon's two principles on a 16-bit SPN. Inject a one-bit difference and watch which S-boxes it reaches in each round."},
+    {src:"spn-avalanche-lab.html", label:"2 · Avalanche lab: design your own S-box",
+     blurb:"Run the same SPN on two inputs one bit apart. Swap in your own S-box or permutation and see whether the avalanche still happens."}]},
+  img(9,"Sub-keys and master key"), img(10,"AES"), img(11,"AES: key lengths and sub-keys"),
+  img(12,"AES substitution boxes"), img(13,"ShiftRows and MixColumns"), img(14,"Multi-round"),
+  demo("aes-diffusion.html","AES diffusion: one byte reaches the whole block",
+       "Flip one byte of the AES state and step through SubBytes, ShiftRows and MixColumns until it has spread to all 16 bytes."),
+  img(15,"Open design principle"), img(16,"Assumptions"),
+  img(17,"Johns Hopkins researchers poke a hole in Apple's encryption"), img(18,"AES is invertible given k"),
+  img(20,"Permutations vs functions"), img(21,"Pseudorandom permutations"),
+  demo("differential-attack.html","Differential cryptanalysis on a one-nibble cipher",
+       "Attack a block cipher with a statistical distinguisher: build the S-box's difference distribution table, find the biased entry, and recover the last round key."),
+  ...AI_SLIDES,
+  img(22,"Feistel network"), img(23,"Feistel network: one round"), img(24,"Inverting a Feistel network"),
+  img(25,"DES overview"), img(26,"Feistel network in DES"), img(27,"Substitution boxes in DES"),
+  img(28,"DES mangler function"), img(29,"Avalanche effect in DES"),
+  demo("des-avalanche.html","DES avalanche: confusion and diffusion in a Feistel cipher",
+       "The real DES on two inputs one bit apart. Flip a plaintext bit to see diffusion, or a key bit to see confusion, across all 16 rounds."),
+  img(30,"Security of DES"), img(31,"56-bit key length"), img(32,"Double DES"), img(33,"Meet-in-the-middle attack"),
+  img(34,"Triple DES"), img(35,"Block cipher modes"), img(36,"ECB mode"), img(37,"Insecurity of ECB"),
+  img(38,"CBC mode"), img(39,"CBC mode"), img(40,"CBC mode"), img(41,"CBC mode"),
+  img(42,"CBC mode: encryption and decryption"),
+  demo("block-cipher-modes.html","Same cipher, four modes: ECB, CBC, OFB, CTR",
+       "The Illinois I encrypted with real AES-128 in each mode, 34,560 blocks in all. Only ECB keeps the picture. Tick “reuse the same IV” to see what nonce reuse does."),
+  img(44,"Reduction of block cipher"), img(45,"Strengths and weaknesses of CBC"), img(46,"Output feedback (OFB)")
+];
+
+// number the slides in presentation order; a demo is filed under the slide before it
+const items = []; let nSlides = 0;
+for (const it of ITEMS){
+  if (it.kind === "demo") items.push({...it, after:nSlides});
+  else items.push({...it, n:++nSlides});
+}
+const T = {length:nSlides};
+
+const $ = id => document.getElementById(id);
+const stage = $("stage"), list = $("list"), outline = $("outline");
+let cur = 0;
+
+items.forEach((it,i) => {
+  const li = document.createElement("li");
+  if (it.kind === "demo") li.className = "demo";
+  const b = document.createElement("button");
+  b.innerHTML = `<span class="n">${it.kind!=="demo"?it.n:""}</span><span></span>`;
+  b.lastChild.textContent = it.kind==="demo" ? "Demo: "+it.title : it.title;
+  b.onclick = () => { go(i); if (matchMedia("(max-width:760px)").matches) setOutline(false); };
+  li.appendChild(b); list.appendChild(li);
+});
+// demo markers on the progress bar
+items.forEach((it,i) => {
+  if (it.kind !== "demo") return;
+  const m = document.createElement("b");
+  m.style.left = (100*i/(items.length-1)) + "%";
+  $("progress").appendChild(m);
+});
+
+function render(){
+  const it = items[cur];
+  stage.textContent = "";
+  if (it.kind === "slide"){
+    const d = document.createElement("div"); d.className = "slide";
+    const img = new Image(); img.src = it.src; img.alt = `Slide ${it.n}: ${it.title}`;
+    d.appendChild(img); stage.appendChild(d);
+  } else if (it.kind === "html"){
+    const d = document.createElement("div"); d.className = "slide";
+    const h = document.createElement("section"); h.className = "hslide";
+    h.setAttribute("aria-label", `Slide ${it.n}: ${it.title}`); h.innerHTML = it.body;
+    d.appendChild(h); stage.appendChild(d); fitHtml();
+  } else {
+    const d = document.createElement("div"); d.className = "demo-view";
+    const tabs = it.tabs || [{src:it.src, label:it.title, blurb:it.blurb}];
+    d.innerHTML = `<div class="demo-head"><span class="tag">Demo</span><h1></h1>
+      <a target="_blank" rel="noopener">Open in a new tab ↗</a><p></p></div>`;
+    d.querySelector("h1").textContent = it.title;
+    const link = d.querySelector("a"), blurb = d.querySelector("p");
+    const frames = tabs.map(t => {
+      const f = document.createElement("iframe"); f.src = t.src; f.title = t.label; d.appendChild(f); return f;
+    });
+    const show = k => {
+      frames.forEach((f,j) => f.hidden = j!==k);
+      tabBtns.forEach((b,j) => b.setAttribute("aria-selected", j===k));
+      link.href = tabs[k].src; blurb.textContent = tabs[k].blurb;
+    };
+    const tabBtns = [];
+    if (tabs.length > 1){
+      const bar = document.createElement("div"); bar.className = "demo-tabs"; bar.setAttribute("role","tablist");
+      tabs.forEach((t,k) => {
+        const b = document.createElement("button"); b.setAttribute("role","tab"); b.textContent = t.label;
+        b.onclick = () => show(k); bar.appendChild(b); tabBtns.push(b);
+      });
+      d.firstElementChild.insertBefore(bar, blurb);
+    }
+    show(0);
+    stage.appendChild(d);
+  }
+  $("count").textContent = it.kind!=="demo" ? `Slide ${it.n} / ${T.length}` : `Demo after slide ${it.after}`;
+  $("prev").disabled = cur===0; $("next").disabled = cur===items.length-1;
+  $("bar").style.width = (100*cur/(items.length-1)) + "%";
+  list.querySelectorAll("button").forEach((b,i) => b.setAttribute("aria-current", i===cur));
+  list.children[cur].scrollIntoView({block:"nearest"});
+  document.title = `${it.kind!=="demo" ? it.n+". " : "Demo: "}${it.title} · Lecture 8 · ECE 407`;
+  // preload neighbours
+  [cur-1,cur+1,cur+2].forEach(j => { if (items[j]?.kind==="slide") new Image().src = items[j].src; });
+}
+function hashFor(i){ const it = items[i]; return it.kind!=="demo" ? "#"+it.n : "#demo-"+it.after; }
+function go(i){
+  cur = Math.max(0, Math.min(items.length-1, i));
+  history.replaceState(null,"",hashFor(cur));
+  render();
+}
+function fromHash(){
+  const h = location.hash.slice(1);
+  let i = h.startsWith("demo-") ? items.findIndex(x=>x.kind==="demo" && x.after===+h.slice(5))
+                                : items.findIndex(x=>x.kind!=="demo" && x.n===+h);
+  cur = i>=0 ? i : 0; render();
+}
+function setOutline(show){
+  outline.hidden = !show; $("toggle").setAttribute("aria-expanded", show);
+  try { localStorage.setItem("lec8-outline", show?"1":"0"); } catch(e){}
+}
+
+$("prev").onclick = () => go(cur-1);
+$("next").onclick = () => go(cur+1);
+$("toggle").onclick = () => setOutline(outline.hidden);
+$("full").onclick = () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.();
+document.addEventListener("keydown", e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const k = e.key;
+  if (["ArrowRight","PageDown"," "].includes(k)) { e.preventDefault(); go(cur+1); }
+  else if (["ArrowLeft","PageUp"].includes(k)) { e.preventDefault(); go(cur-1); }
+  else if (k==="Home") go(0);
+  else if (k==="End") go(items.length-1);
+  else if (k==="o" || k==="O") setOutline(outline.hidden);
+  else if (k==="f" || k==="F") $("full").click();
+});
+// swipe on touch screens (slides only; demos keep their own gestures)
+let tx=null;
+stage.addEventListener("touchstart", e => { tx = e.touches[0].clientX; }, {passive:true});
+stage.addEventListener("touchend", e => {
+  if (tx===null) return; const dx = e.changedTouches[0].clientX - tx; tx=null;
+  if (Math.abs(dx) > 60) go(cur + (dx<0 ? 1 : -1));
+});
+window.addEventListener("hashchange", fromHash);
+function fitHtml(){
+  const h = stage.querySelector(".hslide"); if (!h) return;
+  const cs = getComputedStyle(stage);
+  const w = stage.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  const ht = stage.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+  h.style.width = Math.min(w, ht*16/9) + "px";
+}
+new ResizeObserver(fitHtml).observe(stage);
+
+let showOutline = !matchMedia("(max-width:760px)").matches;
+try { const s = localStorage.getItem("lec8-outline"); if (s!==null && showOutline) showOutline = s==="1"; } catch(e){}
+setOutline(showOutline);
+fromHash();
+</script>
+</body>
+</html>

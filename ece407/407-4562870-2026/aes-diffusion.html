@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AES Diffusion · ECE 407 · Cryptography (Fall 2026)</title>
+<meta name="description" content="ECE 407 demo: how AES ShiftRows and MixColumns diffuse one changed byte across the whole state in two rounds, and where the four operations sit in the SPN structure.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+[hidden]{display:none!important}
+img{max-width:100%}
+:root{
+  --bg:#E8EDF1;
+  --surface:#F6F8FA;
+  --surface-2:#DFE5EA;
+  --ink:#14202B;
+  --muted:#586675;
+  --line:#C3CCD5;
+  --line-strong:#93A0AC;
+  --conf:#C4581A;
+  --conf-soft:#F3DCCB;
+  --diff:#0E7C86;
+  --diff-soft:#CBE6E8;
+  --key:#14202B;
+  --key-soft:#D7DDE3;
+  --focus:#2B6CB0;
+  --display:"Bricolage Grotesque","Helvetica Neue",Arial,sans-serif;
+  --body:"IBM Plex Sans","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:"IBM Plex Mono",SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F161B; --surface:#172028; --surface-2:#1F2A34; --ink:#E4EAEE; --muted:#93A1AD;
+    --line:#2A3641; --line-strong:#4A5865; --conf:#F08A4B; --conf-soft:#3B2417;
+    --diff:#3FB8C4; --diff-soft:#0F3237; --key:#E4EAEE; --key-soft:#26323D; --focus:#7FB3F0;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F161B; --surface:#172028; --surface-2:#1F2A34; --ink:#E4EAEE; --muted:#93A1AD;
+  --line:#2A3641; --line-strong:#4A5865; --conf:#F08A4B; --conf-soft:#3B2417;
+  --diff:#3FB8C4; --diff-soft:#0F3237; --key:#E4EAEE; --key-soft:#26323D; --focus:#7FB3F0;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
+}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1040px;margin:0 auto;padding-block:0 96px;padding-inline:clamp(16px,4vw,40px)}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;line-height:1.05;margin:0}
+h1{font-size:clamp(44px,8vw,88px);font-weight:800;letter-spacing:-0.02em;font-variation-settings:"opsz" 88}
+h2{font-size:clamp(26px,4vw,38px);font-weight:700;letter-spacing:-0.015em;margin-bottom:14px}
+h3{font-size:19px;font-weight:700;margin-bottom:6px}
+p{margin:0 0 16px;max-width:68ch}
+a{color:inherit;text-decoration-color:var(--line-strong);text-underline-offset:3px}
+a:hover{text-decoration-color:var(--ink)}
+code{font-family:var(--mono);font-size:0.92em;background:var(--surface-2);padding:1px 5px;border-radius:3px}
+.eyebrow{font-family:var(--mono);font-size:12.5px;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted)}
+.conf{color:var(--conf)} .diff{color:var(--diff)}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+
+.hero{padding-block:56px 30px;border-bottom:1px solid var(--line);margin-bottom:44px}
+.hero .eyebrow{margin-bottom:16px}
+.hero .lede{font-size:clamp(18px,2.4vw,22px);color:var(--ink);max-width:64ch}
+
+section{margin-bottom:52px}
+.legend{display:flex;flex-wrap:wrap;gap:14px 22px;margin:0 0 20px;padding:0;list-style:none;font-size:13.5px;color:var(--muted)}
+.legend li{display:flex;align-items:center;gap:8px}
+.sw{width:15px;height:15px;border-radius:4px;border:1px solid var(--line-strong);flex:0 0 auto}
+.sw-hit{background:var(--diff-soft);border-color:var(--diff)}
+.sw-off{background:var(--surface-2);border-color:var(--line)}
+
+/* stepper */
+.lab{display:flex;gap:30px;align-items:flex-start;flex-wrap:wrap}
+.state{display:grid;grid-template-columns:repeat(4,54px);grid-template-rows:repeat(4,54px);gap:7px;flex:0 0 auto}
+.cell{border-radius:8px;border:1.5px solid var(--line);background:var(--surface-2);transition:background .28s,border-color .28s,transform .28s}
+.cell.on{background:var(--diff-soft);border-color:var(--diff);transform:scale(1.05)}
+.panel{flex:1;min-width:240px}
+.taglab{display:inline-block;font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.07em;text-transform:uppercase;padding:3px 9px;border-radius:999px;border:1px solid transparent}
+.tag-sub{background:var(--conf-soft);color:var(--conf);border-color:var(--conf)}
+.tag-perm{background:var(--diff-soft);color:var(--diff);border-color:var(--diff)}
+.tag-none{background:var(--surface-2);color:var(--muted);border-color:var(--line)}
+.rnd{font-family:var(--mono);font-size:12.5px;color:var(--muted);margin-left:8px}
+.opname{font-family:var(--display);font-size:26px;font-weight:700;margin:10px 0 6px}
+.opdesc{color:var(--muted);font-size:15.5px;line-height:1.6;min-height:3.6em}
+.opcount{font-family:var(--mono);font-size:13px;color:var(--diff);margin-top:10px;font-weight:500}
+.controls{display:flex;align-items:center;gap:12px;margin-top:22px;flex-wrap:wrap}
+.btn{font-family:var(--body);font-size:15px;font-weight:500;padding:9px 18px;border-radius:8px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn:hover{border-color:var(--ink)}
+.btn.primary{background:var(--diff);border-color:var(--diff);color:#fff}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn:disabled{opacity:.4;cursor:default}
+:root[data-theme="dark"] .btn.primary,@media (prefers-color-scheme: dark){.btn.primary{color:#08171a}}
+.dots{display:flex;gap:7px;margin-left:6px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--line);border:none;padding:0;cursor:pointer}
+.dot.active{background:var(--diff)}
+
+/* spn map */
+.spn{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:22px 0 8px}
+@media (max-width:640px){.spn{grid-template-columns:repeat(2,1fr)}}
+.op{border-radius:12px;padding:16px 16px 18px;border:1px solid var(--line)}
+.op .role{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;display:block}
+.op h3{font-size:18px}
+.op p{font-size:14px;color:var(--muted);margin:6px 0 0;max-width:none}
+.op-sub{background:var(--conf-soft);border-color:var(--conf)}
+.op-sub .role,.op-sub h3{color:var(--conf)}
+.op-perm{background:var(--diff-soft);border-color:var(--diff)}
+.op-perm .role,.op-perm h3{color:var(--diff)}
+.op-key{background:var(--key-soft)}
+.op-key .role{color:var(--muted)}
+.bracket{font-family:var(--mono);font-size:12.5px;color:var(--diff);text-align:center;margin:2px 0 0}
+
+.rounds{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
+@media (max-width:560px){.rounds{grid-template-columns:1fr}}
+.roundbox{border:1px solid var(--line);border-radius:12px;padding:16px 18px;background:var(--surface)}
+.roundbox .n{font-family:var(--mono);font-size:12.5px;color:var(--muted);letter-spacing:.05em}
+.roundbox h3{margin:6px 0 4px;font-size:18px}
+.roundbox p{margin:0;font-size:14px;color:var(--muted);max-width:none}
+
+.back{display:inline-block;margin-top:26px;font-family:var(--mono);font-size:12.5px;font-weight:500;letter-spacing:.04em;color:var(--muted);text-decoration:none}
+.back:hover{color:var(--ink);text-decoration:underline}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+
+@media (forced-colors: active){
+  .cell,.op,.roundbox,.btn{border:1px solid CanvasText;background:Canvas;color:CanvasText}
+  .cell.on{border:2px solid Highlight}
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header class="hero">
+    <p class="eyebrow">Week 3 · Block ciphers · KL 7.2</p>
+    <h1>AES diffusion</h1>
+    <p class="lede">
+      <span class="diff">ShiftRows</span> and <span class="diff">MixColumns</span> are the diffusion
+      half of AES. One moves bytes across columns, the other mixes within a column. Change a single
+      input byte and step through the round to watch its influence reach the entire 4&times;4 state in
+      just two rounds.
+    </p>
+  </header>
+
+  <section aria-labelledby="lab-h">
+    <h2 id="lab-h">The avalanche, step by step</h2>
+    <p>
+      The state is the 16-byte AES block written as a 4&times;4 grid of bytes, column by column. A
+      shaded cell marks a byte whose value would change because of the one flipped input byte. Use
+      <kbd>Next</kbd> and <kbd>Prev</kbd>, or the arrow keys, to move through the operations.
+    </p>
+
+    <ul class="legend">
+      <li><span class="sw sw-hit"></span> affected byte</li>
+      <li><span class="sw sw-off"></span> unchanged</li>
+    </ul>
+
+    <div class="lab">
+      <div class="state" id="state" aria-hidden="true"></div>
+      <div class="panel">
+        <div>
+          <span class="taglab" id="tag"></span><span class="rnd" id="rnd"></span>
+        </div>
+        <div class="opname" id="op"></div>
+        <p class="opdesc" id="desc" aria-live="polite"></p>
+        <div class="opcount" id="count"></div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="btn" id="prev" aria-label="Previous step">Prev</button>
+      <button class="btn primary" id="next" aria-label="Next step">Next</button>
+      <div class="dots" id="dots" role="tablist" aria-label="Jump to step"></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="spn-h">
+    <h2 id="spn-h">Where it sits in the SPN</h2>
+    <p>
+      AES is a substitution&ndash;permutation network. Each round does three jobs, and the four named
+      operations map onto them: <span class="conf">SubBytes</span> is the substitution,
+      <span class="diff">ShiftRows</span> and <span class="diff">MixColumns</span> together are the
+      permutation and diffusion layer, and AddRoundKey is the key mixing. SubBytes and AddRoundKey act
+      byte-by-byte, so only the two diffusion steps move influence between cells.
+    </p>
+
+    <div class="spn">
+      <div class="op op-sub">
+        <span class="role">Substitution</span>
+        <h3>SubBytes</h3>
+        <p>S-box on each byte, in place.</p>
+      </div>
+      <div class="op op-perm">
+        <span class="role">Permutation</span>
+        <h3>ShiftRows</h3>
+        <p>Row r rotates left by r — moves bytes across columns.</p>
+      </div>
+      <div class="op op-perm">
+        <span class="role">Permutation</span>
+        <h3>MixColumns</h3>
+        <p>Mixes the four bytes within each column over GF(2⁸).</p>
+      </div>
+      <div class="op op-key">
+        <span class="role">Key mixing</span>
+        <h3>AddRoundKey</h3>
+        <p>XOR the round key into the state.</p>
+      </div>
+    </div>
+    <p class="bracket">↑ ShiftRows + MixColumns = the diffusion layer</p>
+  </section>
+
+  <section aria-labelledby="rounds-h">
+    <h2 id="rounds-h">Ten rounds, and a missing MixColumns</h2>
+    <p>
+      AES-128 repeats this round ten times, after an initial AddRoundKey before the first round. The
+      final round keeps SubBytes, ShiftRows and AddRoundKey but drops MixColumns.
+    </p>
+    <div class="rounds">
+      <div class="roundbox">
+        <span class="n">rounds 1&ndash;9</span>
+        <h3>The full round</h3>
+        <p>SubBytes → ShiftRows → MixColumns → AddRoundKey.</p>
+      </div>
+      <div class="roundbox">
+        <span class="n">round 10 · final</span>
+        <h3>No MixColumns</h3>
+        <p>SubBytes → ShiftRows → AddRoundKey.</p>
+      </div>
+    </div>
+    <p style="margin-top:16px">
+      Two reasons it is dropped. A MixColumns at the very end adds no security, because an attacker can
+      simply invert it before the last AddRoundKey — it mixes nothing they cannot unmix. And omitting it
+      lines encryption and decryption up into the same sequence of layer types, which lets a decryption
+      round reuse the structure of an encryption round.
+    </p>
+  </section>
+
+  <a class="back" href="demos.html">← back to all demos</a>
+
+</div>
+
+<script>
+(function(){
+  var K=function(list){var s={};list.forEach(function(p){s[p[0]+','+p[1]]=1});return s;};
+  var steps=[
+    {tag:'input',tc:'none',rnd:'start',op:'One byte changed',
+     desc:'Flip a single input byte. Nothing has spread yet — exactly one cell of the state is affected.',
+     cells:K([[1,1]])},
+    {tag:'substitution',tc:'sub',rnd:'round 1',op:'SubBytes',
+     desc:'The S-box replaces each byte with another, in place. Position never changes, so influence stays in one cell.',
+     cells:K([[1,1]])},
+    {tag:'permutation',tc:'perm',rnd:'round 1',op:'ShiftRows',
+     desc:'Row r rotates left by r bytes. The affected byte is carried into a different column.',
+     cells:K([[1,0]])},
+    {tag:'permutation',tc:'perm',rnd:'round 1',op:'MixColumns',
+     desc:'Each column is transformed as a unit, so every one of its four bytes now depends on the change.',
+     cells:K([[0,0],[1,0],[2,0],[3,0]])},
+    {tag:'permutation',tc:'perm',rnd:'round 2',op:'ShiftRows',
+     desc:'The four affected bytes share one column. Row shifts scatter them into four different columns.',
+     cells:K([[0,0],[1,3],[2,2],[3,1]])},
+    {tag:'permutation',tc:'perm',rnd:'round 2',op:'MixColumns',
+     desc:'Every column now holds an affected byte, so mixing spreads the change to the whole state.',
+     cells:K([[0,0],[0,1],[0,2],[0,3],[1,0],[1,1],[1,2],[1,3],[2,0],[2,1],[2,2],[2,3],[3,0],[3,1],[3,2],[3,3]])}
+  ];
+  var tagClass={none:'tag-none',sub:'tag-sub',perm:'tag-perm'};
+  var state=document.getElementById('state'),cells=[];
+  for(var r=0;r<4;r++)for(var c=0;c<4;c++){var d=document.createElement('div');d.className='cell';d.dataset.k=r+','+c;state.appendChild(d);cells.push(d);}
+  var dots=document.getElementById('dots');
+  steps.forEach(function(_,i){var b=document.createElement('button');b.className='dot';b.setAttribute('role','tab');b.setAttribute('aria-label','Step '+(i+1)+' of '+steps.length);b._i=i;b.onclick=function(){go(b._i);};dots.appendChild(b);});
+  var idx=0;
+  function count(obj){var n=0;for(var k in obj)if(obj[k])n++;return n;}
+  function render(){
+    var st=steps[idx];
+    cells.forEach(function(d){d.classList.toggle('on',!!st.cells[d.dataset.k]);});
+    var tag=document.getElementById('tag');
+    tag.textContent=st.tag; tag.className='taglab '+tagClass[st.tc];
+    document.getElementById('rnd').textContent=st.rnd;
+    document.getElementById('op').textContent=st.op;
+    document.getElementById('desc').textContent=st.desc;
+    var n=count(st.cells);
+    document.getElementById('count').textContent=n+(n===1?' byte affected':' bytes affected')+(n===16?'  —  full diffusion':'');
+    Array.prototype.forEach.call(dots.children,function(b,j){b.classList.toggle('active',j===idx);b.setAttribute('aria-selected',j===idx?'true':'false');});
+    var p=document.getElementById('prev'),nx=document.getElementById('next');
+    p.disabled=(idx===0); nx.disabled=(idx===steps.length-1);
+  }
+  function go(j){idx=Math.max(0,Math.min(steps.length-1,j));render();}
+  document.getElementById('next').onclick=function(){go(idx+1);};
+  document.getElementById('prev').onclick=function(){go(idx-1);};
+  document.addEventListener('keydown',function(e){
+    if(e.key==='ArrowRight'){go(idx+1);}else if(e.key==='ArrowLeft'){go(idx-1);}
+  });
+  render();
+})();
+</script>
+
+</body>
+</html>

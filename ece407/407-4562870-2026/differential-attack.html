@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Differential Cryptanalysis · ECE 407 · Cryptography (Fall 2026)</title>
+<meta name="description" content="ECE 407 demo: a differential attack on a two-round, one-nibble substitution–permutation cipher. Build the difference distribution table, push chosen-plaintext pairs through the cipher, and recover the last round key.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+[hidden]{display:none!important}
+:root{
+  --bg:#E8EDF1;
+  --surface:#F6F8FA;
+  --surface-2:#DFE5EA;
+  --ink:#14202B;
+  --muted:#586675;
+  --line:#C3CCD5;
+  --line-strong:#93A0AC;
+  --conf:#C4581A;
+  --conf-soft:#F3DCCB;
+  --diff:#0E7C86;
+  --diff-soft:#CBE6E8;
+  --key-soft:#D7DDE3;
+  --focus:#2B6CB0;
+  --display:"Bricolage Grotesque","Helvetica Neue",Arial,sans-serif;
+  --body:"IBM Plex Sans","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:"IBM Plex Mono",SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F161B; --surface:#172028; --surface-2:#1F2A34; --ink:#E4EAEE; --muted:#93A1AD;
+    --line:#2A3641; --line-strong:#4A5865; --conf:#F08A4B; --conf-soft:#3B2417;
+    --diff:#3FB8C4; --diff-soft:#0F3237; --key-soft:#26323D; --focus:#7FB3F0;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F161B; --surface:#172028; --surface-2:#1F2A34; --ink:#E4EAEE; --muted:#93A1AD;
+  --line:#2A3641; --line-strong:#4A5865; --conf:#F08A4B; --conf-soft:#3B2417;
+  --diff:#3FB8C4; --diff-soft:#0F3237; --key-soft:#26323D; --focus:#7FB3F0;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
+}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1040px;margin:0 auto;padding-block:0 96px;padding-inline:clamp(16px,4vw,40px)}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;line-height:1.05;margin:0}
+h1{font-size:clamp(40px,7vw,80px);font-weight:800;letter-spacing:-0.02em;font-variation-settings:"opsz" 88}
+h2{font-size:clamp(26px,4vw,38px);font-weight:700;letter-spacing:-0.015em;margin-bottom:14px}
+h3{font-size:19px;font-weight:700;margin-bottom:6px}
+p{margin:0 0 16px;max-width:68ch}
+a{color:inherit;text-decoration-color:var(--line-strong);text-underline-offset:3px}
+a:hover{text-decoration-color:var(--ink)}
+code{font-family:var(--mono);font-size:0.92em;background:var(--surface-2);padding:1px 5px;border-radius:3px}
+kbd{font-family:var(--mono);font-size:0.88em;border:1px solid var(--line-strong);border-radius:4px;padding:0 5px}
+.eyebrow{font-family:var(--mono);font-size:12.5px;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted)}
+.conf{color:var(--conf)} .diff{color:var(--diff)}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+
+.hero{padding-block:56px 30px;border-bottom:1px solid var(--line);margin-bottom:44px}
+.hero .eyebrow{margin-bottom:16px}
+.hero .lede{font-size:clamp(18px,2.4vw,22px);color:var(--ink);max-width:64ch}
+section{margin-bottom:56px}
+
+.btn{font-family:var(--body);font-size:15px;font-weight:500;padding:9px 18px;border-radius:8px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn:hover{border-color:var(--ink)}
+.btn.primary{background:var(--diff);border-color:var(--diff);color:#fff}
+.btn.primary:hover{filter:brightness(1.06)}
+:root[data-theme="dark"] .btn.primary{color:#08171a}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .btn.primary{color:#08171a}}
+select{font-family:var(--mono);font-size:15px;padding:8px 10px;border-radius:8px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink)}
+label{font-size:14px;color:var(--muted)}
+.controls{display:flex;align-items:center;gap:10px 18px;flex-wrap:wrap;margin:18px 0 22px}
+.controls .field{display:flex;align-items:center;gap:8px}
+
+/* cipher diagram */
+.cipher{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:18px 0 8px;font-family:var(--mono);font-size:14px}
+.cipher .box{padding:8px 12px;border-radius:8px;border:1px solid var(--line-strong);background:var(--surface)}
+.cipher .box.s{background:var(--conf-soft);border-color:var(--conf);color:var(--conf)}
+.cipher .box.k{background:var(--key-soft)}
+.cipher .arr{color:var(--muted)}
+
+/* DDT */
+.ddt-wrap{overflow-x:auto;margin:14px 0 10px}
+.ddt{display:grid;grid-template-columns:repeat(17,minmax(28px,1fr));gap:3px;min-width:520px}
+.ddt .hd{display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:12.5px;color:var(--muted);aspect-ratio:1}
+.ddt button{aspect-ratio:1;border:1px solid var(--line);border-radius:5px;font-family:var(--mono);font-size:13px;cursor:pointer;padding:0;color:var(--ink);background:var(--surface)}
+.ddt button.c0{color:var(--muted)}
+.ddt button.c2{background:color-mix(in srgb,var(--diff) 18%,var(--surface))}
+.ddt button.c4{background:color-mix(in srgb,var(--diff) 36%,var(--surface))}
+.ddt button.c6{background:color-mix(in srgb,var(--diff) 56%,var(--surface));color:#08171a}
+.ddt button.c8{background:color-mix(in srgb,var(--diff) 78%,var(--surface));color:#08171a}
+.ddt button.c16{background:var(--diff);color:#08171a}
+.ddt button.sel{outline:3px solid var(--conf);outline-offset:-3px}
+.ddt button:hover{border-color:var(--ink)}
+.ddt button[disabled]{cursor:default}
+.legend{display:flex;flex-wrap:wrap;gap:12px 22px;margin:0 0 16px;padding:0;list-style:none;font-size:13.5px;color:var(--muted)}
+.legend li{display:flex;align-items:center;gap:8px}
+.sw{width:15px;height:15px;border-radius:4px;border:1px solid var(--line-strong);flex:0 0 auto}
+.readout{font-family:var(--mono);font-size:14px;color:var(--ink);margin:10px 0 0}
+
+/* pairs */
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 18px}
+.chip{font-family:var(--mono);font-size:13.5px;padding:6px 11px;border-radius:999px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);cursor:pointer}
+.chip.right{background:var(--diff-soft);border-color:var(--diff);color:var(--diff)}
+.chip.sel{outline:3px solid var(--conf);outline-offset:1px}
+.keys{font-family:var(--mono);font-size:13.5px;color:var(--muted);margin:0 0 6px}
+.trace-wrap{overflow-x:auto}
+.trace{display:flex;align-items:flex-start;gap:4px;min-width:640px}
+.stg{flex:1;min-width:0;text-align:center}
+.stg .name{font-size:13px;color:var(--muted);margin-bottom:6px;white-space:nowrap}
+.stg .name.s{color:var(--conf);font-weight:500}
+.val{font-family:var(--mono);font-size:16px;padding:5px 0 3px;border:1px solid var(--line);border-radius:8px;background:var(--surface);margin-bottom:5px;line-height:1.2}
+.val small{display:block;font-size:11px;color:var(--muted)}
+.dlt{font-family:var(--mono);font-size:13px;padding:4px 0;border-radius:6px;margin-top:6px;background:var(--surface-2);color:var(--muted)}
+.dlt.ok{background:var(--diff-soft);color:var(--diff);font-weight:500}
+.dlt.bad{background:var(--conf-soft);color:var(--conf);font-weight:500}
+.stg .note{font-size:11.5px;color:var(--muted);margin-top:3px}
+.stg .arr{color:var(--muted);font-size:18px;padding-top:34px}
+.arrc{flex:0 0 auto;color:var(--muted);font-size:18px;padding-top:36px}
+
+/* meeting diagram */
+.meet{width:100%;height:auto;display:block;margin:14px 0 4px}
+.meet text{font-family:var(--body);font-size:14px;fill:var(--ink)}
+.meet .mono{font-family:var(--mono)}
+.meet .lf{fill:var(--diff);font-weight:500}
+.meet .lb{fill:var(--conf);font-weight:500}
+.meet .bx{fill:var(--surface);stroke:var(--line-strong)}
+.meet .bx.s{fill:var(--conf-soft);stroke:var(--conf)}
+.meet .bx.k{fill:var(--key-soft);stroke:var(--line-strong)}
+.meet .ts{fill:var(--conf)}
+.meet .mu{fill:var(--muted);font-size:13px}
+.meet .af{stroke:var(--diff);stroke-width:2.5;fill:none}
+.meet .ab{stroke:var(--conf);stroke-width:2.5;fill:none}
+.meet .vl{stroke:var(--line-strong);stroke-width:1.5;stroke-dasharray:5 5}
+
+/* stepper */
+.stepper{border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:18px 20px;margin:14px 0 10px}
+.board{display:flex;flex-direction:column;gap:10px;margin-bottom:18px;overflow-x:auto;padding-bottom:4px}
+.lane{display:flex;align-items:center;gap:8px;min-width:600px}
+.lane .ll{font-family:var(--mono);font-size:13px;color:var(--muted);width:26px;flex:0 0 auto}
+.bx2{font-family:var(--mono);font-size:16px;line-height:1.15;text-align:center;min-width:74px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);transition:background .25s,border-color .25s}
+.bx2 small{display:block;font-size:11px;color:var(--muted)}
+.bx2.off{color:var(--muted);border-style:dashed;background:transparent}
+.bx2.act{border-color:var(--conf);background:var(--conf-soft);color:var(--conf)}
+.bx2.act small{color:var(--conf)}
+.bx2.pred{border-color:var(--diff);background:var(--diff-soft);color:var(--diff)}
+.bx2.pred small{color:var(--diff)}
+.opl{font-family:var(--mono);font-size:13px;color:var(--muted);padding:4px 9px;border-radius:999px;border:1px solid transparent;white-space:nowrap}
+.opl.act{color:var(--conf);border-color:var(--conf);background:var(--conf-soft)}
+.opl.off{opacity:.45}
+.cmp{display:flex;align-items:center;gap:8px;min-width:600px;padding-top:10px;border-top:1px dashed var(--line)}
+.cmp .res{font-family:var(--mono);font-size:14px;font-weight:500;padding:6px 12px;border-radius:8px}
+.cmp .res.hit{background:var(--diff-soft);color:var(--diff)}
+.cmp .res.miss{background:var(--conf-soft);color:var(--conf)}
+.explain{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+@media (max-width:680px){.explain{grid-template-columns:1fr}}
+.stitle{font-family:var(--display);font-size:22px;font-weight:700;margin:0 0 6px;line-height:1.15}
+.sdesc{font-size:15px;color:var(--muted);margin:0;max-width:none}
+.work{font-family:var(--mono);font-size:15px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px 14px;min-height:110px}
+.work table{border-collapse:collapse}
+.work td{padding:2px 7px;text-align:center}
+.work td.l{text-align:left;color:var(--muted);padding-right:14px;white-space:nowrap}
+.work tr.sum td{border-top:1px solid var(--line-strong);font-weight:500}
+.work .tick{color:var(--diff);font-weight:500} .work .cross{color:var(--conf);font-weight:500}
+.work .note{font-family:var(--body);font-size:13.5px;color:var(--muted);margin-top:8px}
+.work .strip{display:flex;gap:4px;flex-wrap:wrap;margin:6px 0}
+.work .strip span{padding:2px 6px;border-radius:4px;border:1px solid var(--line);font-size:13px;min-width:32px;text-align:center}
+.work .strip span.hi{background:var(--conf-soft);border-color:var(--conf);color:var(--conf);font-weight:500}
+.work .strip span.hd{border:none;color:var(--muted)}
+.sctl{display:flex;align-items:center;gap:12px;margin-top:16px;flex-wrap:wrap}
+.dots{display:flex;gap:7px;margin-left:6px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--line);border:none;padding:0;cursor:pointer}
+.dot.active{background:var(--diff)}
+
+/* worked computation */
+ol.steps{margin:0 0 18px;padding-left:1.3em;max-width:68ch}
+ol.steps li{margin-bottom:6px}
+.sinv{display:grid;grid-template-columns:repeat(17,minmax(28px,1fr));gap:3px;min-width:520px;margin:10px 0 4px}
+.sinv div{font-family:var(--mono);font-size:13px;text-align:center;padding:5px 0;border:1px solid var(--line);border-radius:5px;background:var(--surface)}
+.sinv .lbl{border:none;background:none;color:var(--muted);font-size:12.5px;text-align:left}
+.sinv .hi{background:var(--conf-soft);border-color:var(--conf);color:var(--conf);font-weight:500}
+.tbl-wrap{overflow-x:auto;margin:12px 0 6px}
+table.work{border-collapse:collapse;font-family:var(--mono);font-size:13.5px;min-width:640px;width:100%}
+table.work th{font-family:var(--body);font-weight:500;font-size:13px;color:var(--muted);text-align:center;padding:6px 8px;border-bottom:1px solid var(--line-strong);white-space:nowrap}
+table.work td{text-align:center;padding:6px 8px;border-bottom:1px solid var(--line)}
+table.work td.pair{color:var(--muted)}
+table.work tr.right td.pair{color:var(--diff);font-weight:500}
+table.work td.hit{color:var(--diff);font-weight:500}
+table.work td.miss{color:var(--muted)}
+table.work td.d{font-weight:500}
+table.work tr.cur td{background:var(--surface)}
+table.work tr.cur td:first-child{box-shadow:inset 3px 0 0 var(--conf)}
+table.work tfoot td{border-bottom:none;font-family:var(--body);font-size:14px;text-align:left;padding-top:10px}
+.bar-row{cursor:pointer;border-radius:4px}
+.bar-row:hover .track{outline:1px solid var(--line-strong)}
+.bar-row.insp .g{text-decoration:underline;text-underline-offset:3px}
+
+/* bars */
+.bars{margin:14px 0 4px}
+.bar-row{display:flex;align-items:center;gap:10px;margin:4px 0}
+.bar-row .g{font-family:var(--mono);font-size:13.5px;width:76px;flex:0 0 auto;white-space:nowrap}
+.bar-row .g.t{color:var(--diff);font-weight:500}
+.bar-row .track{flex:1;background:var(--surface-2);border-radius:4px;height:16px}
+.bar-row .fill{height:16px;border-radius:4px;background:var(--line-strong);transition:width .25s}
+.bar-row .fill.t{background:var(--diff)}
+.bar-row .n{font-family:var(--mono);font-size:13px;color:var(--muted);width:44px;flex:0 0 auto}
+.verdict{font-size:15.5px;margin:14px 0 0;padding:12px 16px;border-radius:10px;background:var(--surface);border:1px solid var(--line)}
+.verdict.win{border-color:var(--diff)}
+.verdict.lose{border-color:var(--conf)}
+.stat{font-family:var(--mono);font-size:14px;color:var(--muted);margin:12px 0 0}
+
+/* AES facts */
+.facts{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px}
+@media (max-width:640px){.facts{grid-template-columns:1fr}}
+.fact{border:1px solid var(--line);border-radius:12px;padding:16px 18px;background:var(--surface)}
+.fact .n{font-family:var(--mono);font-size:12.5px;color:var(--muted);letter-spacing:.05em}
+.fact .big{font-family:var(--display);font-size:30px;font-weight:700;margin:4px 0 4px;color:var(--diff)}
+.fact p{margin:0;font-size:14px;color:var(--muted);max-width:none}
+
+.back{display:inline-block;margin-top:26px;font-family:var(--mono);font-size:12.5px;font-weight:500;letter-spacing:.04em;color:var(--muted);text-decoration:none}
+.back:hover{color:var(--ink);text-decoration:underline}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+
+@media (forced-colors: active){
+  .ddt button,.chip,.val,.fact,.verdict,.btn,.cipher .box{border:1px solid CanvasText;background:Canvas;color:CanvasText}
+  .ddt button.sel,.chip.sel{outline:3px solid Highlight}
+  .bar-row .fill{background:Highlight}
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header class="hero">
+    <p class="eyebrow">Week 3 · Block ciphers · KL 7.2</p>
+    <h1>Differential cryptanalysis</h1>
+    <p class="lede">
+      The attack that shaped the design of AES, run on a cipher small enough to see all of it. Pick a
+      pair of plaintexts that differ in a chosen way, watch the difference travel through the rounds, and
+      use the one place it behaves predictably, the <span class="conf">S-box</span>, to read off the last
+      round key.
+    </p>
+  </header>
+
+  <section aria-labelledby="cipher-h">
+    <h2 id="cipher-h">A one-nibble, two-round cipher</h2>
+    <p>
+      The block is a single 4-bit nibble. Each round XORs in a round key and pushes the result through a
+      4-bit S-box (the one from Heys' tutorial), and a final key is XORed on at the end. There is no
+      permutation layer because there is only one nibble to permute. Three round keys, sixteen possible
+      values each, and an attacker who can ask for the encryption of any plaintext they like.
+    </p>
+    <div class="cipher" aria-label="Cipher structure">
+      <span class="box">P</span><span class="arr">→</span>
+      <span class="box k">⊕ K₀</span><span class="arr">→</span>
+      <span class="box s">S</span><span class="arr">→</span>
+      <span class="box k">⊕ K₁</span><span class="arr">→</span>
+      <span class="box s">S</span><span class="arr">→</span>
+      <span class="box k">⊕ K₂</span><span class="arr">→</span>
+      <span class="box">C</span>
+    </div>
+    <p>
+      The whole attack rests on one algebraic fact. XORing a key never changes the difference between two
+      values, because (<em>x</em> ⊕ <em>k</em>) ⊕ (<em>x′</em> ⊕ <em>k</em>) = <em>x</em> ⊕ <em>x′</em>.
+      So the key steps are transparent to differences, and the S-box is the only place a difference can
+      change. If the S-box changes differences in a predictable way, the attacker can predict a difference
+      deep inside the cipher without knowing any key at all.
+    </p>
+  </section>
+
+  <section aria-labelledby="ddt-h">
+    <h2 id="ddt-h">1 · The difference distribution table</h2>
+    <p>
+      For every input difference Δ<em>X</em> (rows) and output difference Δ<em>Y</em> (columns), the
+      table counts how many of the sixteen inputs <em>x</em> satisfy
+      S(<em>x</em>) ⊕ S(<em>x</em> ⊕ Δ<em>X</em>) = Δ<em>Y</em>. An ideal S-box would spread every row
+      evenly. This one does not: row B puts half of its mass on column 2. That single entry is the
+      vulnerability. Click any cell to choose the differential used in the rest of the page.
+    </p>
+    <ul class="legend">
+      <li><span class="sw" style="background:var(--surface)"></span> 0 of 16</li>
+      <li><span class="sw" style="background:color-mix(in srgb,var(--diff) 18%,var(--surface))"></span> 2</li>
+      <li><span class="sw" style="background:color-mix(in srgb,var(--diff) 36%,var(--surface))"></span> 4</li>
+      <li><span class="sw" style="background:color-mix(in srgb,var(--diff) 56%,var(--surface))"></span> 6</li>
+      <li><span class="sw" style="background:color-mix(in srgb,var(--diff) 78%,var(--surface))"></span> 8</li>
+      <li><span class="sw" style="background:var(--diff)"></span> 16</li>
+    </ul>
+    <div class="ddt-wrap">
+      <div class="ddt" id="ddt" role="grid" aria-label="Difference distribution table, rows are input differences, columns are output differences"></div>
+    </div>
+    <p class="readout" id="ddt-readout" aria-live="polite"></p>
+  </section>
+
+  <section aria-labelledby="pairs-h">
+    <h2 id="pairs-h">2 · Chosen pairs through the cipher</h2>
+    <p>
+      The attacker asks for the encryption of every plaintext <em>P</em> together with its partner
+      <em>P</em> ⊕ Δ<em>P</em>. That gives eight pairs. In a <span class="diff">right pair</span> the
+      first S-box sends Δ<em>P</em> to the expected Δ<em>V</em>, and from there the difference is fixed all
+      the way to the input of the last S-box, even though the attacker never sees those inner values.
+      Choose a pair to trace it. The keys are shown here for teaching; the attacker does not know them.
+    </p>
+    <div class="controls">
+      <div class="field"><label for="selDP">Input difference ΔP</label><select id="selDP"></select></div>
+      <div class="field"><label for="selDV">Expected S-box output ΔV</label><select id="selDV"></select></div>
+      <button class="btn" id="btnKeys">New random keys</button>
+    </div>
+    <p class="keys" id="keys"></p>
+    <div class="chips" id="chips" role="group" aria-label="Plaintext pairs"></div>
+    <div class="trace-wrap"><div class="trace" id="trace"></div></div>
+  </section>
+
+  <section aria-labelledby="key-h">
+    <h2 id="key-h">3 · Recovering the last round key</h2>
+    <p>
+      Why K₂ and not K₀ or K₁? Because K₂ is the only key that sits between something the attacker can
+      see and something the attacker can predict. Read the picture from both ends.
+    </p>
+
+    <svg class="meet" viewBox="0 0 920 262" role="img" aria-labelledby="meet-t meet-d">
+      <title id="meet-t">Where the forward prediction meets the backward computation</title>
+      <desc id="meet-d">The cipher drawn left to right. A teal arrow runs forward from the plaintext to the input of the last S-box: the difference there is predicted without any key. An orange arrow runs backward from the ciphertext to the same point: computing it needs the inverse S-box and a guess of K2. The two meet at the inputs to the last S-box.</desc>
+      <defs>
+        <marker id="mf" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M1 1L8 5L1 9" fill="none" style="stroke:var(--diff)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></marker>
+        <marker id="mb" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M1 1L8 5L1 9" fill="none" style="stroke:var(--conf)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></marker>
+      </defs>
+      <text x="55" y="50" class="lf">Forward, no key needed</text>
+      <text x="55" y="70" class="mu">on a right pair the difference here is ΔV, because ⊕ K₀ and ⊕ K₁ never change a difference</text>
+      <line x1="55" y1="88" x2="510" y2="88" class="af" marker-end="url(#mf)"/>
+      <line x1="520" y1="40" x2="520" y2="225" class="vl"/>
+      <g class="mono">
+        <rect x="55" y="112" width="90" height="44" rx="8" class="bx"/><text x="100" y="140" text-anchor="middle" class="mono">P</text>
+        <rect x="175" y="112" width="90" height="44" rx="8" class="bx k"/><text x="220" y="140" text-anchor="middle" class="mono">⊕ K₀</text>
+        <rect x="295" y="112" width="90" height="44" rx="8" class="bx s"/><text x="340" y="140" text-anchor="middle" class="mono ts">S</text>
+        <rect x="415" y="112" width="90" height="44" rx="8" class="bx k"/><text x="460" y="140" text-anchor="middle" class="mono">⊕ K₁</text>
+        <rect x="535" y="112" width="90" height="44" rx="8" class="bx s"/><text x="580" y="140" text-anchor="middle" class="mono ts">S</text>
+        <rect x="655" y="112" width="90" height="44" rx="8" class="bx k"/><text x="700" y="140" text-anchor="middle" class="mono">⊕ K₂</text>
+        <rect x="775" y="112" width="90" height="44" rx="8" class="bx"/><text x="820" y="140" text-anchor="middle" class="mono">C</text>
+      </g>
+      <text x="520" y="30" text-anchor="middle" class="mu">u, u′ : the inputs to the last S-box</text>
+      <line x1="865" y1="180" x2="530" y2="180" class="ab" marker-end="url(#mb)"/>
+      <text x="865" y="212" text-anchor="end" class="lb">Backward, from the ciphertext</text>
+      <text x="865" y="232" text-anchor="end" class="mu">undo ⊕ K₂ (needs a guess of K₂), then undo S with the public inverse table</text>
+    </svg>
+    <p>
+      K₀ is invisible to differences, so no difference test can identify it. K₁ is buried behind the
+      second S-box, so the attacker cannot reach it from the ciphertext without first passing K₂. K₂ is
+      the first key in the way, so it is the first one recovered. Once it is known, strip the last round
+      off every ciphertext and the same attack lands on K₁.
+    </p>
+
+    <h3>Step through one guess on one pair</h3>
+    <p>
+      Pick a pair and a guess, then walk the attacker's computation one operation at a time. Use the
+      buttons, or the arrow keys.
+    </p>
+    <div class="stepper" id="stepper">
+      <div class="controls" style="margin:0 0 16px">
+        <div class="field"><label for="selPair">Pair</label><select id="selPair"></select></div>
+        <div class="field"><label for="selG">Key guess g</label><select id="selG"></select></div>
+        <span class="stat" id="gnote" style="margin:0"></span>
+      </div>
+      <div class="board" id="board"></div>
+      <div class="explain">
+        <div>
+          <p class="stitle" id="stitle"></p>
+          <p class="sdesc" id="sdesc" aria-live="polite"></p>
+        </div>
+        <div class="work" id="swork"></div>
+      </div>
+      <div class="sctl">
+        <button class="btn" id="sprev" aria-label="Previous step">Prev</button>
+        <button class="btn primary" id="snext" aria-label="Next step">Next</button>
+        <div class="dots" id="sdots" role="tablist" aria-label="Jump to step"></div>
+      </div>
+    </div>
+
+    <p style="margin-top:18px">
+      That is the whole procedure. Written out, for each guess <em>g</em> and each pair:
+    </p>
+    <ol class="steps">
+      <li>Take the two observed ciphertexts <em>C</em> and <em>C′</em>.</li>
+      <li>Undo the last key under the guess: <em>y</em> = <em>C</em> ⊕ <em>g</em> and <em>y′</em> = <em>C′</em> ⊕ <em>g</em>.</li>
+      <li>Undo the last S-box with the inverse table: <em>u</em> = S⁻¹(<em>y</em>) and <em>u′</em> = S⁻¹(<em>y′</em>).</li>
+      <li>Form the recovered difference <em>u</em> ⊕ <em>u′</em>.</li>
+      <li>Score a hit if it equals Δ<em>V</em>. The guess with the most hits over all pairs is the attacker's answer.</li>
+    </ol>
+    <p>
+      If <em>g</em> is the true K₂, then <em>u</em> and <em>u′</em> are the real inputs to the last
+      S-box, and their difference is Δ<em>V</em> on every right pair. If <em>g</em> is wrong, step 2
+      produces the wrong values, step 3 pushes them through the wrong branch of the inverse S-box, and
+      the difference that comes out is unrelated to Δ<em>V</em>. It matches only by chance.
+    </p>
+
+    <h3>The inverse S-box</h3>
+    <p>Step 3 needs S⁻¹, which the attacker can tabulate because the S-box is public. The two highlighted entries are the ones step 3 uses for the pair you selected in section 2, which is also the outlined row in the table below.</p>
+    <div class="ddt-wrap"><div class="sinv" id="sinv" aria-label="Inverse S-box table"></div></div>
+
+    <h3>The computation for one guess</h3>
+    <p class="stat" id="worknote" style="margin:0 0 4px"></p>
+    <div class="tbl-wrap">
+      <table class="work" id="work" aria-label="Per-pair computation for the selected key guess">
+        <thead><tr>
+          <th>pair</th><th>C</th><th>C′</th><th>C ⊕ g</th><th>C′ ⊕ g</th>
+          <th>S⁻¹(C ⊕ g)</th><th>S⁻¹(C′ ⊕ g)</th><th>u ⊕ u′</th><th>= ΔV?</th>
+        </tr></thead>
+        <tbody id="workbody"></tbody>
+        <tfoot><tr><td colspan="9" id="workfoot"></td></tr></tfoot>
+      </table>
+    </div>
+
+    <h3>All sixteen guesses</h3>
+    <p>Each bar is the hit count from the table above, for one value of <em>g</em>. Click a bar to inspect that guess.</p>
+    <div class="bars" id="bars" aria-label="Hits per key guess"></div>
+    <p class="verdict" id="verdict" aria-live="polite"></p>
+    <div class="controls" style="margin-top:14px">
+      <button class="btn primary" id="btnTrials">Run 500 random key sets</button>
+      <span class="stat" id="stat"></span>
+    </div>
+    <p>
+      With only eight pairs the tall bar occasionally ties or loses. Real attacks fix this by collecting
+      more pairs, or by running two independent differentials and keeping the key guess both agree on.
+      Try a weaker cell of the table, such as a 4-of-16 entry, and watch how much noisier the picture gets:
+      the attack's data cost is roughly the inverse of the differential's probability.
+    </p>
+  </section>
+
+  <section aria-labelledby="aes-h">
+    <h2 id="aes-h">Why this does not break AES</h2>
+    <p>
+      AES was designed after differential cryptanalysis was published, and its authors built the defence
+      in. The S-box is 8 bits wide and chosen so that no entry of its difference distribution table
+      exceeds 4 out of 256. The <span class="diff">ShiftRows</span> and <span class="diff">MixColumns</span>
+      layers guarantee that any difference passes through at least 25 S-boxes over four rounds, so the
+      probabilities multiply down past the point where an attacker could ever collect enough pairs.
+    </p>
+    <div class="facts">
+      <div class="fact">
+        <span class="n">best S-box differential</span>
+        <div class="big">2⁻⁶</div>
+        <p>Largest table entry is 4 of 256, versus 8 of 16 for the toy S-box above.</p>
+      </div>
+      <div class="fact">
+        <span class="n">active S-boxes in 4 rounds</span>
+        <div class="big">≥ 25</div>
+        <p>The wide-trail bound from ShiftRows and MixColumns together.</p>
+      </div>
+      <div class="fact">
+        <span class="n">best 4-round trail</span>
+        <div class="big">≤ 2⁻¹⁵⁰</div>
+        <p>Far below 2⁻¹²⁸: there are not enough plaintexts in the world to detect it.</p>
+      </div>
+    </div>
+    <p style="margin-top:16px">
+      AES-128 has ten rounds. The best published attacks in this family reach about seven rounds, and only
+      with more chosen plaintexts than anyone could ever obtain.
+    </p>
+  </section>
+
+  <a class="back" href="demos.html">← back to all demos</a>
+
+</div>
+
+<script>
+(function(){
+  var S=[14,4,13,1,2,15,11,8,3,10,6,12,5,9,0,7],Si=[];
+  S.forEach(function(v,i){Si[v]=i;});
+  function H(x){return x.toString(16).toUpperCase();}
+  function B(x){return ('0000'+x.toString(2)).slice(-4);}
+  var ddt=[];
+  for(var a=0;a<16;a++){ddt[a]=[];for(var y=0;y<16;y++)ddt[a][y]=0;for(var x=0;x<16;x++)ddt[a][S[x]^S[x^a]]++;}
+
+  var dP=11,dV=2,K=[3,7,10],pi=0;
+  function enc(p,k){return S[S[p^k[0]]^k[1]]^k[2];}
+  function pairs(){var r=[];for(var p=0;p<16;p++)if(p<(p^dP))r.push(p);return r;}
+  function best(a){var m=0,b=1;for(var y=1;y<16;y++)if(ddt[a][y]>m){m=ddt[a][y];b=y;}return b;}
+
+  var $=function(id){return document.getElementById(id);};
+  var selDP=$('selDP'),selDV=$('selDV');
+  for(var a2=1;a2<16;a2++){var o=document.createElement('option');o.value=a2;o.textContent=H(a2);selDP.appendChild(o);}
+  function fillDV(){
+    selDP.value=dP;
+    selDV.innerHTML='';
+    for(var y=0;y<16;y++){var o=document.createElement('option');o.value=y;o.textContent=H(y)+'  ('+ddt[dP][y]+'/16)';selDV.appendChild(o);}
+    selDV.value=dV;
+  }
+  selDP.onchange=function(){dP=+selDP.value;dV=best(dP);pi=0;fillDV();render();};
+  selDV.onchange=function(){dV=+selDV.value;render();};
+  $('btnKeys').onclick=function(){K=[0,0,0].map(function(){return Math.floor(Math.random()*16);});gsel=null;render();};
+
+  var ddtEl=$('ddt'),cells=[];
+  var corner=document.createElement('div');corner.className='hd';corner.textContent='ΔX╲ΔY';corner.style.fontSize='10px';ddtEl.appendChild(corner);
+  for(var y2=0;y2<16;y2++){var h=document.createElement('div');h.className='hd';h.textContent=H(y2);ddtEl.appendChild(h);}
+  for(var a3=0;a3<16;a3++){
+    var rh=document.createElement('div');rh.className='hd';rh.textContent=H(a3);ddtEl.appendChild(rh);
+    for(var y3=0;y3<16;y3++){
+      var b=document.createElement('button');
+      var n=ddt[a3][y3];
+      b.className='c'+n;b.textContent=n?n:'·';b.dataset.a=a3;b.dataset.y=y3;
+      b.setAttribute('aria-label','input difference '+H(a3)+', output difference '+H(y3)+': '+n+' of 16');
+      if(a3===0){b.disabled=true;}
+      b.onclick=function(){dP=+this.dataset.a;dV=+this.dataset.y;pi=0;selDP.value=dP;fillDV();render();};
+      ddtEl.appendChild(b);cells.push(b);
+    }
+  }
+
+  function stage(name,isS,v1,v2,note,ok){
+    var d=v1^v2,cls='dlt'+(ok===true?' ok':ok===false?' bad':'');
+    return '<div class="stg"><div class="name'+(isS?' s':'')+'">'+name+'</div>'+
+      '<div class="val">'+H(v1)+'<small>'+B(v1)+'</small></div>'+
+      '<div class="val">'+H(v2)+'<small>'+B(v2)+'</small></div>'+
+      '<div class="'+cls+'">Δ = '+H(d)+'</div><div class="note">'+note+'</div></div>';
+  }
+  var ARR='<div class="arrc">→</div>';
+
+  function counts(k){
+    var ps=pairs(),cnt=[];for(var g=0;g<16;g++)cnt[g]=0;
+    ps.forEach(function(p){var c=enc(p,k),cb=enc(p^dP,k);for(var g=0;g<16;g++)if((Si[c^g]^Si[cb^g])===dV)cnt[g]++;});
+    return cnt;
+  }
+
+  var gsel=null;
+  var selG=$('selG');
+  for(var g0=0;g0<16;g0++){var og=document.createElement('option');og.value=g0;og.textContent=H(g0);selG.appendChild(og);}
+  selG.onchange=function(){gsel=+selG.value;render();};
+  var sinvEl=$('sinv'),sinvCells=[];
+  var l1=document.createElement('div');l1.className='lbl';l1.textContent='y';sinvEl.appendChild(l1);
+  for(var y4=0;y4<16;y4++){var dv=document.createElement('div');dv.textContent=H(y4);dv.style.color='var(--muted)';dv.style.border='none';dv.style.background='none';sinvEl.appendChild(dv);}
+  var l2=document.createElement('div');l2.className='lbl';l2.textContent='S⁻¹(y)';sinvEl.appendChild(l2);
+  for(var y5=0;y5<16;y5++){var dc=document.createElement('div');dc.textContent=H(Si[y5]);sinvEl.appendChild(dc);sinvCells.push(dc);}
+
+  var selPair=$('selPair');
+  selPair.onchange=function(){pi=+selPair.value;render();};
+  var sidx=0;
+  var STEPS=[
+    {t:'What the attacker holds',d:'Two ciphertexts, obtained by asking for the encryptions of P and P ⊕ ΔP. From section 2 the attacker also knows that on a right pair the two hidden values that went into the last S-box differ by ΔV. That is a fact about numbers the attacker cannot see.'},
+    {t:'Guess K₂',d:'The only things between the ciphertexts and those hidden values are ⊕ K₂ and the S-box. The S-box is public and invertible. K₂ is not known, so try a value. There are only sixteen.'},
+    {t:'Undo ⊕ K₂ on C',d:'XOR is its own inverse, so applying ⊕ g cancels ⊕ K₂ exactly when g = K₂. Bit by bit: a 1 where the two bits differ, a 0 where they agree.'},
+    {t:'Undo ⊕ K₂ on C′',d:'Same guess, same operation, on the partner ciphertext.'},
+    {t:'Undo the S-box',d:'Look both values up in the inverse table. If g was right, u and u′ are the real inputs to the last S-box. If g was wrong, they are two unrelated nibbles.'},
+    {t:'Compare with the prediction',d:'Compute u ⊕ u′ and compare with ΔV bit by bit. A hit means this guess is consistent with the prediction on this pair. A miss means the guess is wrong, or this happened to be a wrong pair.'},
+    {t:'Tally over all pairs, then all guesses',d:'One pair proves nothing: wrong pairs miss even under the true key, and wrong guesses hit by luck. Count hits over all eight pairs. The true key collects every right pair; a wrong guess collects noise. Then repeat for the other fifteen guesses, which gives the bar chart below.'}
+  ];
+  var sdots=$('sdots');
+  STEPS.forEach(function(_,i){var b=document.createElement('button');b.className='dot';b.setAttribute('role','tab');b.setAttribute('aria-label','Step '+(i+1)+' of '+STEPS.length);b.onclick=function(){sidx=i;renderStep();};sdots.appendChild(b);});
+  $('snext').onclick=function(){sidx=Math.min(STEPS.length-1,sidx+1);renderStep();};
+  $('sprev').onclick=function(){sidx=Math.max(0,sidx-1);renderStep();};
+  document.addEventListener('keydown',function(e){
+    var tg=(e.target&&e.target.tagName)||'';
+    if(tg==='SELECT'||tg==='INPUT'||tg==='TEXTAREA')return;
+    if(e.key==='ArrowRight'){sidx=Math.min(STEPS.length-1,sidx+1);renderStep();}
+    else if(e.key==='ArrowLeft'){sidx=Math.max(0,sidx-1);renderStep();}
+  });
+  function bits(x){return B(x).split('');}
+  function xorTable(la,a,lb,b,lc){
+    var A=bits(a),Bb=bits(b),C=bits(a^b);
+    var r='<table><tr><td class="l">'+la+' = '+H(a)+'</td>'+A.map(function(v){return '<td>'+v+'</td>';}).join('')+'</tr>';
+    r+='<tr><td class="l">'+lb+' = '+H(b)+'</td>'+Bb.map(function(v){return '<td>'+v+'</td>';}).join('')+'</tr>';
+    r+='<tr class="sum"><td class="l">'+lc+' = '+H(a^b)+'</td>'+C.map(function(v){return '<td>'+v+'</td>';}).join('')+'</tr></table>';
+    return r;
+  }
+  function bx(label,v,state){
+    var cls='bx2 '+state;
+    return '<div class="'+cls+'" aria-label="'+label+(state==='off'?' unknown':' = '+H(v))+'">'+(state==='off'?'?':H(v))+'<small>'+(state==='off'?label:B(v))+'</small></div>';
+  }
+  function op(txt,state){return '<span class="opl '+state+'">'+txt+'</span><span class="arrc" style="padding:0">→</span>';}
+  function renderStep(){
+    var ps=pairs();if(pi>=ps.length)pi=0;
+    var p=ps[pi],q=p^dP,c=enc(p,K),cb=enc(q,K),g=gsel,y=c^g,yb=cb^g,u=Si[y],ub=Si[yb],d=u^ub,hit=(d===dV);
+    var right=(S[p^K[0]]^S[q^K[0]])===dV,isTrue=(g===K[2]);
+    var st=sidx;
+    function vis(k){return st>=k;}
+    var gl=vis(1)?'⊕ g='+H(g):'⊕ g=?';
+    var lane1='<div class="lane"><span class="ll">C</span>'+bx('C',c,'act'.replace('act',st===0?'act':''))+
+      op(gl,st===2?'act':(vis(1)?'':'off'))+bx('y',y,st===2?'act':(vis(2)?'':'off'))+
+      op('S⁻¹',st===4?'act':(vis(4)?'':'off'))+bx('u',u,st===4?'act':(vis(4)?'':'off'))+'</div>';
+    var lane2='<div class="lane"><span class="ll">C′</span>'+bx('C′',cb,st===0?'act':'')+
+      op(gl,st===3?'act':(vis(1)?'':'off'))+bx('y′',yb,st===3?'act':(vis(3)?'':'off'))+
+      op('S⁻¹',st===4?'act':(vis(4)?'':'off'))+bx('u′',ub,st===4?'act':(vis(4)?'':'off'))+'</div>';
+    var cmp='<div class="cmp"><span class="ll" style="width:auto;font-family:var(--mono);font-size:13px;color:var(--muted)">recovered</span>'+bx('u ⊕ u′',d,st===5?'act':(vis(5)?'':'off'))+
+      '<span class="opl">compare with</span><span class="ll" style="width:auto;font-family:var(--mono);font-size:13px;color:var(--muted)">predicted</span>'+bx('ΔV',dV,'pred')+
+      (vis(5)?'<span class="res '+(hit?'hit':'miss')+'">'+(hit?'✓ hit':'✗ miss')+'</span>':'')+'</div>';
+    $('board').innerHTML=lane1+lane2+cmp;
+    $('stitle').textContent=(st+1)+' · '+STEPS[st].t;
+    $('sdesc').textContent=STEPS[st].d;
+    var w='';
+    if(st===0){
+      w='<table><tr><td class="l">C = '+H(c)+'</td>'+bits(c).map(function(v){return '<td>'+v+'</td>';}).join('')+'</tr><tr><td class="l">C′ = '+H(cb)+'</td>'+bits(cb).map(function(v){return '<td>'+v+'</td>';}).join('')+'</tr></table>';
+      w+='<div class="note">Prediction from section 2: on a right pair, u ⊕ u′ = ΔV = '+B(dV)+' ('+H(dV)+'). About half of the pairs are right pairs, and the attacker cannot tell which. This pair is '+(right?'a right pair':'a wrong pair')+', which only we can see because we know the keys.</div>';
+    }else if(st===1){
+      w='<table><tr><td class="l">g = '+H(g)+'</td>'+bits(g).map(function(v){return '<td>'+v+'</td>';}).join('')+'</tr></table>';
+      w+='<div class="note">Candidate '+(g+1)+' of 16. '+(isTrue?'This happens to be the true K₂, which the attacker does not know yet.':'This is a wrong guess; the true K₂ is '+H(K[2])+'. Watch what goes wrong.')+'</div>';
+    }else if(st===2){
+      w=xorTable('C',c,'g',g,'y');
+    }else if(st===3){
+      w=xorTable('C′',cb,'g',g,'y′');
+    }else if(st===4){
+      w='<div class="strip"><span class="hd">y</span>'+[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15].map(function(i){return '<span class="'+((i===y||i===yb)?'hi':'')+'">'+H(i)+'</span>';}).join('')+'</div>';
+      w+='<div class="strip"><span class="hd">S⁻¹</span>'+[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15].map(function(i){return '<span class="'+((i===y||i===yb)?'hi':'')+'">'+H(Si[i])+'</span>';}).join('')+'</div>';
+      w+='<table><tr><td class="l">u = S⁻¹('+H(y)+') = '+H(u)+'</td>'+bits(u).map(function(v){return '<td>'+v+'</td>';}).join('')+'</tr><tr><td class="l">u′ = S⁻¹('+H(yb)+') = '+H(ub)+'</td>'+bits(ub).map(function(v){return '<td>'+v+'</td>';}).join('')+'</tr></table>';
+    }else if(st===5){
+      var D=bits(d),V=bits(dV);
+      w=xorTable('u',u,'u′',ub,'u ⊕ u′');
+      w+='<table style="margin-top:8px"><tr><td class="l">ΔV = '+H(dV)+'</td>'+V.map(function(v){return '<td>'+v+'</td>';}).join('')+'</tr><tr><td class="l">match?</td>'+D.map(function(v,i){return '<td class="'+(v===V[i]?'tick':'cross')+'">'+(v===V[i]?'✓':'✗')+'</td>';}).join('')+'</tr></table>';
+      var why;
+      if(hit&&isTrue&&right)why='Hit, and for a reason: g is the true key, so y and y′ are the true S-box outputs, u and u′ are the true inputs, and this is a right pair, so their difference had to be ΔV.';
+      else if(!hit&&isTrue)why='Miss under the true key. This is a wrong pair: the first S-box did not send ΔP to ΔV, so the difference arriving at the last S-box was never ΔV. Nothing about g is wrong.';
+      else if(hit&&!isTrue)why='Hit by accident. g is wrong, so u and u′ are not the real S-box inputs; their difference just happened to equal ΔV. This is the noise a wrong guess collects.';
+      else why='Miss, as expected for a wrong guess: y and y′ are off by g ⊕ K₂ = '+H(g^K[2])+', the inverse S-box scrambles that error, and the difference comes out unrelated to ΔV.';
+      w+='<div class="note">'+why+'</div>';
+    }else{
+      var hits=0,cells2='';
+      ps.forEach(function(pp){var qq=pp^dP,c2=enc(pp,K),c2b=enc(qq,K),h=(Si[c2^g]^Si[c2b^g])===dV,r=(S[pp^K[0]]^S[qq^K[0]])===dV;if(h)hits++;
+        cells2+='<span class="'+(h?'hi':'')+'" style="min-width:58px" title="'+(r?'right pair':'wrong pair')+'">'+H(pp)+','+H(qq)+' '+(h?'✓':'✗')+'</span>';});
+      w='<div class="strip">'+cells2+'</div><table><tr class="sum"><td class="l">g = '+H(g)+'</td><td>'+hits+' hits of '+ps.length+'</td></tr></table>';
+      w+='<div class="note">Expected for the true key: about '+(ddt[dP][dV]/16*ps.length).toFixed(1)+' (one per right pair). Expected for a wrong guess: about '+(ps.length/15).toFixed(1)+'. The full table for this guess, and the bars for all sixteen, are just below.</div>';
+    }
+    $('swork').innerHTML=w;
+    Array.prototype.forEach.call(sdots.children,function(b,j){b.classList.toggle('active',j===st);b.setAttribute('aria-selected',j===st?'true':'false');});
+    $('sprev').disabled=(st===0);$('snext').disabled=(st===STEPS.length-1);
+  }
+
+  function renderWork(ps){
+    if(gsel===null||gsel===undefined)gsel=K[2];
+    selG.value=gsel;
+    selPair.innerHTML='';
+    ps.forEach(function(p,i){var o=document.createElement('option');o.value=i;o.textContent=H(p)+' , '+H(p^dP);selPair.appendChild(o);});
+    selPair.value=pi;
+    renderStep();
+    var used={},hits=0,rows='';
+    ps.forEach(function(p){
+      var q=p^dP,c=enc(p,K),cb=enc(q,K),y=c^gsel,yb=cb^gsel,u=Si[y],ub=Si[yb],d=u^ub,hit=(d===dV);
+      var right=(S[p^K[0]]^S[q^K[0]])===dV,cur=(p===ps[pi]);
+      if(cur){used[y]=1;used[yb]=1;}if(hit)hits++;
+      rows+='<tr class="'+(right?'right':'')+(cur?' cur':'')+'"><td class="pair">'+H(p)+','+H(q)+'</td><td>'+H(c)+'</td><td>'+H(cb)+'</td><td>'+H(y)+'</td><td>'+H(yb)+'</td><td>'+H(u)+'</td><td>'+H(ub)+'</td><td class="d">'+H(d)+'</td><td class="'+(hit?'hit':'miss')+'">'+(hit?'✓ hit':'✗')+'</td></tr>';
+    });
+    $('workbody').innerHTML=rows;
+    sinvCells.forEach(function(c,i){c.classList.toggle('hi',!!used[i]);});
+    var isTrue=(gsel===K[2]);
+    $('gnote').textContent=isTrue?'this is the true K₂':'a wrong guess (true K₂ = '+H(K[2])+')';
+    $('worknote').textContent='The same five steps for g = '+H(gsel)+' on every pair (change the guess above, or click a bar below).';
+    $('workfoot').textContent='Guess g = '+H(gsel)+' scores '+hits+' hit'+(hits===1?'':'s')+' out of '+ps.length+' pairs. Rows in teal are right pairs, where the real last-S-box input difference is ΔV = '+H(dV)+'.'+(isTrue?' With the true key, every right pair is a hit, because steps 2 and 3 recover the real inputs u and u′.':' With a wrong key, steps 2 and 3 recover the wrong values, so even the right pairs miss unless they happen to line up.');
+  }
+
+  function render(){
+    cells.forEach(function(b){b.classList.toggle('sel',+b.dataset.a===dP&&+b.dataset.y===dV);});
+    $('ddt-readout').textContent='Selected differential: ΔX = '+H(dP)+' → ΔY = '+H(dV)+' holds for '+ddt[dP][dV]+' of 16 inputs, probability '+(ddt[dP][dV]/16).toFixed(3)+'.';
+
+    var ps=pairs();if(pi>=ps.length)pi=0;
+    $('keys').textContent='Round keys (hidden from the attacker): K₀ = '+H(K[0])+'   K₁ = '+H(K[1])+'   K₂ = '+H(K[2]);
+    var ch=$('chips');ch.innerHTML='';
+    ps.forEach(function(p,i){
+      var right=(S[p^K[0]]^S[p^dP^K[0]])===dV;
+      var c=document.createElement('button');c.className='chip'+(right?' right':'')+(i===pi?' sel':'');
+      c.textContent=H(p)+' , '+H(p^dP);c.setAttribute('aria-label','pair '+H(p)+' and '+H(p^dP)+(right?', right pair':', wrong pair')+(i===pi?', selected':''));
+      c.onclick=function(){pi=i;render();};ch.appendChild(c);
+    });
+
+    var p=ps[pi],q=p^dP,u0=p^K[0],u0b=q^K[0],v0=S[u0],v0b=S[u0b],u1=v0^K[1],u1b=v0b^K[1],v1=S[u1],v1b=S[u1b],c1=v1^K[2],c1b=v1b^K[2];
+    var ok=(v0^v0b)===dV;
+    $('trace').innerHTML=stage('P',false,p,q,'chosen')+ARR+stage('⊕ K₀',false,u0,u0b,'Δ unchanged')+ARR+
+      stage('S-box',true,v0,v0b,ok?'right pair':'wrong pair',ok)+ARR+stage('⊕ K₁',false,u1,u1b,'Δ unchanged')+ARR+
+      stage('S-box',true,v1,v1b,'hidden')+ARR+stage('⊕ K₂',false,c1,c1b,'observed');
+
+    renderWork(ps);
+    var cnt=counts(K),mx=Math.max.apply(null,cnt),winners=[];
+    cnt.forEach(function(v,g){if(v===mx)winners.push(g);});
+    var bars=$('bars');bars.innerHTML='';
+    cnt.forEach(function(v,g){
+      var t=(g===K[2]);
+      var row=document.createElement('div');row.className='bar-row';
+      row.innerHTML='<span class="g'+(t?' t':'')+'">K₂ = '+H(g)+(t?' ✓':'')+'</span><div class="track"><div class="fill'+(t?' t':'')+'" style="width:'+Math.round(v/ps.length*100)+'%"></div></div><span class="n">'+v+' / '+ps.length+'</span>';
+      row.setAttribute('aria-label','guess '+H(g)+': '+v+' of '+ps.length+' pairs'+(t?', true key':''));
+      row.setAttribute('role','button');row.tabIndex=0;
+      if(g===gsel)row.classList.add('insp');
+      row.onclick=function(){gsel=g;render();};
+      row.onkeydown=function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();gsel=g;render();}};
+      bars.appendChild(row);
+    });
+    var exp=(ddt[dP][dV]/16*ps.length).toFixed(1),vd=$('verdict');
+    if(winners.length===1&&winners[0]===K[2]){
+      vd.className='verdict win';
+      vd.textContent='Recovered K₂ = '+H(K[2])+' uniquely. The true key expects about '+exp+' hits out of '+ps.length+'; a wrong guess expects about '+(ps.length/15).toFixed(1)+'.';
+    }else if(winners.indexOf(K[2])>=0){
+      vd.className='verdict lose';
+      vd.textContent='The true key K₂ = '+H(K[2])+' ties with '+winners.filter(function(w){return w!==K[2];}).map(H).join(', ')+' at '+mx+' of '+ps.length+' hits. More pairs, or a second differential, would break the tie.';
+    }else{
+      vd.className='verdict lose';
+      vd.textContent='The attack failed for this key set: a wrong guess scored '+mx+' hits and beat the true key K₂ = '+H(K[2])+'. With only '+ps.length+' pairs this happens now and then; try new keys.';
+    }
+  }
+
+  $('btnTrials').onclick=function(){
+    var N=500,win=0;
+    for(var t=0;t<N;t++){
+      var k=[0,0,0].map(function(){return Math.floor(Math.random()*16);});
+      var cnt=counts(k),mx=Math.max.apply(null,cnt),ties=0;
+      cnt.forEach(function(v){if(v===mx)ties++;});
+      if(ties===1&&cnt[k[2]]===mx)win++;
+    }
+    $('stat').textContent='Unique correct recovery in '+win+' of '+N+' random key sets ('+Math.round(win/N*100)+'%) with ΔP = '+H(dP)+' → ΔV = '+H(dV)+'.';
+  };
+
+  fillDV();render();
+})();
+</script>
+
+</body>
+</html>

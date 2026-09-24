@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Block Cipher Modes · ECE 407 · Cryptography (Fall 2026)</title>
+<meta name="description" content="ECE 407 demo: encrypt the Illinois I with real AES-128 in ECB, CBC, OFB and CTR mode and watch which modes leak the picture.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+[hidden]{display:none!important}
+:root{
+  --bg:#E8EDF1; --surface:#F6F8FA; --surface-2:#DFE5EA; --ink:#14202B; --muted:#586675;
+  --line:#C3CCD5; --line-strong:#93A0AC; --leak:#C4581A; --leak-soft:#F3DCCB; --safe:#0E7C86;
+  --focus:#2B6CB0;
+  --display:"Bricolage Grotesque","Helvetica Neue",Arial,sans-serif;
+  --body:"IBM Plex Sans","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:"IBM Plex Mono",SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F161B; --surface:#172028; --surface-2:#1F2A34; --ink:#E4EAEE; --muted:#93A1AD;
+    --line:#2A3641; --line-strong:#4A5865; --leak:#F08A4B; --leak-soft:#3B2417; --safe:#3FB8C4; --focus:#7FB3F0;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F161B; --surface:#172028; --surface-2:#1F2A34; --ink:#E4EAEE; --muted:#93A1AD;
+  --line:#2A3641; --line-strong:#4A5865; --leak:#F08A4B; --leak-soft:#3B2417; --safe:#3FB8C4; --focus:#7FB3F0;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1100px;margin:0 auto;padding:28px clamp(16px,4vw,40px) 72px}
+h1,h2{font-family:var(--display);line-height:1.05;margin:0;text-wrap:balance}
+h1{font-size:clamp(36px,6vw,64px);font-weight:800;letter-spacing:-0.02em}
+h2{font-size:clamp(22px,3vw,30px);font-weight:700;margin:36px 0 10px}
+p{margin:0 0 14px;max-width:70ch}
+a{color:inherit;text-underline-offset:3px}
+code{font-family:var(--mono);font-size:.9em;background:var(--surface-2);padding:1px 5px;border-radius:3px}
+.eyebrow{font-family:var(--mono);font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.back{font-family:var(--mono);font-size:13px;color:var(--muted)}
+.lede{font-size:19px;color:var(--muted);margin-top:14px}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+
+.panels{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;margin-top:24px}
+@media (max-width:760px){ .panels{grid-template-columns:repeat(2,minmax(0,1fr))} }
+figure{margin:0;text-align:center}
+figcaption{font-family:var(--display);font-weight:700;font-size:clamp(18px,2.2vw,26px);margin-bottom:6px}
+figcaption.leak{color:var(--leak)}
+figure small{display:block;font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:4px;min-height:1.4em}
+canvas{width:100%;height:auto;aspect-ratio:192/240;image-rendering:pixelated;background:#fff;border:1px solid var(--line);display:block}
+
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:18px}
+button{font:inherit;font-size:15px;padding:8px 16px;border-radius:6px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);cursor:pointer}
+button.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+button:disabled{opacity:.45;cursor:default}
+label{font-size:15px;color:var(--muted);display:flex;gap:6px;align-items:center}
+.count{font-family:var(--mono);font-size:14px;color:var(--muted);text-align:center;margin-top:12px}
+.keyline{font-family:var(--mono);font-size:12.5px;color:var(--muted);word-break:break-all;margin-top:6px}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--safe);border-radius:6px;padding:14px 16px}
+.card.leak{border-top-color:var(--leak)}
+.card h3{font-family:var(--display);font-size:19px;margin:0 0 4px}
+.card p{font-size:15px;margin:0 0 6px}
+.card code{font-size:.85em}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="demos.html">← ECE 407 demos</a>
+  <p class="eyebrow" style="margin-top:18px">Block ciphers · Modes of operation · KL 3.6</p>
+  <h1>Same cipher, four modes</h1>
+  <p class="lede">The picture below is 192 × 240 pixels of raw RGB, which is 8,640 AES blocks. Each panel encrypts
+    those same bytes with the same AES-128 key; only the mode differs. Press <b>Encrypt</b> and watch which
+    one still shows the letter.</p>
+
+  <div class="panels">
+    <figure><figcaption>Original</figcaption><canvas id="c-orig" width="192" height="240"></canvas><small>plaintext</small></figure>
+    <figure><figcaption class="leak">ECB</figcaption><canvas id="c-ecb" width="192" height="240"></canvas><small id="n-ecb"></small></figure>
+    <figure><figcaption>CBC</figcaption><canvas id="c-cbc" width="192" height="240"></canvas><small id="n-cbc"></small></figure>
+    <figure><figcaption>OFB</figcaption><canvas id="c-ofb" width="192" height="240"></canvas><small id="n-ofb"></small></figure>
+    <figure><figcaption>CTR</figcaption><canvas id="c-ctr" width="192" height="240"></canvas><small id="n-ctr"></small></figure>
+  </div>
+  <p class="count" id="count" aria-live="polite"></p>
+
+  <div class="bar">
+    <button class="primary" id="play">Encrypt ▶</button>
+    <button id="finish">Skip to end</button>
+    <button id="reset">Reset</button>
+    <button id="again" title="Same key, same picture, fresh IV and nonce">Encrypt again (new IV)</button>
+    <button id="rekey">New key</button>
+    <label><input type="checkbox" id="fixiv"> Reuse the same IV / nonce</label>
+  </div>
+  <p class="keyline" id="keyline"></p>
+
+  <h2>What you are looking at</h2>
+  <div class="cards">
+    <div class="card leak"><h3>ECB</h3><p><code>C[i] = Enc<sub>k</sub>(M[i])</code></p>
+      <p>Deterministic, block by block. Equal plaintext blocks give equal ciphertext blocks, so every flat region
+        of the picture becomes a flat repeating texture and the outline survives. Encrypting again gives the same bytes.</p></div>
+    <div class="card"><h3>CBC</h3><p><code>C[i] = Enc<sub>k</sub>(C[i−1] ⊕ M[i])</code>, <code>C[0] = IV</code></p>
+      <p>Chaining makes every block's input depend on everything before it, so repeats vanish. Sequential to encrypt.</p></div>
+    <div class="card"><h3>OFB</h3><p><code>O[i] = Enc<sub>k</sub>(O[i−1])</code>, <code>C[i] = M[i] ⊕ O[i]</code></p>
+      <p>A stream cipher: the key stream never looks at the message and can be computed ahead of time.</p></div>
+    <div class="card"><h3>CTR</h3><p><code>C[i] = M[i] ⊕ Enc<sub>k</sub>(ctr + i)</code></p>
+      <p>Also a stream cipher, but every block is independent, so it parallelizes. CPA-secure if the cipher is a PRF.</p></div>
+  </div>
+  <p style="margin-top:18px">Try <b>Reuse the same IV / nonce</b>, then <b>Encrypt again</b>: CBC, OFB and CTR become
+    deterministic, just like ECB. For OFB and CTR it is worse. The same key stream is XORed into both
+    encryptions, so <code>C ⊕ C′ = M ⊕ M′</code>.</p>
+  <p style="font-size:14px;color:var(--muted)">AES-128 is implemented from FIPS-197 in this page and checked against the
+    standard's test vector when the page loads. Pixels are packed row by row as R, G, B bytes. A 16-byte
+    block does not line up with a pixel, so ECB turns a flat color into stripes that repeat every three blocks.</p>
+</div>
+
+<script>
+/* ---------- AES-128 (FIPS-197), encryption only ---------- */
+const SBOX = new Uint8Array(256);
+(() => {
+  let p = 1, q = 1;
+  do {
+    p = p ^ ((p << 1) & 0xff) ^ (p & 0x80 ? 0x1b : 0);
+    q ^= q << 1; q ^= q << 2; q ^= q << 4; q &= 0xff; if (q & 0x80) q ^= 0x09;
+    const x = q ^ ((q << 1 | q >> 7) & 0xff) ^ ((q << 2 | q >> 6) & 0xff) ^ ((q << 3 | q >> 5) & 0xff) ^ ((q << 4 | q >> 4) & 0xff);
+    SBOX[p] = (x ^ 0x63) & 0xff;
+  } while (p !== 1);
+  SBOX[0] = 0x63;
+})();
+const xt = b => ((b << 1) ^ (b & 0x80 ? 0x1b : 0)) & 0xff;
+
+function expandKey(key){
+  const w = new Uint8Array(176); w.set(key);
+  let rcon = 1;
+  for (let i = 16; i < 176; i += 4){
+    let t0 = w[i-4], t1 = w[i-3], t2 = w[i-2], t3 = w[i-1];
+    if (i % 16 === 0){
+      const a = t0; t0 = SBOX[t1] ^ rcon; t1 = SBOX[t2]; t2 = SBOX[t3]; t3 = SBOX[a];
+      rcon = xt(rcon);
+    }
+    w[i] = w[i-16]^t0; w[i+1] = w[i-15]^t1; w[i+2] = w[i-14]^t2; w[i+3] = w[i-13]^t3;
+  }
+  return w;
+}
+const s = new Uint8Array(16), t = new Uint8Array(16);
+// encrypts 16 bytes of `inp` at offset io into `out` at offset oo
+function encBlock(w, inp, io, out, oo){
+  for (let i = 0; i < 16; i++) s[i] = inp[io+i] ^ w[i];
+  for (let r = 1; r <= 10; r++){
+    // SubBytes + ShiftRows (state is column-major: s[4c + row])
+    for (let c = 0; c < 4; c++) for (let row = 0; row < 4; row++)
+      t[4*c+row] = SBOX[s[4*((c+row)&3)+row]];
+    if (r < 10){
+      for (let c = 0; c < 4; c++){
+        const a0=t[4*c],a1=t[4*c+1],a2=t[4*c+2],a3=t[4*c+3], x=a0^a1^a2^a3;
+        s[4*c]=a0^x^xt(a0^a1); s[4*c+1]=a1^x^xt(a1^a2); s[4*c+2]=a2^x^xt(a2^a3); s[4*c+3]=a3^x^xt(a3^a0);
+      }
+    } else s.set(t);
+    const k = 16*r; for (let i = 0; i < 16; i++) s[i] ^= w[k+i];
+  }
+  out.set(s, oo);
+}
+// self-test: FIPS-197 Appendix C.1
+const hex = h => Uint8Array.from(h.match(/../g), x => parseInt(x,16));
+const toHex = b => Array.from(b, x => x.toString(16).padStart(2,"0")).join("");
+{
+  const o = new Uint8Array(16);
+  encBlock(expandKey(hex("000102030405060708090a0b0c0d0e0f")), hex("00112233445566778899aabbccddeeff"), 0, o, 0);
+  console.assert(toHex(o) === "69c4e0d86a7b0430d8cdb78070b4c55a", "AES self-test failed");
+  window.AES_SELFTEST = toHex(o) === "69c4e0d86a7b0430d8cdb78070b4c55a";
+}
+
+/* ---------- the picture ---------- */
+const W = 192, H = 240, NB = W*H*3/16;   // 8640 blocks per mode
+const orig = document.getElementById("c-orig").getContext("2d");
+function drawI(g){
+  g.fillStyle = "#fff"; g.fillRect(0,0,W,H);
+  // block I: 150 × 180 box at (21,30), flanges 48 tall, stem 50 wide; orange inset 8 px inside navy
+  const poly = (d, color) => {
+    const L = 21+d, R = 171-d, T = 30+d, B = 210-d, sl = 71+d, sr = 121-d, ft = 78-d, fb = 162+d;
+    const P = [[L,T],[R,T],[R,ft],[sr,ft],[sr,fb],[R,fb],[R,B],[L,B],[L,fb],[sl,fb],[sl,ft],[L,ft]];
+    g.beginPath(); P.forEach(([x,y],i) => i ? g.lineTo(x,y) : g.moveTo(x,y)); g.closePath();
+    g.fillStyle = color; g.fill();
+  };
+  poly(0, "#13294B"); poly(8, "#FF5F05");
+}
+drawI(orig);
+const rgba = orig.getImageData(0,0,W,H).data;
+const PT = new Uint8Array(W*H*3);
+for (let i = 0, j = 0; i < rgba.length; i += 4){ PT[j++] = rgba[i]; PT[j++] = rgba[i+1]; PT[j++] = rgba[i+2]; }
+
+/* ---------- modes ---------- */
+const MODES = ["ecb","cbc","ofb","ctr"];
+const ctx = {}, img = {}, CT = {};
+MODES.forEach(m => { ctx[m] = document.getElementById("c-"+m).getContext("2d"); img[m] = ctx[m].createImageData(W,H); CT[m] = new Uint8Array(PT.length); });
+const rnd = n => crypto.getRandomValues(new Uint8Array(n));
+let key, w, ivs, state, done = 0, timer = null, fixedIV = null;
+
+function newIVs(){
+  if (document.getElementById("fixiv").checked){
+    fixedIV ??= { cbc: rnd(16), ofb: rnd(16), ctr: rnd(16) };
+    return fixedIV;
+  }
+  fixedIV = null;
+  return { cbc: rnd(16), ofb: rnd(16), ctr: rnd(16) };
+}
+function start(){
+  ivs = newIVs();
+  state = { cbc: ivs.cbc.slice(), ofb: ivs.ofb.slice(), ctr: ivs.ctr.slice() };
+  done = 0;
+  MODES.forEach(m => { CT[m].set(PT); });   // not-yet-encrypted region shows the plaintext
+  paint();
+  document.getElementById("keyline").textContent =
+    `key ${toHex(key)} · IV(CBC) ${toHex(ivs.cbc)} · IV(OFB) ${toHex(ivs.ofb)} · nonce(CTR) ${toHex(ivs.ctr)}`;
+}
+const ks = new Uint8Array(16), tmp = new Uint8Array(16);
+function step(nBlocks){
+  const end = Math.min(NB, done + nBlocks);
+  for (let b = done; b < end; b++){
+    const o = 16*b;
+    encBlock(w, PT, o, CT.ecb, o);
+    for (let i = 0; i < 16; i++) tmp[i] = PT[o+i] ^ state.cbc[i];
+    encBlock(w, tmp, 0, CT.cbc, o); state.cbc.set(CT.cbc.subarray(o, o+16));
+    encBlock(w, state.ofb, 0, ks, 0); state.ofb.set(ks);
+    for (let i = 0; i < 16; i++) CT.ofb[o+i] = PT[o+i] ^ ks[i];
+    encBlock(w, state.ctr, 0, ks, 0);
+    for (let i = 0; i < 16; i++) CT.ctr[o+i] = PT[o+i] ^ ks[i];
+    for (let i = 15; i >= 0 && ++state.ctr[i] === 256; i--) state.ctr[i] = 0;   // 128-bit big-endian increment
+  }
+  done = end; paint();
+}
+function paint(){
+  MODES.forEach(m => {
+    const d = img[m].data, c = CT[m];
+    for (let i = 0, j = 0; j < c.length; i += 4){ d[i] = c[j++]; d[i+1] = c[j++]; d[i+2] = c[j++]; d[i+3] = 255; }
+    ctx[m].putImageData(img[m], 0, 0);
+    document.getElementById("n-"+m).textContent = done ? `${done.toLocaleString()} blocks` : "";
+  });
+  document.getElementById("count").textContent = `AES blocks encrypted: ${(4*done).toLocaleString()} / ${(4*NB).toLocaleString()}`;
+  document.getElementById("play").disabled = done === NB;
+  document.getElementById("finish").disabled = done === NB;
+}
+function stop(){ cancelAnimationFrame(timer); timer = null; document.getElementById("play").textContent = done ? "Resume ▶" : "Encrypt ▶"; }
+function play(){
+  if (timer){ stop(); return; }
+  if (done === NB) start();
+  document.getElementById("play").textContent = "Pause ❚❚";
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const tick = () => {
+    step(reduce ? NB : 36);                    // ≈ 4 s at 60 fps
+    if (done < NB) timer = requestAnimationFrame(tick); else stop();
+  };
+  timer = requestAnimationFrame(tick);
+}
+function rekey(){ key = rnd(16); w = expandKey(key); fixedIV = null; }
+
+document.getElementById("play").onclick = play;
+document.getElementById("finish").onclick = () => { stop(); step(NB); };
+document.getElementById("reset").onclick = () => { stop(); start(); };
+document.getElementById("again").onclick = () => { stop(); start(); step(NB); };
+document.getElementById("rekey").onclick = () => { stop(); rekey(); start(); };
+document.getElementById("fixiv").onchange = () => { fixedIV = null; };
+
+rekey(); start();
+// expose for testing
+window.modesDemo = { encBlock, expandKey, PT, CT, get key(){ return key; }, get ivs(){ return ivs; }, step, start };
+</script>
+</body>
+</html>

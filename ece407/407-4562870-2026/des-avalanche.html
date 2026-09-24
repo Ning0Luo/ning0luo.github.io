@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DES Avalanche · ECE 407 · Cryptography (Fall 2026)</title>
+<meta name="description" content="ECE 407 demo: real DES run twice on inputs that differ in one plaintext or key bit, showing round by round how expansion, the round key, the S-boxes and the permutation spread the difference.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+[hidden]{display:none!important}
+:root{
+  --bg:#E8EDF1;
+  --surface:#F6F8FA;
+  --surface-2:#DFE5EA;
+  --ink:#14202B;
+  --muted:#586675;
+  --line:#C3CCD5;
+  --line-strong:#93A0AC;
+  --conf:#C4581A;
+  --conf-soft:#F3DCCB;
+  --diff:#0E7C86;
+  --diff-soft:#CBE6E8;
+  --key-soft:#D7DDE3;
+  --focus:#2B6CB0;
+  --display:"Bricolage Grotesque","Helvetica Neue",Arial,sans-serif;
+  --body:"IBM Plex Sans","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:"IBM Plex Mono",SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F161B; --surface:#172028; --surface-2:#1F2A34; --ink:#E4EAEE; --muted:#93A1AD;
+    --line:#2A3641; --line-strong:#4A5865; --conf:#F08A4B; --conf-soft:#3B2417;
+    --diff:#3FB8C4; --diff-soft:#0F3237; --key-soft:#26323D; --focus:#7FB3F0;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F161B; --surface:#172028; --surface-2:#1F2A34; --ink:#E4EAEE; --muted:#93A1AD;
+  --line:#2A3641; --line-strong:#4A5865; --conf:#F08A4B; --conf-soft:#3B2417;
+  --diff:#3FB8C4; --diff-soft:#0F3237; --key-soft:#26323D; --focus:#7FB3F0;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
+}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1040px;margin:0 auto;padding-block:0 96px;padding-inline:clamp(16px,4vw,40px)}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;line-height:1.05;margin:0}
+h1{font-size:clamp(44px,8vw,88px);font-weight:800;letter-spacing:-0.02em;font-variation-settings:"opsz" 88}
+h2{font-size:clamp(26px,4vw,38px);font-weight:700;letter-spacing:-0.015em;margin-bottom:14px}
+h3{font-size:19px;font-weight:700;margin-bottom:6px}
+p{margin:0 0 16px;max-width:68ch}
+a{color:inherit;text-decoration-color:var(--line-strong);text-underline-offset:3px}
+a:hover{text-decoration-color:var(--ink)}
+code{font-family:var(--mono);font-size:0.92em;background:var(--surface-2);padding:1px 5px;border-radius:3px}
+kbd{font-family:var(--mono);font-size:0.85em;border:1px solid var(--line-strong);border-radius:4px;padding:0 5px;background:var(--surface)}
+.eyebrow{font-family:var(--mono);font-size:12.5px;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted)}
+.conf{color:var(--conf)} .diff{color:var(--diff)}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+
+.hero{padding-block:56px 30px;border-bottom:1px solid var(--line);margin-bottom:44px}
+.hero .eyebrow{margin-bottom:16px}
+.hero .lede{font-size:clamp(18px,2.4vw,22px);color:var(--ink);max-width:64ch}
+
+section{margin-bottom:52px}
+.legend{display:flex;flex-wrap:wrap;gap:14px 22px;margin:0 0 14px;padding:0;list-style:none;font-size:13.5px;color:var(--muted)}
+.legend li{display:flex;align-items:center;gap:8px}
+.sw{width:15px;height:15px;border-radius:4px;border:1px solid var(--line-strong);flex:0 0 auto}
+.sw-flip{background:var(--ink);border-color:var(--ink)}
+.sw-same{background:var(--line);border-color:var(--line)}
+.sw-diff{background:var(--diff-soft);border-color:var(--diff)}
+.sw-conf{background:var(--conf-soft);border-color:var(--conf)}
+.sw-key{background:var(--key-soft);border-color:var(--line-strong)}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px clamp(14px,2.5vw,24px)}
+.controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.btn{font-family:var(--body);font-size:15px;font-weight:500;padding:8px 16px;border-radius:8px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn:hover{border-color:var(--ink)}
+.btn[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.btn.primary{background:var(--diff);border-color:var(--diff);color:#fff;min-width:82px}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .btn.primary{color:#08171a}}
+:root[data-theme="dark"] .btn.primary{color:#08171a}
+.slider{display:flex;align-items:center;gap:12px;margin-bottom:14px;font-size:15px;color:var(--muted)}
+.slider input{flex:1;accent-color:var(--diff)}
+.slider output{font-family:var(--mono);font-weight:500;color:var(--ink);min-width:2.5ch}
+.stat{font-family:var(--mono);font-size:13.5px;color:var(--muted);margin-left:6px}
+.stat b{color:var(--ink);font-weight:500}
+.note{font-size:14.5px;color:var(--conf);min-height:1.5em;margin:0 0 8px}
+.hx{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,1fr);gap:4px 18px;font-size:13.5px;color:var(--muted);margin-bottom:18px}
+.hx .v{font-family:var(--mono);color:var(--ink);overflow-wrap:anywhere}
+.hx .v .x{background:var(--ink);color:var(--bg);border-radius:2px}
+.sublabel{font-family:var(--mono);font-size:12.5px;color:var(--muted);letter-spacing:.04em;margin:22px 0 6px}
+.sublabel b{color:var(--ink);font-weight:500}
+
+svg{display:block;width:100%;height:auto}
+svg text{font-family:var(--body)}
+.lb{fill:var(--muted);font-size:11.5px}
+.nm{fill:var(--ink);font-size:11.5px;font-family:var(--mono)}
+.b{fill:var(--line);transition:fill .2s}
+.b.on{fill:var(--ink)}
+.row.dim .b{opacity:.35}
+.row{cursor:pointer}
+.bar{fill:var(--ink)}
+.w{stroke:var(--line);stroke-width:.6;transition:stroke .2s}
+.w.on{stroke:var(--ink);stroke-width:1.4}
+.tick{stroke:var(--line-strong);stroke-dasharray:2 2}
+.hl{fill:none;stroke:var(--diff);stroke-width:1.5}
+.mk-d{fill:var(--diff)} .mk-c{fill:var(--conf)} .mk-k{fill:var(--line-strong)}
+.sb rect{fill:var(--surface-2);stroke:var(--line);transition:fill .2s}
+.sb text{fill:var(--muted);font-size:12px;font-family:var(--mono)}
+.sb.on rect{fill:var(--conf-soft);stroke:var(--conf)}
+.sb.on text{fill:var(--conf);font-weight:500}
+.stub{stroke:var(--line-strong);stroke-width:.6}
+#anat.idle{opacity:.45}
+
+.roles{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:22px 0 8px}
+.op{border-radius:12px;padding:16px 16px 18px;border:1px solid var(--line)}
+.op .role{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;display:block}
+.op h3{font-size:18px}
+.op p{font-size:14px;color:var(--muted);margin:6px 0 0;max-width:none}
+.op-conf{background:var(--conf-soft);border-color:var(--conf)}
+.op-conf .role,.op-conf h3{color:var(--conf)}
+.op-diff{background:var(--diff-soft);border-color:var(--diff)}
+.op-diff .role,.op-diff h3{color:var(--diff)}
+.op-key{background:var(--key-soft)}
+.op-key .role{color:var(--muted)}
+ul.try{padding-left:1.2em;max-width:68ch}
+ul.try li{margin-bottom:8px}
+
+.back{display:inline-block;margin-top:26px;font-family:var(--mono);font-size:12.5px;font-weight:500;letter-spacing:.04em;color:var(--muted);text-decoration:none}
+.back:hover{color:var(--ink);text-decoration:underline}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+@media (forced-colors: active){
+  .btn,.op,.card{border:1px solid CanvasText;background:Canvas;color:CanvasText}
+  .b{fill:GrayText} .b.on{fill:Highlight} .w.on{stroke:Highlight}
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header class="hero">
+    <p class="eyebrow">Week 3 · Block ciphers · KL 7.2</p>
+    <h1>DES avalanche</h1>
+    <p class="lede">
+      Real DES, run twice on inputs that differ in exactly one bit. Flip a plaintext bit to watch
+      <span class="diff">diffusion</span> carry it across the block; flip a key bit to watch
+      <span class="conf">confusion</span> tie every ciphertext bit to the key through the S-boxes.
+      Within five rounds about half of the 64 bits differ, and they stay that way.
+    </p>
+  </header>
+
+  <section aria-labelledby="lab-h">
+    <h2 id="lab-h">Two encryptions, one bit apart</h2>
+    <p>
+      Every row of the grid is the 64-bit state (L&#8214;R) after one round, with a dark square
+      wherever run A and run B disagree. The bar on the right counts those bits; the dashed line is
+      32, what two unrelated random blocks would give. Click a row to open that round below, or use
+      <kbd>&larr;</kbd> <kbd>&rarr;</kbd> to step and <kbd>Space</kbd> to play.
+    </p>
+
+    <div class="card">
+      <div class="controls" role="group" aria-label="What to flip">
+        <button class="btn" id="mDiff" aria-pressed="true">Flip a plaintext bit (diffusion)</button>
+        <button class="btn" id="mConf" aria-pressed="false">Flip a key bit (confusion)</button>
+        <button class="btn" id="rnd">Random inputs</button>
+      </div>
+      <div class="slider">
+        <label for="bit">Flipped bit</label>
+        <input type="range" id="bit" min="1" max="64" step="1" value="5">
+        <output id="bitOut" for="bit">5</output>
+      </div>
+      <div class="controls">
+        <button class="btn primary" id="play">Play</button>
+        <button class="btn" id="prev" aria-label="Previous round">Prev</button>
+        <button class="btn" id="next" aria-label="Next round">Next</button>
+        <span class="stat" aria-live="polite">round <b id="rd">0</b>/16 · <b id="hd">1</b>/64 bits differ</span>
+      </div>
+      <p class="note" id="note" aria-live="polite"></p>
+      <div class="hx" id="hex"></div>
+
+      <ul class="legend">
+        <li><span class="sw sw-flip"></span> bit differs between run A and run B</li>
+        <li><span class="sw sw-same"></span> same in both runs</li>
+        <li><span class="sw sw-diff"></span> diffusion step</li>
+        <li><span class="sw sw-conf"></span> confusion step</li>
+        <li><span class="sw sw-key"></span> key mixing</li>
+      </ul>
+      <svg id="grid" viewBox="0 0 680 234" role="img" aria-label="Difference between the two DES states after each of the 16 rounds"></svg>
+
+      <p class="sublabel">Inside round <b id="rd2">1</b> · f(R, K) = P( S( E(R) &oplus; K ) ), new R = L &oplus; f</p>
+      <svg id="anat" viewBox="0 0 680 318" role="img" aria-label="How the difference moves through one Feistel round"></svg>
+    </div>
+  </section>
+
+  <section aria-labelledby="roles-h">
+    <h2 id="roles-h">Where each property lives in DES</h2>
+    <p>
+      DES is a Feistel network: each round computes f on the right half, XORs it into the left, and
+      swaps. Inside f, E and P spread differences, the round key brings in the key, and the S-boxes
+      make everything depend on it nonlinearly. The swap between rounds keeps both halves moving.
+    </p>
+    <div class="roles">
+      <div class="op op-diff">
+        <span class="role">Diffusion</span>
+        <h3>Expansion E</h3>
+        <p>32 &rarr; 48 bits. Edge bits of each nibble are copied, so one bit feeds two neighbouring S-boxes.</p>
+      </div>
+      <div class="op op-key">
+        <span class="role">Key mixing</span>
+        <h3>&oplus; round key</h3>
+        <p>K<sub>i</sub> is 48 of the 56 key bits, chosen by rotations and PC-2. Each key bit shows up in 12&ndash;15 of the 16 rounds.</p>
+      </div>
+      <div class="op op-conf">
+        <span class="role">Confusion</span>
+        <h3>S-boxes S1&ndash;S8</h3>
+        <p>6 &rarr; 4 bits, the only nonlinear step. A 1-bit input change always flips at least 2 output bits.</p>
+      </div>
+      <div class="op op-diff">
+        <span class="role">Diffusion</span>
+        <h3>Permutation P</h3>
+        <p>Sends the 4 outputs of each S-box to 4 different S-boxes in the next round.</p>
+      </div>
+      <div class="op op-diff">
+        <span class="role">Diffusion</span>
+        <h3>Feistel swap</h3>
+        <p>L &oplus; f becomes the new R, so the half that was just changed is the one mixed next round.</p>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="try-h">
+    <h2 id="try-h">Things to try</h2>
+    <ul class="try">
+      <li>Flip a plaintext bit and step through rounds 1&ndash;3. If the bit lands in L, round 1 only
+        carries it across. From the next round on, count the active S-boxes and follow P as it
+        fans their outputs out.</li>
+      <li>Switch to key bits and watch the <em>round key K</em> row. The flipped bit comes and goes
+        from round to round, and whenever it is present it goes straight into an S-box.</li>
+      <li>Flip key bit 8, 16, &hellip;, or 64. These are parity bits and PC-1 drops them, so both
+        runs are identical. DES has 56 key bits, not 64, which is why brute force costs 2<sup>56</sup>.</li>
+      <li>Hit <em>Random inputs</em> a few times. The final count moves around 32 but rarely leaves
+        24&ndash;40, which is what a random 64-bit function would look like.</li>
+    </ul>
+    <a class="back" href="demos.html">&larr; All demos</a>
+  </section>
+
+</div>
+
+<script>
+const IP=[58,50,42,34,26,18,10,2,60,52,44,36,28,20,12,4,62,54,46,38,30,22,14,6,64,56,48,40,32,24,16,8,57,49,41,33,25,17,9,1,59,51,43,35,27,19,11,3,61,53,45,37,29,21,13,5,63,55,47,39,31,23,15,7];
+const E=[32,1,2,3,4,5,4,5,6,7,8,9,8,9,10,11,12,13,12,13,14,15,16,17,16,17,18,19,20,21,20,21,22,23,24,25,24,25,26,27,28,29,28,29,30,31,32,1];
+const P=[16,7,20,21,29,12,28,17,1,15,23,26,5,18,31,10,2,8,24,14,32,27,3,9,19,13,30,6,22,11,4,25];
+const PC1=[57,49,41,33,25,17,9,1,58,50,42,34,26,18,10,2,59,51,43,35,27,19,11,3,60,52,44,36,63,55,47,39,31,23,15,7,62,54,46,38,30,22,14,6,61,53,45,37,29,21,13,5,28,20,12,4];
+const PC2=[14,17,11,24,1,5,3,28,15,6,21,10,23,19,12,4,26,8,16,7,27,20,13,2,41,52,31,37,47,55,30,40,51,45,33,48,44,49,39,56,34,53,46,42,50,36,29,32];
+const SH=[1,1,2,2,2,2,2,2,1,2,2,2,2,2,2,1];
+// S-boxes, one hex digit per entry, four rows each
+const SB=["e4d12fb83a6c5907 0f74e2d1a6cb9538 41e8d62bfc973a50 fc8249175b3ea06d","f18e6b34972dc05a 3d47f28ec01a69b5 0e7ba4d158c6932f d8a13f42b67c05e9","a09e63f51dc7b428 d709346a285ecbf1 d6498f30b12c5ae7 1ad069874fe3b52c","7de3069a1285bc4f d8b56f03472c1ae9 a690cb7df13e5284 3f06a1d8945bc72e","2c417ab6853fd0e9 eb2c47d150fa3986 421bad78f9c5630e b8c71e2d6f09a453","c1af92680d34e75b af427c9561de0b38 9ef528c3704a1db6 432c95fabe17608d","4b2ef08d3c975a61 d0b7491ae35c2f86 14bdc37eaf680592 6bd814a7950fe23c","d2846fb1a93e50c7 1fd8a374c56b0e92 7b419ce206adf358 21e74a8dfc90356b"].map(s=>s.split(' ').map(r=>[...r].map(c=>parseInt(c,16))));
+const perm=(b,t)=>t.map(i=>b[i-1]);
+const xor=(a,b)=>a.map((x,i)=>x^b[i]);
+const cnt=d=>d.reduce((a,b)=>a+b,0);
+const hex2b=h=>[...h].flatMap(c=>{const v=parseInt(c,16);return [3,2,1,0].map(k=>(v>>k)&1)});
+const b2hex=b=>{let s='';for(let i=0;i<b.length;i+=4)s+=((b[i]<<3)|(b[i+1]<<2)|(b[i+2]<<1)|b[i+3]).toString(16);return s};
+const IPi=[];IP.forEach((v,i)=>IPi[v-1]=i+1);
+function keys(k){let cd=perm(k,PC1),c=cd.slice(0,28),d=cd.slice(28),ks=[];for(const s of SH){c=c.slice(s).concat(c.slice(0,s));d=d.slice(s).concat(d.slice(0,s));ks.push(perm(c.concat(d),PC2))}return ks}
+// Full DES, recording every intermediate value of every round
+function trace(pt,k){
+  const ks=keys(k),ip=perm(pt,IP);let L=ip.slice(0,32),R=ip.slice(32);const st=[L.concat(R)],rd=[];
+  for(let r=0;r<16;r++){
+    const e=perm(R,E),x=xor(e,ks[r]),s=[];
+    for(let j=0;j<8;j++){const g=x.slice(6*j,6*j+6),row=(g[0]<<1)|g[5],col=(g[1]<<3)|(g[2]<<2)|(g[3]<<1)|g[4],v=SB[j][row][col];s.push((v>>3)&1,(v>>2)&1,(v>>1)&1,v&1)}
+    const p=perm(s,P),nr=xor(L,p);rd.push({R,e,k:ks[r],x,s,p,L,nr});L=R;R=nr;st.push(L.concat(R));
+  }
+  return {st,rd,ct:perm(R.concat(L),IPi)};
+}
+
+const NS='http://www.w3.org/2000/svg',$=id=>document.getElementById(id);
+function el(t,a,p){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);p.appendChild(e);return e}
+function tx(p,x,y,s,cls,anchor){const t=el('text',{x,y,class:cls||'lb','text-anchor':anchor||'start'},p);t.textContent=s;return t}
+
+let mode='diff',bit=5,PT='0123456789abcdef',KY='133457799bbcdff1',cur=0,A,B,timer=null;
+
+// Round-by-round grid
+const G=$('grid'),gc=[],gb=[],gn=[],grows=[];
+tx(G,162,10,'L (left half)','lb','middle');tx(G,428,10,'R (right half)','lb','middle');tx(G,566,10,'differing bits');
+for(let r=0;r<=16;r++){
+  const y=16+r*12,g=el('g',{class:'row'},G);grows.push(g);
+  g.addEventListener('click',()=>{stop();cur=r;draw()});
+  el('rect',{x:0,y:y-1,width:680,height:12,fill:'transparent'},g);
+  tx(g,28,y+8,r?String(r):'IP','lb','end');gc[r]=[];
+  for(let i=0;i<64;i++){const x=i<32?34+i*8:300+(i-32)*8;gc[r].push(el('rect',{x,y,width:7,height:9,rx:1,class:'b'},g))}
+  el('rect',{x:566,y:y+1,width:64,height:7,rx:1,class:'b'},g);
+  gb[r]=el('rect',{x:566,y:y+1,width:0,height:7,rx:1,class:'bar'},g);
+  gn[r]=tx(g,636,y+8,'','nm');
+}
+el('line',{x1:598,y1:14,x2:598,y2:222,class:'tick'},G);tx(G,598,232,'32','lb','middle');
+const hl=el('rect',{x:31,y:15,width:528,height:11,rx:2,class:'hl'},G);
+
+// One Feistel round, bit by bit
+const N=$('anat'),g48=i=>110+Math.floor(i/6)*68+(i%6)*11,g32=i=>121+Math.floor(i/4)*68+(i%4)*11;
+const ROWS=[['R','R (input half)',14,32],['e','E(R)  32→48',74,48,'mk-d'],['k','round key K',98,48,'mk-k'],['x','E(R) ⊕ K',122,48],['s','S-box output',192,32],['p','P(S) = f',252,32,'mk-d'],['L','L (other half)',276,32],['nr','new R = L ⊕ f',300,32]];
+const ew=[],pw=[],ac={},an={},sbg=[];
+for(let j=0;j<48;j++){const s=E[j]-1;ew.push(el('line',{x1:g32(s)+5,y1:25,x2:g48(j)+5,y2:73,class:'w'},N))}
+for(let j=0;j<32;j++){const s=P[j]-1;pw.push(el('line',{x1:g32(s)+5,y1:203,x2:g32(j)+5,y2:251,class:'w'},N))}
+for(const [key,label,y,n,mk] of ROWS){
+  if(mk)el('rect',{x:0,y,width:3,height:10,class:mk},N);
+  tx(N,mk?8:0,y+9,label);
+  ac[key]=[];for(let i=0;i<n;i++)ac[key].push(el('rect',{x:n===48?g48(i):g32(i),y,width:10,height:10,rx:1.5,class:'b'},N));
+  an[key]=tx(N,678,y+9,'','nm','end');
+}
+el('rect',{x:0,y:155,width:3,height:10,class:'mk-c'},N);tx(N,8,164,'S-boxes 6→4');
+for(let j=0;j<8;j++){
+  el('line',{x1:142+j*68,y1:133,x2:142+j*68,y2:145,class:'stub'},N);
+  el('line',{x1:142+j*68,y1:175,x2:142+j*68,y2:191,class:'stub'},N);
+  const g=el('g',{class:'sb'},N);el('rect',{x:110+j*68,y:146,width:64,height:28,rx:4},g);
+  tx(g,142+j*68,164,'S'+(j+1),'','middle');sbg.push(g);
+}
+
+function run(){
+  const pa=hex2b(PT),ka=hex2b(KY),pb=pa.slice(),kb=ka.slice();
+  (mode==='diff'?pb:kb)[bit-1]^=1;
+  A=trace(pa,ka);B=trace(pb,kb);A.p=pa;B.p=pb;A.k=ka;B.k=kb;
+}
+function hx(a,b){const x=b2hex(a),y=b2hex(b);return [x,[...y].map((c,i)=>c===x[i]?c:'<span class="x">'+c+'</span>').join('')]}
+function draw(){
+  for(let r=0;r<=16;r++){
+    const d=xor(A.st[r],B.st[r]),vis=r<=cur;
+    grows[r].classList.toggle('dim',!vis);
+    gc[r].forEach((c,i)=>c.classList.toggle('on',vis&&!!d[i]));
+    const h=cnt(d);gb[r].setAttribute('width',vis?h:0);gn[r].textContent=vis?h:'';
+  }
+  hl.setAttribute('y',15+cur*12);
+  $('rd').textContent=cur;$('hd').textContent=cnt(xor(A.st[cur],B.st[cur]));
+  const rr=Math.max(cur,1)-1,a=A.rd[rr],b=B.rd[rr];
+  $('rd2').textContent=rr+1;N.classList.toggle('idle',cur===0);
+  for(const [key] of ROWS){const dd=xor(a[key],b[key]);ac[key].forEach((c,i)=>c.classList.toggle('on',!!dd[i]));an[key].textContent=cnt(dd)}
+  const dR=xor(a.R,b.R),dS=xor(a.s,b.s),dX=xor(a.x,b.x);
+  ew.forEach((l,j)=>l.classList.toggle('on',!!dR[E[j]-1]));
+  pw.forEach((l,j)=>l.classList.toggle('on',!!dS[P[j]-1]));
+  sbg.forEach((g,j)=>g.classList.toggle('on',cnt(dX.slice(6*j,6*j+6))>0));
+  const p=hx(A.p,B.p),k=hx(A.k,B.k),c=cur===16?hx(A.ct,B.ct):['—','—'];
+  $('hex').innerHTML='<span></span><span>Run A</span><span>Run B</span>'+
+    '<span>Plaintext</span><span class="v">'+p[0]+'</span><span class="v">'+p[1]+'</span>'+
+    '<span>Key</span><span class="v">'+k[0]+'</span><span class="v">'+k[1]+'</span>'+
+    '<span>Ciphertext</span><span class="v">'+c[0]+'</span><span class="v">'+c[1]+'</span>';
+  $('note').textContent=mode==='conf'&&bit%8===0?'Key bit '+bit+' is a parity bit. PC-1 drops it, so DES ignores it and nothing changes.':'';
+}
+function stop(){if(timer){clearInterval(timer);timer=null}$('play').textContent='Play'}
+function play(){
+  if(timer){stop();return}
+  if(cur>=16)cur=0;draw();$('play').textContent='Pause';
+  timer=setInterval(()=>{if(cur>=16){stop();return}cur++;draw()},700);
+}
+function step(d){stop();cur=Math.min(16,Math.max(0,cur+d));draw()}
+function reset(){stop();run();cur=0;draw()}
+function setMode(m){mode=m;$('mDiff').setAttribute('aria-pressed',m==='diff');$('mConf').setAttribute('aria-pressed',m==='conf');reset();play()}
+$('play').onclick=play;$('prev').onclick=()=>step(-1);$('next').onclick=()=>step(1);
+$('bit').oninput=e=>{bit=+e.target.value;$('bitOut').textContent=bit;reset()};
+$('mDiff').onclick=()=>setMode('diff');$('mConf').onclick=()=>setMode('conf');
+$('rnd').onclick=()=>{const r=()=>Array.from({length:16},()=>'0123456789abcdef'[Math.floor(Math.random()*16)]).join('');PT=r();KY=r();reset();play()};
+document.addEventListener('keydown',e=>{
+  if(e.target.closest('input,button'))return;
+  if(e.key==='ArrowRight'){step(1);e.preventDefault()}
+  else if(e.key==='ArrowLeft'){step(-1);e.preventDefault()}
+  else if(e.key===' '){play();e.preventDefault()}
+});
+run();draw();
+</script>
+</body>
+</html>

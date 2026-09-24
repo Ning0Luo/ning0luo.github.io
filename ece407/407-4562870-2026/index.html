@@ -168,6 +168,13 @@
   tr.break td,tr.break th{background:var(--break-bg);color:var(--break-ink)}
   .note{font-size:.92rem;color:var(--muted);margin-top:.9rem}
 
+  /* ---------- lectures ---------- */
+  .lectures{max-width:70ch;margin:0 0 1rem;padding-left:0;list-style:none}
+  .lectures li{margin:0;padding:.55rem 0;border-bottom:1px solid var(--rule);display:flex;gap:.2rem 1rem;flex-wrap:wrap}
+  .lectures .num{font-variant-numeric:tabular-nums;color:var(--muted);font-weight:600;min-width:5.5rem}
+  .lectures .what{flex:1 1 16rem}
+  .lectures .links{white-space:nowrap}
+
   /* ---------- policies ---------- */
   .policy{margin:0 0 1.15rem}
   .policy strong{color:var(--illini-blue)}
@@ -209,6 +216,7 @@
 <nav class="nav" aria-label="Page sections">
   <span class="brand">ECE 407 · Cryptography</span>
   <a href="#overview">Overview</a>
+  <a href="#lectures">Lectures</a>
   <a href="#schedule">Schedule</a>
   <a href="#policies">Policies</a>
   <a href="#accessibility">Accessibility</a>
@@ -222,7 +230,7 @@
 
   <div class="facts">
     <p><strong>Instructor:</strong> Ning Luo</p>
-    <p><strong>TA:</strong>  <a href="prajpal2@illinois.edu">Rajpal, Pranav</a> </p>
+    <p><strong>TA:</strong>  <a href="mailto:prajpal2@illinois.edu">Rajpal, Pranav</a> </p>
     <p><strong>Time:</strong> Tue &amp; Thu · 5:00–6:20 PM</p>
     <p><strong>Location:</strong> 3013 ECEB</p>
     <p><strong>Office Hour:</strong> By appointment</p>
@@ -236,12 +244,29 @@
     <a href="https://www.cs.umd.edu/~jkatz/imc.html">Katz &amp; Lindell: Introduction to Modern Cryptography</a>, 3rd Edition (or Revised 3rd Edition — same section numbering).
   </p>
   <p><strong>Interactive demos:</strong>
-    <a href="demos.html">browser demos for the course material</a> — currently eight, on perfect secrecy (KL 2), pseudorandomness and chosen-plaintext security (KL 3), with more added as the semester goes on.
+    <a href="demos.html">browser demos for the course material</a> — currently fifteen, on perfect secrecy (KL 2), pseudorandomness, chosen-plaintext security and pseudorandom functions (KL 3), block-cipher design, AES, DES and differential cryptanalysis (KL 7), and modes of operation (KL 3.6), with more added as the semester goes on.
   </p>
   <p><strong>Games:</strong>
     <a href="games.html">longer interactive proofs</a> — fifteen to twenty minutes each, where you carry a
-    whole reduction yourself instead of watching one. Currently two, both on Theorem 3.18.
+    whole reduction yourself instead of watching one. Currently three: two on Theorem 3.18, and one on
+    CPA security for multiple encryptions.
   </p>
+
+  <h2 id="lectures">Lectures and Homework</h2>
+  <p>Slides are posted as PDFs after each lecture. Lecture numbers follow the pace we actually cover, which can run behind the tentative schedule below.</p>
+
+  <ul class="lectures">
+    <li><span class="num">Lecture 1</span><span class="what">Introduction and course overview</span><span class="links"><a href="lec1.pdf">Slides (PDF)</a></span></li>
+    <li><span class="num">Lecture 2</span><span class="what">Ancient ciphers and how they break</span><span class="links"><a href="lec2.pdf">Slides (PDF)</a></span></li>
+    <li><span class="num">Lecture 3</span><span class="what">One-time pad; definitions, constructions and proofs in modern cryptography</span><span class="links"><a href="lc3.pdf">Slides (PDF)</a></span></li>
+    <li><span class="num">Lecture 4</span><span class="what">Limits of perfect secrecy; computational security; pseudorandom generators</span><span class="links"><a href="lec4.pdf">Slides (PDF)</a></span></li>
+    <li><span class="num">Lecture 5</span><span class="what">Computational security and proofs by reduction</span><span class="links"><a href="lec5.pdf">Slides (PDF)</a></span></li>
+    <li><span class="num">Lecture 6</span><span class="what">EAV security, pseudorandom functions, the GGM construction</span><span class="links"><a href="lec6.pdf">Slides (PDF)</a></span></li>
+    <li><span class="num">Lecture 7</span><span class="what">Pseudorandom functions and block ciphers</span><span class="links"><a href="lec7.pdf">Slides (PDF)</a></span></li>
+    <li><span class="num">Lecture 8</span><span class="what">Block ciphers: SPN, AES, Feistel networks, DES, modes of operation</span><span class="links"><a href="lec8.html">Interactive slides</a></span></li>
+  </ul>
+
+  <p><strong>Homework:</strong> <a href="ece407_hw1.pdf">Assignment 1: Symmetric-Key Encryption</a> (PDF) — covers weeks 1–4, due Thursday 9/24, 11:59 PM.</p>
 
   <h2 id="schedule">Course Schedule (Tentative)</h2>
 

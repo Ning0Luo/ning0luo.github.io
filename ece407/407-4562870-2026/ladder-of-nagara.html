@@ -1,0 +1,1901 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Ladder of Nagara - ECE 407 - Reduction Quest II: playing the proof that CPA security implies CPA security for multiple encryptions.">
+<style>html,body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Ladder of Nagara — Reduction Quest II</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Zen+Maru+Gothic:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+/* ------------------------------------------------------------------
+   LADDER OF NAGARA — Reduction Quest II.
+   Same cabinet, same lit CRT. The SCREEN commits to one visual world
+   on purpose; the ROOM around it follows the viewer's theme.
+------------------------------------------------------------------- */
+:root{
+  --room-bg:#e7e4dc;
+  --room-ink:#2a2740;
+  --room-mute:#6c6784;
+  --room-cab:#c9c4ba;
+  --room-cab2:#b3ada2;
+
+  /* screen palette — fixed in all themes */
+  --void:#0b0a16;
+  --deep:#141232;
+  --win:#1b2160;
+  --win2:#2c3690;
+  --frame:#e9e3c6;
+  --frame2:#8f89a8;
+  --ink:#f5f1e2;
+  --dim:#a9a6c8;
+  --gold:#f2c14e;
+  --jade:#5fe3b4;
+  --sakura:#ff6f96;
+  --blood:#7a1c3d;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --room-bg:#0e0d16;
+    --room-ink:#ddd8ee;
+    --room-mute:#8b86a6;
+    --room-cab:#22203a;
+    --room-cab2:#151428;
+  }
+}
+:root[data-theme="dark"]{
+  --room-bg:#0e0d16;
+  --room-ink:#ddd8ee;
+  --room-mute:#8b86a6;
+  --room-cab:#22203a;
+  --room-cab2:#151428;
+}
+
+*{box-sizing:border-box}
+body{
+  background:var(--room-bg);
+  color:var(--room-ink);
+  font-family:"Zen Maru Gothic",system-ui,-apple-system,sans-serif;
+  margin:0;
+  min-height:100vh;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;
+  padding:18px 14px 26px;
+}
+
+/* ---------- cabinet ---------- */
+#cab{
+  width:100%;max-width:980px;
+  background:linear-gradient(180deg,var(--room-cab),var(--room-cab2));
+  border-radius:14px;
+  padding:14px;
+  box-shadow:0 18px 40px -18px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.25);
+}
+#screen{
+  position:relative;
+  width:100%;
+  height:clamp(500px,74vh,650px);
+  background:var(--void);
+  border-radius:6px;
+  overflow:hidden;
+  display:flex;flex-direction:column;
+  font-size:16px;
+  outline:none;
+}
+#screen::after{ /* scanlines */
+  content:"";position:absolute;inset:0;pointer-events:none;z-index:60;
+  background:repeating-linear-gradient(180deg,rgba(0,0,0,.16) 0 1px,transparent 1px 3px);
+  mix-blend-mode:multiply;
+}
+#screen:focus-visible{box-shadow:0 0 0 3px var(--gold)}
+
+/* ---------- top bar ---------- */
+#hud{
+  position:relative;z-index:20;
+  display:flex;align-items:center;gap:10px;
+  padding:8px 10px;
+  background:linear-gradient(180deg,rgba(11,10,22,.92),rgba(11,10,22,.35));
+  font-family:"Press Start 2P",monospace;
+  font-size:8px;letter-spacing:.06em;color:var(--dim);
+  flex:0 0 auto;
+}
+#chapter{color:var(--gold);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#hud .sp{flex:1}
+#insight{color:var(--jade);white-space:nowrap}
+.hbtn{
+  font-family:"Press Start 2P",monospace;font-size:8px;
+  color:var(--ink);background:rgba(43,54,144,.65);
+  border:1px solid var(--frame2);border-radius:2px;
+  padding:5px 7px;cursor:pointer;letter-spacing:.06em;
+}
+.hbtn:hover{background:var(--win2);border-color:var(--frame)}
+.hbtn:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
+
+/* ---------- stage ---------- */
+#stage{position:relative;flex:1 1 auto;min-height:0;overflow:hidden}
+#bgcv{position:absolute;inset:0;width:100%;height:100%;display:block}
+#scenery{position:absolute;inset:0;pointer-events:none}
+#actors{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:center;gap:clamp(24px,12vw,150px);padding:0 6% 11%}
+.actor{position:relative;transition:transform .25s ease,opacity .25s ease;opacity:0;transform:translateY(8px)}
+.actor.in{opacity:1;transform:none}
+.actor canvas{display:block;image-rendering:pixelated;filter:drop-shadow(0 6px 0 rgba(0,0,0,.35))}
+.actor.bob canvas{animation:bob 2.4s steps(2,end) infinite}
+@keyframes bob{0%,49%{transform:translateY(0)}50%,100%{transform:translateY(-3px)}}
+.actor.speaking canvas{animation:bob .7s steps(2,end) infinite}
+.nameTag{
+  position:absolute;left:50%;transform:translateX(-50%);top:-16px;
+  font-family:"Press Start 2P",monospace;font-size:7px;color:var(--dim);white-space:nowrap;
+}
+.shake{animation:shake .32s linear}
+@keyframes shake{0%,100%{transform:translate(0)}20%{transform:translate(-5px,2px)}40%{transform:translate(5px,-2px)}60%{transform:translate(-3px,-1px)}80%{transform:translate(3px,1px)}}
+#flash{position:absolute;inset:0;background:var(--ink);opacity:0;pointer-events:none;z-index:56}
+#flash.go{animation:fl .3s ease-out}
+@keyframes fl{0%{opacity:.85}100%{opacity:0}}
+
+/* backdrops */
+.bd-village{background:linear-gradient(180deg,#3a2350 0%,#7b3f63 45%,#c9714f 78%,#f0a860 100%)}
+.bd-house{background:linear-gradient(180deg,#08151d 0%,#123642 52%,#1c5f5a 100%)}
+.bd-lair{background:linear-gradient(180deg,#1b0716 0%,#3a0f2c 60%,#5c1436 100%)}
+.bd-ladder{background:linear-gradient(180deg,#0d0a24 0%,#2a1a54 55%,#4a2d6e 100%)}
+.bd-forge{background:linear-gradient(180deg,#0a0a1c 0%,#1a1b46 60%,#2a2a6b 100%)}
+.bd-judge{background:linear-gradient(180deg,#020a12 0%,#062733 50%,#0a4a4e 100%)}
+.bd-white{background:linear-gradient(180deg,#efe9d2,#cfc6ea)}
+
+.ridge{position:absolute;left:0;right:0;bottom:0;width:100%;height:38%;opacity:.55}
+
+/* ---------- dialogue window ---------- */
+.jwin{
+  background:linear-gradient(180deg,var(--win2),var(--win));
+  border:3px solid var(--frame);
+  border-radius:5px;
+  box-shadow:0 0 0 3px var(--void), inset 0 0 0 2px rgba(11,10,22,.55);
+}
+#dialog{
+  position:relative;z-index:22;flex:0 0 auto;
+  margin:0 10px 10px;padding:14px 16px 16px;
+  min-height:150px;
+  cursor:pointer;
+}
+#speaker{
+  position:absolute;top:-13px;left:14px;
+  font-family:"Press Start 2P",monospace;font-size:8px;letter-spacing:.06em;
+  color:var(--void);background:var(--gold);
+  padding:5px 8px;border-radius:2px;box-shadow:0 0 0 2px var(--void);
+}
+#speaker:empty{display:none}
+#text{
+  color:var(--ink);font-size:clamp(13px,1.55vw,15.5px);line-height:1.85;
+  max-width:62ch;min-height:4.2em;
+}
+#text .f{font-family:"JetBrains Mono",ui-monospace,monospace;color:var(--gold);font-size:.94em;background:rgba(11,10,22,.4);padding:1px 4px;border-radius:2px;white-space:nowrap}
+#text .em{color:var(--jade);font-weight:700}
+#text.nar{color:var(--dim);max-width:58ch}
+#cursor{
+  position:absolute;right:14px;bottom:9px;color:var(--gold);
+  font-family:"Press Start 2P",monospace;font-size:9px;opacity:0;
+}
+#cursor.on{opacity:1;animation:blink 1s steps(2,end) infinite}
+@keyframes blink{0%,49%{opacity:1}50%,100%{opacity:.15}}
+
+/* ---------- choice menu ---------- */
+#menu{
+  position:absolute;z-index:46;left:10px;right:10px;bottom:168px;
+  padding:12px;display:none;flex-direction:column;gap:7px;
+  max-height:min(38vh,252px);overflow-y:auto;
+}
+#menu.on{display:flex}
+#menuQ{
+  font-family:"Press Start 2P",monospace;font-size:8.5px;line-height:1.9;
+  color:var(--gold);margin-bottom:3px;letter-spacing:.04em;
+}
+.opt{
+  display:flex;gap:9px;align-items:flex-start;text-align:left;width:100%;
+  font-family:"Zen Maru Gothic",sans-serif;font-size:clamp(12px,1.4vw,14px);line-height:1.6;
+  color:var(--ink);background:rgba(11,10,22,.34);
+  border:1px solid transparent;border-radius:3px;
+  padding:8px 10px;cursor:pointer;
+}
+.opt::before{content:"▶";color:transparent;font-size:10px;line-height:1.6;flex:0 0 auto}
+.opt:hover,.opt:focus-visible{background:rgba(11,10,22,.62);border-color:var(--gold);outline:none}
+.opt:hover::before,.opt:focus-visible::before{color:var(--gold)}
+.opt.dead{opacity:.4;cursor:default;text-decoration:line-through}
+.opt.dead:hover{background:rgba(11,10,22,.34);border-color:transparent}
+.opt .oi{display:flex;flex-direction:column;gap:5px;min-width:0}
+
+/* ---------- generic panel overlay ---------- */
+#panel{
+  position:absolute;z-index:40;left:10px;right:10px;top:34px;bottom:168px;
+  display:none;flex-direction:column;padding:14px;overflow:hidden;
+}
+#panel.on{display:flex}
+#panel.full{bottom:10px}
+#panel.compact{bottom:auto;max-height:47%}
+
+#codex{
+  position:absolute;z-index:58;inset:34px 10px 10px;
+  display:none;flex-direction:column;padding:14px;overflow:hidden;
+}
+#codex.on{display:flex}
+.pTitle{
+  font-family:"Press Start 2P",monospace;font-size:9px;color:var(--gold);
+  letter-spacing:.06em;margin-bottom:4px;
+}
+.pSub{font-size:12px;color:var(--dim);line-height:1.7;margin-bottom:10px}
+.pBody{flex:1;min-height:0;overflow-y:auto;padding-right:4px}
+.pBody::-webkit-scrollbar{width:8px}
+.pBody::-webkit-scrollbar-thumb{background:var(--frame2);border-radius:4px}
+
+/* ---------- bit bench ---------- */
+.bits{display:flex;flex-wrap:wrap;gap:4px;font-family:"JetBrains Mono",monospace}
+.bit{
+  width:20px;height:24px;display:grid;place-items:center;
+  font-size:12px;font-weight:700;border-radius:2px;
+  background:rgba(11,10,22,.5);color:var(--ink);border:1px solid var(--frame2);
+}
+.bit.k{color:var(--jade);border-color:rgba(95,227,180,.5)}
+.bit.c{color:var(--gold);border-color:rgba(242,193,78,.55)}
+.bit.hot{background:var(--gold);color:var(--void);border-color:var(--frame)}
+.bit.same{background:rgba(255,111,150,.22);border-color:var(--sakura)}
+.brow{display:grid;grid-template-columns:104px 1fr;gap:10px;align-items:center;margin-bottom:8px}
+.blab{font-family:"Press Start 2P",monospace;font-size:7px;color:var(--dim);line-height:1.7}
+.verdict{font-family:"Press Start 2P",monospace;font-size:8px;line-height:1.9;margin-top:8px;color:var(--dim)}
+.verdict b{color:var(--sakura)}
+.verdict i{color:var(--jade);font-style:normal}
+
+/* ---------- vectors / the ladder ---------- */
+.vec{display:inline-flex;gap:4px;flex-wrap:wrap;min-width:0}
+.vc{
+  font-family:"JetBrains Mono",monospace;font-size:11px;
+  padding:3px 6px;border-radius:2px;border:1px solid;white-space:nowrap;
+}
+.vc.v0{color:var(--sakura);border-color:rgba(255,111,150,.55);background:rgba(255,111,150,.10)}
+.vc.v1{color:var(--jade);border-color:rgba(95,227,180,.55);background:rgba(95,227,180,.10)}
+.vc.vx{color:var(--gold);border-color:rgba(242,193,78,.7);background:rgba(242,193,78,.14);font-weight:700}
+.vc.bad{color:var(--frame2);border-color:var(--frame2);background:rgba(143,137,168,.12)}
+.vc.moved{box-shadow:0 0 0 2px var(--gold)}
+.ladWrap{display:flex;flex-direction:column;gap:4px}
+.rungRow{display:grid;grid-template-columns:36px minmax(0,1fr);gap:9px;align-items:center;padding:4px 5px;border-radius:3px}
+.rungRow.now{background:rgba(242,193,78,.12);box-shadow:inset 0 0 0 1px rgba(242,193,78,.45)}
+.rl{font-family:"Press Start 2P",monospace;font-size:7px;color:var(--dim)}
+.rungRow.now .rl{color:var(--gold)}
+.legend{font-family:"Press Start 2P",monospace;font-size:7px;color:var(--dim);line-height:2;margin-top:8px}
+.legend b{color:var(--sakura)} .legend i{color:var(--jade);font-style:normal}
+
+/* ---------- assembly ---------- */
+.asm{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);grid-template-rows:minmax(0,1fr);gap:12px;height:100%;min-height:0}
+.asmBody{overflow:hidden}
+@media (max-width:700px){
+  .asm{grid-template-columns:1fr;grid-template-rows:auto auto;height:auto;min-height:0}
+  .asmBody{overflow-y:auto}
+  .asm .chassis,.asm .cards{height:auto;min-height:0;overflow:visible}
+}
+.chassis{
+  border:2px solid var(--frame2);border-radius:4px;padding:10px;
+  background:linear-gradient(180deg,rgba(11,10,22,.55),rgba(11,10,22,.25));
+  display:flex;flex-direction:column;gap:5px;
+  overflow-y:auto;
+}
+.slot{
+  display:flex;gap:8px;align-items:flex-start;
+  border:1px dashed var(--frame2);border-radius:3px;padding:6px 7px;
+  font-size:11.5px;line-height:1.55;color:var(--dim);min-height:38px;
+}
+.slot .n{
+  font-family:"Press Start 2P",monospace;font-size:8px;color:var(--frame2);
+  flex:0 0 auto;padding-top:2px;
+}
+.slot.filled{border-style:solid;border-color:var(--jade);color:var(--ink);background:rgba(95,227,180,.09)}
+.slot.filled .n{color:var(--jade)}
+.slot.next{border-color:var(--gold);animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(242,193,78,0)}50%{box-shadow:0 0 0 3px rgba(242,193,78,.22)}}
+.cards{display:flex;flex-direction:column;gap:6px;overflow-y:auto;padding-right:4px}
+.card{
+  text-align:left;font-family:"Zen Maru Gothic",sans-serif;
+  font-size:11.5px;line-height:1.55;color:var(--ink);
+  background:rgba(11,10,22,.4);border:1px solid var(--frame2);border-radius:3px;
+  padding:8px 9px;cursor:pointer;
+}
+.card:hover,.card:focus-visible{border-color:var(--gold);background:rgba(11,10,22,.68);outline:none}
+.card.used{display:none}
+.card.wrong{animation:shake .32s linear;border-color:var(--sakura)}
+.card.hintOn{border-color:var(--gold);box-shadow:0 0 0 2px rgba(242,193,78,.3)}
+
+/* ---------- battle ---------- */
+.bar-wrap{margin-bottom:9px}
+.bar-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:3px}
+.bar-name{font-family:"Press Start 2P",monospace;font-size:7px;color:var(--dim);letter-spacing:.05em}
+.bar-val{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--ink);font-variant-numeric:tabular-nums}
+.track{position:relative;height:12px;background:rgba(11,10,22,.6);border:1px solid var(--frame2);border-radius:2px;overflow:hidden}
+.fill{position:absolute;left:0;top:0;bottom:0;width:0;transition:width .6s cubic-bezier(.2,.8,.3,1)}
+.fill.boast{background:linear-gradient(90deg,var(--blood),var(--sakura))}
+.fill.whole{background:linear-gradient(90deg,#8a6512,var(--gold))}
+.fill.rung{background:linear-gradient(90deg,#1d6f78,var(--jade))}
+.tick{position:absolute;top:-1px;bottom:-1px;width:1px;background:var(--frame2);opacity:.85}
+.tickL{position:absolute;top:100%;transform:translateX(-50%);margin-top:2px;font-family:"JetBrains Mono",monospace;font-size:10px;color:var(--dim)}
+.scaleRow{position:relative;height:14px;margin-top:1px}
+.gapmark{
+  position:absolute;top:-2px;bottom:-2px;background:repeating-linear-gradient(45deg,rgba(242,193,78,.6) 0 3px,transparent 3px 6px);
+  border-left:1px solid var(--gold);border-right:1px solid var(--gold);
+}
+.gapmark.thin{background:repeating-linear-gradient(45deg,rgba(95,227,180,.65) 0 3px,transparent 3px 6px);border-color:var(--jade)}
+#dmg{
+  position:absolute;z-index:57;left:50%;top:30%;transform:translateX(-50%);
+  font-family:"Press Start 2P",monospace;font-size:16px;color:var(--gold);
+  text-shadow:0 2px 0 var(--void);opacity:0;pointer-events:none;
+}
+#dmg.go{animation:pop 1s ease-out}
+@keyframes pop{0%{opacity:1;transform:translate(-50%,10px)}70%{opacity:1;transform:translate(-50%,-22px)}100%{opacity:0;transform:translate(-50%,-30px)}}
+
+/* ---------- title / ending ---------- */
+#title{
+  position:absolute;inset:0;z-index:50;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:16px;text-align:center;padding:24px;
+  background:radial-gradient(120% 90% at 50% 25%,#1a2a4d 0%,#0b0a16 70%);
+  transition:opacity .55s ease;
+}
+#title.off{opacity:0;visibility:hidden;pointer-events:none}
+.tKanji{font-family:"Zen Maru Gothic",sans-serif;font-weight:900;font-size:clamp(20px,4.4vw,34px);color:var(--jade);letter-spacing:.32em;margin-right:-.32em}
+.tMain{font-family:"Press Start 2P",monospace;font-size:clamp(15px,3.6vw,30px);color:var(--gold);line-height:1.5;text-shadow:0 3px 0 var(--blood)}
+.tSub{font-family:"Press Start 2P",monospace;font-size:clamp(7px,1.5vw,10px);color:var(--dim);line-height:2.1;max-width:36ch}
+.tBtns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:6px}
+.startBtn{
+  font-family:"Press Start 2P",monospace;font-size:10px;color:var(--void);
+  background:var(--gold);border:0;border-radius:3px;padding:12px 16px;cursor:pointer;
+  box-shadow:0 4px 0 #8a6512;
+}
+.startBtn:hover{background:#ffd471}
+.startBtn:active{transform:translateY(2px);box-shadow:0 2px 0 #8a6512}
+.startBtn.ghost{background:transparent;color:var(--dim);box-shadow:0 0 0 2px var(--frame2)}
+.startBtn.ghost:hover{color:var(--ink);box-shadow:0 0 0 2px var(--gold)}
+.startBtn:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.tFoot{font-family:"Zen Maru Gothic",sans-serif;font-size:11px;color:var(--frame2);line-height:1.8;max-width:46ch}
+
+/* ---------- codex ---------- */
+.cxGrid{display:grid;grid-template-columns:minmax(120px,.8fr) minmax(0,2fr);gap:12px;height:100%}
+@media (max-width:640px){.cxGrid{grid-template-columns:1fr;overflow-y:auto}}
+.cxList{display:flex;flex-direction:column;gap:4px;overflow-y:auto;padding-right:4px}
+.cxItem{
+  text-align:left;font-family:"Press Start 2P",monospace;font-size:7.5px;line-height:1.8;
+  color:var(--dim);background:rgba(11,10,22,.35);border:1px solid transparent;
+  border-radius:3px;padding:8px;cursor:pointer;
+}
+.cxItem:hover,.cxItem:focus-visible{color:var(--ink);border-color:var(--gold);outline:none}
+.cxItem.sel{color:var(--void);background:var(--gold);border-color:var(--frame)}
+.cxItem.locked{opacity:.35;cursor:default}
+.cxItem.locked:hover{color:var(--dim);border-color:transparent}
+.cxRead{overflow-y:auto;padding-right:6px;font-size:12.5px;line-height:1.85;color:var(--ink)}
+.cxRead h3{font-family:"Press Start 2P",monospace;font-size:9px;color:var(--gold);margin:0 0 10px;line-height:1.8}
+.cxRead h4{font-family:"Press Start 2P",monospace;font-size:7.5px;color:var(--jade);margin:16px 0 6px;letter-spacing:.05em}
+.cxRead p{margin:0 0 10px;max-width:60ch}
+.cxRead .math{
+  font-family:"JetBrains Mono",monospace;font-size:11.5px;line-height:1.9;color:var(--gold);
+  background:rgba(11,10,22,.5);border-left:2px solid var(--gold);
+  padding:9px 11px;margin:0 0 10px;overflow-x:auto;white-space:pre;
+}
+.cxRead code{font-family:"JetBrains Mono",monospace;font-size:.92em;color:var(--jade)}
+.cxRead ul{margin:0 0 10px;padding-left:18px;max-width:60ch}
+.cxRead li{margin-bottom:6px}
+
+/* ---------- ending scroll ---------- */
+.qed{display:flex;flex-direction:column;gap:9px}
+.qedLine{
+  display:grid;grid-template-columns:26px 1fr;gap:10px;align-items:start;
+  font-size:12.5px;line-height:1.75;color:var(--ink);
+  border-left:2px solid var(--jade);padding:6px 0 6px 10px;
+}
+.qedLine .qn{font-family:"Press Start 2P",monospace;font-size:8px;color:var(--jade);padding-top:3px}
+.rank{
+  font-family:"Press Start 2P",monospace;font-size:11px;color:var(--gold);
+  text-align:center;line-height:2;margin:14px 0 4px;
+}
+
+#caption{
+  max-width:980px;font-size:12.5px;line-height:1.7;color:var(--room-mute);
+  text-align:center;
+}
+#caption b{color:var(--room-ink);font-weight:700}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important}
+}
+</style>
+</head>
+<body>
+<div id="cab">
+  <div id="screen" tabindex="0">
+
+    <div id="hud">
+      <span id="chapter">序章 · PROLOGUE</span>
+      <span class="sp"></span>
+      <span id="insight">INSIGHT 0</span>
+      <button class="hbtn" id="sndBtn" type="button">BGM ON</button>
+      <button class="hbtn" id="codexBtn" type="button">CODEX</button>
+    </div>
+
+    <div id="stage" class="bd-village">
+      <canvas id="bgcv"></canvas>
+      <div id="scenery"></div>
+      <div id="actors"></div>
+    </div>
+    <div id="flash"></div>
+    <div id="dmg"></div>
+
+    <div id="dialog" class="jwin">
+      <div id="speaker"></div>
+      <div id="text"></div>
+      <div id="cursor">▼</div>
+    </div>
+
+    <div id="menu" class="jwin">
+      <div id="menuQ"></div>
+      <div id="menuOpts"></div>
+    </div>
+
+    <div id="panel" class="jwin"></div>
+    <div id="codex" class="jwin"></div>
+
+    <div id="title">
+      <div class="tKanji">混成の梯子</div>
+      <div class="tMain">LADDER OF<br>NAGARA</div>
+      <div class="tSub">REDUCTION QUEST II · MANY LETTERS, ONE KEY</div>
+      <div class="tBtns">
+        <button class="startBtn" id="btnNew" type="button">PRESS START</button>
+        <button class="startBtn ghost" id="btnCont" type="button" style="display:none">CONTINUE</button>
+      </div>
+      <div class="tFoot">The seal held for one letter. A season is many letters — and one challenge ciphertext is all you will ever be dealt.</div>
+    </div>
+
+  </div>
+</div>
+
+<p id="caption"><b>Ladder of Nagara</b> — a sequel to Reduction Quest; it stands alone. Click or press <b>Space</b> to advance dialogue. The Codex holds the formal statements behind every scene; <b>BGM</b> mutes the soundtrack.</p>
+
+<script>
+"use strict";
+(function(){
+
+/* =========================================================
+   0. THE NUMBERS THE STORY USES
+   ========================================================= */
+const T = 4;              // letters in a bundle — small enough to read
+const DELTA = 0.36;       // Adversarius' gap between the two bundles
+const SUP = ["","¹","²","³","⁴","⁵","⁶","⁷","⁸"];
+const SUB = ["₀","₁","₂","₃","₄","₅","₆","₇","₈"];
+
+/* =========================================================
+   1. PIXEL SPRITES
+   ========================================================= */
+const SPRITES = {
+  kaede:{ w:16,h:16,
+    pal:{k:"#150e2e",r:"#4d7cf0",R:"#2c4fb8",s:"#f3c9a2",e:"#150e2e",w:"#efe9d2"},
+    rows:[
+      ".....kkkkkk.....",
+      "....krrrrrrk....",
+      "...krrrrrrrrk...",
+      "...krssssssrk...",
+      "...krsessesrk...",
+      "...krssssssrk...",
+      "....krrrrrrk....",
+      "...krrwwwwrrk...",
+      "..krrrwwwwrrrk..",
+      "..krrrrwwrrrrk..",
+      "..krrrrrrrrrrk..",
+      ".krrrrrrrrrrrrk.",
+      ".krRRrrrrrrRRrk.",
+      ".krrrrrrrrrrrrk.",
+      ".kkkkkkkkkkkkkk.",
+      "..kk........kk.."]},
+
+  elder:{ w:16,h:16,
+    pal:{k:"#141a12",W:"#efeade",s:"#e8bd93",e:"#141a12",n:"#3f7d4a",N:"#245530"},
+    rows:[
+      ".....kkkkkk.....",
+      "....kWWWWWWk....",
+      "...kWWWWWWWWk...",
+      "...kWssssssWk...",
+      "...kWsessesWk...",
+      "...kWssssssWk...",
+      "...kWWWWWWWWk...",
+      "....kWWWWWWk....",
+      "..knnnWWnnnk....",
+      ".knnnnWWnnnnk...",
+      ".knnnnnnnnnnnnk.",
+      ".knnNNnnnnNNnnk.",
+      ".knnnnnnnnnnnnk.",
+      ".knnnnnnnnnnnnk.",
+      ".kkkkkkkkkkkkkk.",
+      "..kk........kk.."]},
+
+  demon:{ w:16,h:16,
+    pal:{k:"#25081a",h:"#f0ead6",p:"#c0397b",P:"#7f1d50",e:"#ffe066",c:"#3a1030"},
+    rows:[
+      "...h........h...",
+      "..hh........hh..",
+      "..hkkkkkkkkkkh..",
+      "..kppppppppppk..",
+      "..kpeeppppeepk..",
+      "..kpeeppppeepk..",
+      "..kppppppppppk..",
+      "..kpPPPPPPPPpk..",
+      "..kkppppppppkk..",
+      ".kcccccccccccck.",
+      ".kcccPPPPPPccck.",
+      "kcccccccccccccck",
+      "kccccPPPPPPcccck",
+      "kcccccccccccccck",
+      ".kcccccccccccck.",
+      "..kkkkkkkkkkkk.."]},
+
+  machine:{ w:16,h:16,
+    pal:{k:"#0a0c1c",m:"#c9cfe8",M:"#767ea6",o:"#f2c14e",p:"#c0397b",g:"#5fe3b4"},
+    rows:[
+      ".......oo.......",
+      ".......kk.......",
+      "..kkkkkkkkkkkk..",
+      "..kmmmmmmmmmmk..",
+      "..kmkkkkkkkkmk..",
+      "..kmkppppppkmk..",
+      "..kmkppppppkmk..",
+      "..kmkppppppkmk..",
+      "..kmkkkkkkkkmk..",
+      "..kmmggmmggmmk..",
+      "..kmMMmmmmMMmk..",
+      "..kmmmmmmmmmmk..",
+      "..kkkkkkkkkkkk..",
+      "..kmk......kmk..",
+      "..kmk......kmk..",
+      "..kkk......kkk.."]},
+
+  press:{ w:16,h:16,
+    pal:{k:"#0d1418",s:"#b9b2a0",S:"#7d7767",w:"#efe9d2",r:"#d24a4a"},
+    rows:[
+      "....kkkkkkkk....",
+      "...ksssssssssk..",
+      "..kssssssssssk..",
+      "..kSkkkkkkkkSk..",
+      "..kSkwwwwwwkSk..",
+      "..kSkwwrrwwkSk..",
+      "..kSkwwrrwwkSk..",
+      "..kSkwwwwwwkSk..",
+      "..kSkkkkkkkkSk..",
+      "..kssssssssssk..",
+      "..kSssssssssSk..",
+      "..kkkkkkkkkkkk..",
+      "...k.k....k.k...",
+      "...k.k....k.k...",
+      "...kkk....kkk...",
+      "................"]},
+
+  bundle:{ w:16,h:16,
+    pal:{k:"#0d0a1c",w:"#efe9d2",r:"#ff6f96",j:"#5fe3b4"},
+    rows:[
+      "................",
+      "..kkkkkkkkkkkk..",
+      "..kwwwwwwwwwwk..",
+      "..kwrrwwwwwwwk..",
+      "..kwwwwwwwwwwk..",
+      "..kkkkkkkkkkkk..",
+      "..kwwwwwwwwwwk..",
+      "..kwwwwwjjwwwk..",
+      "..kwwwwwwwwwwk..",
+      "..kkkkkkkkkkkk..",
+      "..kwwwwwwwwwwk..",
+      "..kwwrrwwwwwwk..",
+      "..kwwwwwwwwwwk..",
+      "..kkkkkkkkkkkk..",
+      "................",
+      "................"]}
+};
+
+function spriteCanvas(name, scale){
+  const s = SPRITES[name];
+  const cv = document.createElement("canvas");
+  cv.width = s.w*scale; cv.height = s.h*scale;
+  const g = cv.getContext("2d");
+  for(let y=0;y<s.h;y++){
+    const row = (s.rows[y]||"").padEnd(s.w,".").slice(0,s.w);
+    for(let x=0;x<s.w;x++){
+      const c = s.pal[row[x]];
+      if(!c) continue;
+      g.fillStyle = c;
+      g.fillRect(x*scale,y*scale,scale,scale);
+    }
+  }
+  return cv;
+}
+
+/* =========================================================
+   1b. CHIPTUNE — 3-voice sequencer, synthesised on the fly.
+       The motif of the first game returns: A C E D, a rise
+       that steps back. Here it climbs one step per repeat.
+   ========================================================= */
+const P = s => s.replace(/\|/g," ").trim().split(/\s+/);
+const SEMI = {C:0,"C#":1,Db:1,D:2,"D#":3,Eb:3,E:4,F:5,"F#":6,Gb:6,G:7,"G#":8,Ab:8,A:9,"A#":10,Bb:10,B:11};
+function hz(n){
+  const m = /^([A-G][#b]?)(-?\d)$/.exec(n);
+  if(!m) return 0;
+  return 440 * Math.pow(2, (SEMI[m[1]] + (parseInt(m[2],10)+1)*12 - 69)/12);
+}
+
+const TRACKS = {
+  title:{ bpm:100,
+    lead:P("A4 - - - C5 - - - E5 - - - D5 - - - | E5 - - - G5 - - - A5 - - - - - - - | F5 - - - E5 - - - D5 - - - C5 - - - | B4 - - - D5 - - - E5 - - - - - - -"),
+    bass:P("A2 - A2 - A2 - A2 - E2 - E2 - E2 - E2 - | C3 - C3 - C3 - C3 - G2 - G2 - G2 - G2 - | D3 - D3 - D3 - D3 - A2 - A2 - A2 - A2 - | E3 - E3 - E3 - E3 - E2 - E2 - E2 - E2 -"),
+    drum:P("k . . . h . . . s . . . h . . h | k . . . h . . . s . . . h . . h | k . . . h . . . s . . . h . . h | k . . . h . . . s . . . s . s .")},
+
+  village:{ bpm:82,
+    lead:P("E4 - - - G4 - - - A4 - - - - - - - | C5 - - - B4 - - - A4 - - - G4 - - - | A4 - - - G4 - - - E4 - - - D4 - - - | E4 - - - - - - - - - - - - - - -"),
+    bass:P("A2 - - - E3 - - - A2 - - - E3 - - - | F2 - - - C3 - - - F2 - - - C3 - - - | C3 - - - G2 - - - C3 - - - G2 - - - | E2 - - - B2 - - - E2 - - - - - - -"),
+    drum:P(". . . . h . . . . . . . h . . . | . . . . h . . . . . . . h . . . | . . . . h . . . . . . . h . . . | . . . . h . . . . . . . h . . h")},
+
+  house:{ bpm:92,
+    lead:P("A4 C5 E5 C5 A4 C5 E5 C5 G4 B4 E5 B4 G4 B4 E5 B4 | F4 A4 C5 A4 F4 A4 C5 A4 E4 G4 B4 G4 E4 G4 B4 G4 | A4 C5 E5 A5 E5 C5 A4 C5 E5 C5 A4 E4 A4 C5 E5 C5 | D5 - - - C5 - - - B4 - - - A4 - - -"),
+    bass:P("A2 - - - - - - - E2 - - - - - - - | F2 - - - - - - - E2 - - - - - - - | A2 - - - - - - - A2 - - - - - - - | D2 - - - - - - - E2 - - - - - - -"),
+    drum:P(". . . . h . . . . . . . h . . . | . . . . h . . . . . . . h . . . | . . . . h . . . . . . . h . . . | . . . . h . . . . . . . h . . h")},
+
+  lair:{ bpm:112,
+    lead:P("E4 . Eb4 . E4 . . . Bb4 . . . A4 . . . | E4 . Eb4 . E4 . . . G4 . F#4 . F4 . . . | Bb4 . . . A4 . . . Ab4 . . . G4 . . . | E4 . F4 . E4 . Eb4 . E4 - - - . . . ."),
+    bass:P("E2 - E2 - E2 - E2 - E2 - E2 - Bb2 - Bb2 - | E2 - E2 - E2 - E2 - E2 - E2 - F2 - F2 - | A2 - A2 - A2 - A2 - Ab2 - Ab2 - G2 - G2 - | E2 - E2 - E2 - E2 - E2 - E2 - E2 - E2 -"),
+    drum:P("k . . k . . s . k . . . . . s . | k . . k . . s . k . . . . . s . | k . . k . . s . k . . . . . s . | k . . k . . s . k . k . s . s .")},
+
+  ladder:{ bpm:104,
+    lead:P("A4 - - - C5 - - - E5 - - - D5 - - - | C5 - - - E5 - - - G5 - - - F5 - - - | E5 - - - G5 - - - B5 - - - A5 - - - | G5 - E5 - C5 - A4 - E5 - - - - - - -"),
+    bass:P("A2 - - - A2 - - - E2 - - - E2 - - - | C3 - - - C3 - - - G2 - - - G2 - - - | E3 - - - E3 - - - B2 - - - B2 - - - | A2 - - - E2 - - - A2 - - - - - - -"),
+    drum:P("k . . . h . . . s . . . h . . . | k . . . h . . . s . . . h . . . | k . . . h . . . s . . . h . . . | k . . . h . . . s . . . s . s .")},
+
+  forge:{ bpm:116,
+    lead:P("A4 . A4 . E5 . A4 . D5 . . . C5 . . . | A4 . A4 . E5 . A4 . G4 . . . E4 . . . | F4 . F4 . C5 . F4 . E5 . . . D5 . . . | E4 . E4 . B4 . E4 . E5 . D5 . C5 . B4 ."),
+    bass:P("A2 - A2 - A2 - A2 - A2 - A2 - A2 - A2 - | A2 - A2 - A2 - A2 - E2 - E2 - E2 - E2 - | F2 - F2 - F2 - F2 - F2 - F2 - F2 - F2 - | E2 - E2 - E2 - E2 - E2 - E2 - E2 - E2 -"),
+    drum:P("k . h . s . h . k . h . s . h h | k . h . s . h . k . h . s . h h | k . h . s . h . k . h . s . h h | k . h . s . h . k . h . s . s s")},
+
+  battle:{ bpm:150,
+    lead:P("A4 . C5 . E5 . D5 . E5 . G5 . A5 . . . | A5 . G5 . E5 . D5 . C5 . B4 . A4 . . . | F5 . E5 . D5 . C5 . D5 . E5 . F5 . G5 . | E5 . D5 . C5 . B4 . A4 . . . E5 . . ."),
+    bass:P("A2 . A2 . A2 . A2 . A2 . A2 . A2 . A2 . | F2 . F2 . F2 . F2 . C3 . C3 . C3 . C3 . | D2 . D2 . D2 . D2 . D2 . D2 . D2 . D2 . | E2 . E2 . E2 . E2 . E2 . E2 . E2 . E2 ."),
+    drum:P("k . h . s . h . k . k . s . h . | k . h . s . h . k . k . s . h . | k . h . s . h . k . k . s . h . | k . h . s . h . k . k . s . s s")},
+
+  ending:{ bpm:88,
+    lead:P("A4 - - - C#5 - - - E5 - - - D5 - - - | E5 - - - F#5 - - - E5 - - - - - - - | D5 - - - C#5 - - - B4 - - - A4 - - - | A4 - - - - - - - - - - - - - - -"),
+    bass:P("A2 - - - E3 - - - A2 - - - E3 - - - | D3 - - - A2 - - - D3 - - - A2 - - - | B2 - - - F#3 - - - E3 - - - B2 - - - | A2 - - - E2 - - - A2 - - - - - - -"),
+    drum:P(". . . . h . . . . . . . h . . . | . . . . h . . . . . . . h . . . | . . . . h . . . . . . . h . . . | . . . . h . . . . . . . h . . h")}
+};
+
+let ac=null, master=null, musGain=null, sfxGain=null, noiseBuf=null;
+let soundOn = true, curTrack = null, seqTimer = null;
+const seqSt = { t:null, step:0, next:0 };
+const MUSVOL = 0.20;
+
+try{ soundOn = localStorage.getItem("lq_sound") !== "off"; }catch(e){}
+
+function initAudio(){
+  if(ac) { if(ac.state==="suspended") ac.resume(); return; }
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if(!AC) return;
+  ac = new AC();
+  master = ac.createGain(); master.gain.value = soundOn ? 0.9 : 0; master.connect(ac.destination);
+  musGain = ac.createGain(); musGain.gain.value = MUSVOL; musGain.connect(master);
+  sfxGain = ac.createGain(); sfxGain.gain.value = 0.5;   sfxGain.connect(master);
+  const n = ac.sampleRate * 0.4;
+  noiseBuf = ac.createBuffer(1, n, ac.sampleRate);
+  const d = noiseBuf.getChannelData(0);
+  for(let i=0;i<n;i++) d[i] = Math.random()*2 - 1;
+  if(ac.state==="suspended") ac.resume();
+  if(!seqTimer) seqTimer = setInterval(scheduler, 25);
+}
+
+function tone(type, f, t, dur, vol, dest){
+  if(!ac || !f) return;
+  const o = ac.createOscillator(); o.type = type; o.frequency.setValueAtTime(f, t);
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(vol, t + 0.006);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(dest || musGain);
+  o.start(t); o.stop(t + dur + 0.02);
+}
+function hit(t, kind){
+  if(!ac) return;
+  if(kind === "k"){
+    const o = ac.createOscillator(); o.type="sine";
+    o.frequency.setValueAtTime(150,t); o.frequency.exponentialRampToValueAtTime(45,t+0.10);
+    const g = ac.createGain(); g.gain.setValueAtTime(0.45,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.13);
+    o.connect(g); g.connect(musGain); o.start(t); o.stop(t+0.15); return;
+  }
+  const s = ac.createBufferSource(); s.buffer = noiseBuf;
+  const f = ac.createBiquadFilter(); f.type = "highpass";
+  const g = ac.createGain();
+  if(kind === "s"){ f.frequency.value = 1400; g.gain.setValueAtTime(0.20,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.11); }
+  else            { f.frequency.value = 7000; g.gain.setValueAtTime(0.09,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.04); }
+  s.connect(f); f.connect(g); g.connect(musGain);
+  s.start(t); s.stop(t+0.16);
+}
+function held(arr, i, unit){ let n=1; while(arr[i+n] === "-") n++; return n*unit; }
+
+function playStep(i, t){
+  const T2 = seqSt.t; if(!T2 || !soundOn) return;
+  const unit = 60 / T2.bpm / 4;
+  const L = T2.lead[i], B = T2.bass[i], D = T2.drum[i];
+  if(L && L !== "." && L !== "-"){
+    const d = held(T2.lead, i, unit);
+    tone("square", hz(L), t, Math.min(d*0.92, 1.1), 0.085);
+    tone("square", hz(L)*1.005, t, Math.min(d*0.55, 0.7), 0.030);
+  }
+  if(B && B !== "." && B !== "-") tone("triangle", hz(B), t, Math.min(held(T2.bass,i,unit)*0.9, 1.0), 0.30);
+  if(D && D !== "." && D !== "-") hit(t, D);
+}
+function scheduler(){
+  if(!ac || !seqSt.t) return;
+  const unit = 60 / seqSt.t.bpm / 4;
+  if(seqSt.next < ac.currentTime - 0.5) seqSt.next = ac.currentTime + 0.05;
+  while(seqSt.next < ac.currentTime + 0.18){
+    if(seqSt.next > ac.currentTime - 0.05) playStep(seqSt.step, seqSt.next);
+    seqSt.next += unit;
+    seqSt.step = (seqSt.step + 1) % seqSt.t.lead.length;
+  }
+}
+function playTrack(id){
+  curTrack = id;
+  if(!ac || !TRACKS[id]) return;
+  const g = musGain.gain, now = ac.currentTime;
+  g.cancelScheduledValues(now);
+  g.setValueAtTime(Math.max(g.value, 0.0001), now);
+  g.linearRampToValueAtTime(0.0001, now + 0.28);
+  setTimeout(()=>{
+    if(curTrack !== id || !ac) return;
+    seqSt.t = TRACKS[id]; seqSt.step = 0; seqSt.next = ac.currentTime + 0.06;
+    musGain.gain.cancelScheduledValues(ac.currentTime);
+    musGain.gain.setValueAtTime(0.0001, ac.currentTime);
+    musGain.gain.linearRampToValueAtTime(MUSVOL, ac.currentTime + 0.4);
+  }, 300);
+}
+
+const sfx = {
+  blip(){ if(!ac||!soundOn) return; const t=ac.currentTime;
+          tone("square", 820 + Math.random()*140, t, 0.035, 0.045, sfxGain); },
+  ok(){   if(!ac||!soundOn) return; const t=ac.currentTime;
+          tone("square", hz("E5"), t, 0.07, 0.10, sfxGain);
+          tone("square", hz("A5"), t+0.06, 0.11, 0.10, sfxGain); },
+  err(){  if(!ac||!soundOn) return; const t=ac.currentTime;
+          tone("sawtooth", hz("F3"), t, 0.10, 0.10, sfxGain);
+          tone("sawtooth", hz("B2"), t+0.07, 0.16, 0.10, sfxGain); },
+  lock(){ if(!ac||!soundOn) return; const t=ac.currentTime;
+          ["A4","C#5","E5"].forEach((n,i)=>tone("square", hz(n), t+i*0.05, 0.16, 0.09, sfxGain)); },
+  rung(k){ if(!ac||!soundOn) return; const t=ac.currentTime;
+          const scale=["A4","C5","E5","G5","B5"];
+          tone("square", hz(scale[Math.min(k,4)]), t, 0.13, 0.10, sfxGain); },
+  strike(big){ if(!ac||!soundOn) return; const t=ac.currentTime;
+          hit(t,"s"); hit(t+0.04,"s");
+          const o=ac.createOscillator(); o.type="sawtooth";
+          o.frequency.setValueAtTime(big?540:340,t); o.frequency.exponentialRampToValueAtTime(60,t+(big?0.6:0.24));
+          const g=ac.createGain(); g.gain.setValueAtTime(big?0.22:0.15,t);
+          g.gain.exponentialRampToValueAtTime(0.001,t+(big?0.7:0.3));
+          o.connect(g); g.connect(sfxGain); o.start(t); o.stop(t+(big?0.75:0.35)); },
+  fanfare(){ if(!ac||!soundOn) return; const t=ac.currentTime+0.02;
+          ["A4","C5","E5","A5"].forEach((n,i)=>tone("square", hz(n), t+i*0.08, 0.2, 0.11, sfxGain)); }
+};
+function setSound(on){
+  soundOn = on;
+  try{ localStorage.setItem("lq_sound", on ? "on" : "off"); }catch(e){}
+  if(master) master.gain.setTargetAtTime(on ? 0.9 : 0, ac.currentTime, 0.05);
+}
+
+/* =========================================================
+   2. BACKDROP PARTICLES
+   ========================================================= */
+const bgcv = document.getElementById("bgcv");
+const bgx = bgcv.getContext("2d");
+let motes = [], moteColor = "#f2c14e", moteMode = "drift";
+const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function sizeCanvas(){
+  const r = bgcv.getBoundingClientRect();
+  bgcv.width = Math.max(1,Math.floor(r.width));
+  bgcv.height = Math.max(1,Math.floor(r.height));
+}
+function seedMotes(n){
+  motes = [];
+  for(let i=0;i<n;i++) motes.push({
+    x:Math.random()*bgcv.width, y:Math.random()*bgcv.height,
+    v:.15+Math.random()*.55, s:Math.random()<.3?3:2, a:.25+Math.random()*.55
+  });
+}
+function tick(){
+  bgx.clearRect(0,0,bgcv.width,bgcv.height);
+  for(const m of motes){
+    bgx.globalAlpha = m.a;
+    bgx.fillStyle = moteColor;
+    bgx.fillRect(m.x|0, m.y|0, m.s, m.s);
+    if(!reduced){
+      if(moteMode==="rain"){ m.y += m.v*2.4; if(m.y>bgcv.height){m.y=-4;m.x=Math.random()*bgcv.width;} }
+      else { m.y -= m.v; m.x += Math.sin((m.y+m.v*90)/28)*.35;
+             if(m.y< -4){m.y=bgcv.height+4;m.x=Math.random()*bgcv.width;} }
+    }
+  }
+  bgx.globalAlpha = 1;
+  requestAnimationFrame(tick);
+}
+window.addEventListener("resize", ()=>{ sizeCanvas(); seedMotes(motes.length||40); });
+
+/* =========================================================
+   3. STATE + DOM
+   ========================================================= */
+const S = { i:0, insight:0, first:{}, unlocked:new Set(["many"]) };
+const el = id => document.getElementById(id);
+const stage=el("stage"), actorsEl=el("actors"), sceneryEl=el("scenery"),
+      dialog=el("dialog"), speakerEl=el("speaker"), textEl=el("text"), cursorEl=el("cursor"),
+      menu=el("menu"), menuQ=el("menuQ"), menuOpts=el("menuOpts"),
+      panel=el("panel"), titleEl=el("title"), chapterEl=el("chapter"),
+      insightEl=el("insight"), flashEl=el("flash"), dmgEl=el("dmg");
+
+let waiting = null;
+let typer = null, fullSegs = null;
+
+function setInsight(n){ S.insight = n; insightEl.textContent = "INSIGHT " + n; }
+function award(key, amt){
+  if(S.first[key]) return;
+  S.first[key] = true; setInsight(S.insight + amt);
+}
+
+/* ---- rich text ---- */
+function parse(t){
+  const out = [];
+  const re = /(«[^»]*»|\*[^*]*\*)/g;
+  let last = 0, m;
+  while((m = re.exec(t))){
+    if(m.index > last) out.push({t:t.slice(last,m.index), c:""});
+    const tok = m[0];
+    out.push(tok[0]==="«" ? {t:tok.slice(1,-1), c:"f"} : {t:tok.slice(1,-1), c:"em"});
+    last = re.lastIndex;
+  }
+  if(last < t.length) out.push({t:t.slice(last), c:""});
+  return out;
+}
+function renderFull(segs, node){
+  node.textContent = "";
+  for(const s of segs){
+    if(s.c){ const sp=document.createElement("span"); sp.className=s.c; sp.textContent=s.t; node.appendChild(sp); }
+    else node.appendChild(document.createTextNode(s.t));
+  }
+}
+function typeOut(segs, node, done){
+  node.textContent = "";
+  let si=0, ci=0, cur=null, blipN=0;
+  clearInterval(typer);
+  typer = setInterval(()=>{
+    if(si>=segs.length){ clearInterval(typer); typer=null; done && done(); return; }
+    const seg = segs[si];
+    if(ci===0){
+      if(seg.c){ cur=document.createElement("span"); cur.className=seg.c; node.appendChild(cur); }
+      else { cur=document.createTextNode(""); node.appendChild(cur); }
+    }
+    const n = Math.min(seg.t.length, ci + 2);
+    const chunk = seg.t.slice(ci, n);
+    if(cur.nodeType===3) cur.nodeValue = seg.t.slice(0,n); else cur.textContent = seg.t.slice(0,n);
+    ci = n;
+    if((blipN++ % 3 === 0) && /\S/.test(chunk)) sfx.blip();
+    if(ci>=seg.t.length){ si++; ci=0; }
+  }, reduced ? 1 : 14);
+}
+
+function say(who, txt, nar){
+  speakerEl.textContent = who || "";
+  textEl.className = nar ? "nar" : "";
+  cursorEl.classList.remove("on");
+  fullSegs = parse(txt);
+  waiting = "text";
+  highlightSpeaker(who);
+  typeOut(fullSegs, textEl, ()=>{ waiting="click"; cursorEl.classList.add("on"); });
+}
+function finishText(){
+  if(typer){ clearInterval(typer); typer=null; }
+  renderFull(fullSegs, textEl);
+  waiting = "click"; cursorEl.classList.add("on");
+}
+
+/* ---- actors ---- */
+let castNow = {};
+function setCast(cfg){
+  actorsEl.innerHTML = "";
+  castNow = cfg || {};
+  const order = ["left","center","right"];
+  for(const pos of order){
+    const c = castNow[pos];
+    if(!c) continue;
+    const wrap = document.createElement("div");
+    wrap.className = "actor bob";
+    wrap.dataset.name = c.name || "";
+    const sc = c.scale || 7;
+    wrap.appendChild(spriteCanvas(c.sprite, sc));
+    if(c.name){
+      const tag = document.createElement("div");
+      tag.className="nameTag"; tag.textContent=c.name;
+      wrap.appendChild(tag);
+    }
+    actorsEl.appendChild(wrap);
+    requestAnimationFrame(()=>wrap.classList.add("in"));
+  }
+}
+function highlightSpeaker(who){
+  [...actorsEl.children].forEach(a=>{
+    a.classList.toggle("speaking", !!who && a.dataset.name===who);
+    a.classList.toggle("bob", !(!!who && a.dataset.name===who));
+  });
+}
+function shakeStage(){ const s=el("screen"); s.classList.add("shake"); setTimeout(()=>s.classList.remove("shake"),340); }
+function flash(){ flashEl.classList.add("go"); setTimeout(()=>flashEl.classList.remove("go"),320); }
+function popDamage(n){ dmgEl.textContent=n; dmgEl.classList.remove("go"); void dmgEl.offsetWidth; dmgEl.classList.add("go"); }
+
+/* ---- backdrops ---- */
+const BD = {
+  village:{cls:"bd-village", mote:"#ffd79a", mode:"drift", n:36, ridge:"#2a1638", mus:"village"},
+  house:{cls:"bd-house", mote:"#9fe8ff", mode:"rain", n:52, ridge:"#04202a", mus:"house"},
+  lair:{cls:"bd-lair", mote:"#ff8fb4", mode:"drift", n:34, ridge:"#210a1c", mus:"lair"},
+  ladder:{cls:"bd-ladder", mote:"#cbb4ff", mode:"drift", n:44, ridge:"#120c30", mus:"ladder"},
+  forge:{cls:"bd-forge", mote:"#c9cfe8", mode:"drift", n:40, ridge:"#0a0a22", mus:"forge"},
+  judge:{cls:"bd-judge", mote:"#7ff0d8", mode:"rain", n:70, ridge:"#02181e", mus:"battle"},
+  white:{cls:"bd-white", mote:"#8a84c0", mode:"drift", n:26, ridge:"#b9b1dd", mus:"ending"}
+};
+function setBackdrop(id){
+  const b = BD[id] || BD.village;
+  stage.className = b.cls;
+  if(b.mus && b.mus !== curTrack) playTrack(b.mus);
+  moteColor = b.mote; moteMode = b.mode;
+  sizeCanvas(); seedMotes(b.n);
+  sceneryEl.innerHTML =
+    '<svg class="ridge" viewBox="0 0 160 40" preserveAspectRatio="none" aria-hidden="true">' +
+    '<path fill="'+b.ridge+'" d="M0 40 V26 l10-8 8 8 12-14 10 10 14-6 12 12 10-10 14 8 12-12 12 12 10-6 16 10 H160 V40 Z"/></svg>';
+}
+
+/* =========================================================
+   4. MENUS
+   ========================================================= */
+function showMenu(q, opts, onPick){
+  menuQ.textContent = q;
+  menuOpts.innerHTML = "";
+  opts.forEach((o,idx)=>{
+    const b = document.createElement("button");
+    b.type="button"; b.className="opt";
+    if(o.html){ const w=document.createElement("span"); w.className="oi"; w.innerHTML=o.html; b.appendChild(w); }
+    else b.textContent = o.a;
+    b.addEventListener("click", ev=>{
+      ev.stopPropagation();
+      if(b.classList.contains("dead")) return;
+      onPick(o, idx, b);
+    });
+    menuOpts.appendChild(b);
+  });
+  menu.classList.add("on");
+  waiting = null;
+  cursorEl.classList.remove("on");
+}
+function hideMenu(){ menu.classList.remove("on"); }
+
+/* =========================================================
+   4b. VECTOR RENDERING — the bundles and the rungs
+   ========================================================= */
+/* pattern: array of length T. 0 => m₀ʲ, 1 => m₁ʲ, "x" => the sealed challenge, "?" => a letter nobody named */
+function vecChips(pat, movedSlot){
+  return '<span class="vec">' + pat.map((s,j)=>{
+    const moved = (movedSlot === j+1) ? " moved" : "";
+    if(s === "x") return '<span class="vc vx'+moved+'">c</span>';
+    if(s === "?") return '<span class="vc bad'+moved+'">m₂'+SUP[j+1]+'</span>';
+    return '<span class="vc v'+s+moved+'">m'+SUB[s]+SUP[j+1]+'</span>';
+  }).join("") + '</span>';
+}
+function rungPattern(i){ return Array.from({length:T},(_,j)=> j < i ? 1 : 0); }
+
+/* =========================================================
+   5. THE SCRIPT
+   ========================================================= */
+const script = [
+  /* ---------------- PROLOGUE ---------------- */
+  {t:"chapter", name:"序章 · THE SEASON OF MANY LETTERS"},
+  {t:"bg", id:"village"},
+  {t:"cast", cfg:{left:{sprite:"kaede",name:"Kaede",scale:7}, right:{sprite:"elder",name:"Elder Kaji",scale:7}}},
+  {t:"nar", text:"A year has passed. The seal of Nagara holds, and the village has grown careless with it."},
+  {t:"say", who:"Elder Kaji", text:"Kaede. You proved the seal safe for *one* letter. The council has been sending four a season under the same key."},
+  {t:"say", who:"Kaede", text:"Four? But the proof I gave you says nothing about four. It says one letter, one key, one eavesdropper."},
+  {t:"say", who:"Elder Kaji", text:"It says exactly what it says, and not a syllable more. That is the discipline. So: does safe-for-one mean safe-for-four?"},
+  {t:"say", who:"Kaede", text:"...I want to say yes. I don't have a reason to say yes."},
+  {t:"say", who:"Elder Kaji", text:"Then let me show you a seal where the answer is *no*. Bring the old press — the one with no salt-well."},
+  {t:"twice"},
+  {t:"unlock", key:"many"},
+  {t:"ask", q:"THE OLD PRESS IS RUINED BY TWO LETTERS. WHY?",
+    opts:[
+      {a:"It is a function: the same letter always gets the same seal. So repeated letters are visible in the bundle without reading a word of it.", ok:true,
+       r:"Elder Kaji taps the press with his staff. \"He never decrypts. He asks one question — *are these two seals the same?* — and the bundle answers him. A deterministic seal cannot survive a second letter.\"", key:"det", pts:10},
+      {a:"Because four letters give the enemy four times as much ciphertext to analyse.", ok:false,
+       r:"\"Volume is not the wound. Look again at the *two* seals in bundle zero and tell me what he sees.\""},
+      {a:"Because the key is only n bits and four letters are longer than that.", ok:false,
+       r:"\"Length is a different worry, and an unbounded one. He is not unbounded. He is quick, and he is looking at a pattern.\""}
+    ]},
+  {t:"say", who:"Elder Kaji", text:"So the new press has a *salt-well*. Every sealing draws fresh salt, and no two seals ever match — not even for the same letter, sealed twice in the same hour."},
+  {t:"save"},
+
+  /* ---------------- CH1: the seal-house ---------------- */
+  {t:"chapter", name:"第一章 · THE SEAL-HOUSE"},
+  {t:"bg", id:"house"},
+  {t:"cast", cfg:{left:{sprite:"kaede",name:"Kaede",scale:6}, center:{sprite:"press",name:"The Seal-house",scale:7}, right:{sprite:"elder",name:"Elder Kaji",scale:6}}},
+  {t:"nar", text:"The Seal-house stands open on the road. A queue of strangers waits with letters they wrote themselves."},
+  {t:"say", who:"Kaede", text:"Master — the house is sealing letters for *anyone*. Merchants. Travellers. Anyone could be his agent."},
+  {t:"say", who:"Elder Kaji", text:"Anyone is. That is deliberate. Bring the house any letter you like, as often as you like, and it will seal it with the village key and hand it back."},
+  {t:"say", who:"Kaede", text:"That is madness."},
+  {t:"say", who:"Elder Kaji", text:"That is the *strongest promise we know how to make*. If the enemy may dictate our letters word for word and still learn nothing, then nothing weaker can hurt us. We call it security under *chosen-plaintext attack*."},
+  {t:"oracle"},
+  {t:"unlock", key:"cpa"},
+  {t:"ask", q:"THE HOUSE SEALS ANYTHING. WHO DOES THAT ACTUALLY HELP MOST?",
+    opts:[
+      {a:"Us — because a machine we build can use the house to manufacture ciphertexts it has no key for.", ok:true,
+       r:"The Elder allows himself a thin smile. \"Remember that sentence. It is the hinge of everything that follows. The gate we opened for the enemy is a gate *we* may walk through.\"", key:"oracle", pts:10},
+      {a:"The enemy — it is a pure gift to him and we accept the cost.", ok:false,
+       r:"\"It is a cost we accept, yes. But you are a Reductionist now. Ask what it gives the *machine*, not what it gives the demon.\""},
+      {a:"Nobody — it is ceremony.", ok:false,
+       r:"\"Then why did I walk you three miles to look at it? Something in that queue is a tool. Find it.\""}
+    ]},
+  {t:"save"},
+
+  /* ---------------- CH2: the boast ---------------- */
+  {t:"chapter", name:"第二章 · THE BOAST OF THE BUNDLE"},
+  {t:"bg", id:"lair"},
+  {t:"cast", cfg:{left:{sprite:"kaede",name:"Kaede",scale:6}, center:{sprite:"bundle",name:"The Bundle",scale:5}, right:{sprite:"demon",name:"Adversarius",scale:8}}},
+  {t:"nar", text:"He is sitting on the same milestone. He has been waiting a year, and looks as though it cost him nothing."},
+  {t:"say", who:"Adversarius", text:"Little Reductionist. You beat me at *one letter*. Congratulations. I have come back with *four*."},
+  {t:"say", who:"Adversarius", text:"New game. I name two *bundles* — «M₀ = (m₀¹,m₀²,m₀³,m₀⁴)» and «M₁ = (m₁¹,m₁²,m₁³,m₁⁴)». You flip one coin «b» and seal the whole of «M_b», letter by letter, one key throughout."},
+  {t:"say", who:"Adversarius", text:"I look at the four seals together and I name your coin. And yes — I keep my errands at the Seal-house the whole while."},
+  {t:"unlock", key:"bundle"},
+  {t:"say", who:"Adversarius", text:"My boast: I win with probability «1/2 + δ/2», where the gap «δ» is no whisper. Four letters is four times the surface, and I only need one crack."},
+  {t:"cast", cfg:{left:{sprite:"kaede",name:"Kaede",scale:6}, center:{sprite:"elder",name:"Elder Kaji",scale:6}, right:{sprite:"demon",name:"Adversarius",scale:8}}},
+  {t:"ask", q:"HIS BUNDLES DIFFER IN EVERY ONE OF THE FOUR SLOTS. WHY NOT INSIST HE PICK BUNDLES THAT DIFFER IN JUST ONE?",
+    opts:[
+      {a:"Because he chooses the bundles, not us. A theorem that only covers easy bundles is not a theorem about him.", ok:true,
+       r:"\"*He chooses.*\" The Elder does not raise his voice. \"Every proof you will ever write is quantified over every adversary there is, including the one who has read your proof and is choosing to spite it. You may not legislate his hand. You may only build a machine that survives it.\"", key:"whynot", pts:20},
+      {a:"We could — it would be a shorter proof and the general case follows by symmetry.", ok:false,
+       r:"\"By *what* symmetry? Name it. There is none. Four differences are not one difference wearing a hat.\""},
+      {a:"Because bundles differing in one slot are impossible to seal.", ok:false,
+       r:"\"They seal perfectly well. They are simply not the bundles he handed you.\""},
+      {a:"Because our machine can only handle bundles that differ everywhere.", ok:false,
+       r:"\"It is the opposite, and that is precisely our problem. Our machine can move *one* slot. He moves four.\""}
+    ]},
+  {t:"say", who:"Elder Kaji", text:"Here is the shape of the trouble, Kaede. We will hire him again — that much is unchanged. But the Fountain of Judgment plays the *one-letter* game."},
+  {t:"say", who:"Elder Kaji", text:"It takes two letters from us, seals *one* of them, and hands back *one* sealed letter. One. He wants four, and the four he wants differ in all four places."},
+  {t:"say", who:"Kaede", text:"So whatever bundle I hand him, my two worlds can differ in exactly one slot. His differ in four. The two ends don't meet."},
+  {t:"say", who:"Elder Kaji", text:"*Now* you see it. There is one thing in the world that joins two ends that do not meet."},
+  {t:"unlock", key:"hybrid"},
+  {t:"save"},
+
+  /* ---------------- CH3: the ladder ---------------- */
+  {t:"chapter", name:"第三章 · THE LADDER"},
+  {t:"bg", id:"ladder"},
+  {t:"cast", cfg:{center:{sprite:"bundle",name:"The Ladder",scale:6}}},
+  {t:"nar", text:"The Elder draws in the dust: two bundles, one above the other, and a great deal of empty space between them."},
+  {t:"say", who:"Elder Kaji", text:"At the bottom, «H₀» — every slot from «M₀». At the top, «H₄» — every slot from «M₁». Those are the two worlds he is judged in."},
+  {t:"say", who:"Elder Kaji", text:"Between them we will lay *rungs*. Each rung is a bundle he could genuinely be handed. And each rung must sit exactly *one letter* above the one below it — because one letter is all your machine can move."},
+  {t:"ladder"},
+  {t:"say", who:"Elder Kaji", text:"Four rungs. Four steps. And here is the whole trick, said once: however far apart the two ends are, the *steps add up to the distance between them*. Consecutive differences always do."},
+  {t:"say", who:"Kaede", text:"So if he separates the ends by «δ», then the four steps sum to «δ»..."},
+  {t:"say", who:"Elder Kaji", text:"...and *some* step is worth at least «δ/4». You do not know which. You do not need to. Draw a rung out of a hat and you collect the average, which is «δ/4» exactly."},
+  {t:"say", who:"Elder Kaji", text:"That is the toll, Kaede. The ladder charges you a factor of «t» to cross. Four letters, a quarter of the gap. Pay it — it is only a *polynomial* toll, and a polynomial times a whisper is still a whisper."},
+  {t:"save"},
+
+  /* ---------------- CH4: the forge ---------------- */
+  {t:"chapter", name:"第四章 · THE FORGE, AGAIN"},
+  {t:"bg", id:"forge"},
+  {t:"cast", cfg:{center:{sprite:"machine",name:"A′",scale:9}}},
+  {t:"nar", text:"The old chassis has been rebuilt. Six sockets again — but the sockets are not the ones you filled a year ago."},
+  {t:"say", who:"Elder Kaji", text:"The machine is «A′». It plays the *one-letter* game at the Fountain, and it seats Adversarius inside itself to do so."},
+  {t:"say", who:"Elder Kaji", text:"Be careful. One instruction that was *right* in the old machine is a trap in this one. Find it, and you will understand both proofs."},
+  {t:"assemble"},
+  {t:"say", who:"Elder Kaji", text:"There it is. In the old forge, «D» flipped its *own* coin and scored him against it. Here the Fountain holds the coin and «A′» never sees it — so «A′» does not score him. It *relays* him. His answer is its answer."},
+  {t:"unlock", key:"machine"},
+  {t:"save"},
+
+  /* ---------------- CH5: judgment ---------------- */
+  {t:"chapter", name:"第五章 · THE FOUNTAIN OF JUDGMENT"},
+  {t:"bg", id:"judge"},
+  {t:"cast", cfg:{center:{sprite:"machine",name:"A′",scale:8}}},
+  {t:"nar", text:"A rung is drawn from the hat: «i». Nobody is told which — not the Fountain, not Adversarius, not you."},
+  {t:"say", who:"Adversarius", text:"Four letters, mortal. Hand them over and I will name your coin."},
+  {t:"battle"},
+  {t:"save"},
+
+  /* ---------------- ENDING ---------------- */
+  {t:"chapter", name:"終章 · Q.E.D."},
+  {t:"bg", id:"white"},
+  {t:"cast", cfg:{left:{sprite:"kaede",name:"Kaede",scale:7}, right:{sprite:"elder",name:"Elder Kaji",scale:7}}},
+  {t:"say", who:"Adversarius", text:"A *quarter*? You cut me into quarters and one quarter still breaks the one-letter seal, which cannot break, which means—"},
+  {t:"nar", text:"He stops. He is doing the arithmetic, and the arithmetic is doing him."},
+  {t:"say", who:"Kaede", text:"Four times a whisper is a whisper. That's all the ladder cost us."},
+  {t:"say", who:"Elder Kaji", text:"Say it back to me properly, Reductionist. Not as a story."},
+  {t:"say", who:"Kaede", text:"Any bundle-adversary with gap «δ» yields a one-letter adversary with gap «δ/t», built from one call to him and «t−1» errands to the Seal-house. The one-letter seal is safe, so «δ/t» is negligible, so «δ» is negligible — because «t» is only a polynomial."},
+  {t:"say", who:"Elder Kaji", text:"And the sentence you must never leave off: *the Seal-house is what made it possible*. Without it the machine could not have built a single rung, and the theorem is simply false — as the old press showed you on the first morning."},
+  {t:"unlock", key:"pitfalls"},
+  {t:"ending"}
+];
+
+/* =========================================================
+   5b. THE FORGE — chassis, cards, hints
+   ========================================================= */
+const CHASSIS = [
+  "Draw a rung i uniformly from {1,…,4}, before anything else happens. Tell no one.",
+  "Summon Adversarius inside the machine. Let him name his two bundles, M₀ and M₁.",
+  "Submit the single pair (m₀ⁱ, m₁ⁱ) to the Fountain. Take back the one sealed letter c.",
+  "Send errands to the Seal-house: seal m₁ʲ for every j below i, and m₀ʲ for every j above i.",
+  "Assemble the bundle with c in slot i, and hand all four seals to Adversarius.",
+  "Output his guess, unchanged. Do not grade him — relay him."
+];
+const CARDS = [
+  {ord:1, text:"Draw a rung i uniformly from {1,…,4} before anything else. Tell no one.",
+   ok:"The hat is shaken. The machine does not know where his crack is, and has just stopped needing to — a blind draw collects the average, and the average is δ/t."},
+  {ord:2, text:"Summon Adversarius inside the machine. Let him name his two bundles, M₀ and M₁.",
+   ok:"He names eight letters at once, bored. The machine does not care what they are — only that they are his, and that matching slots have matching lengths."},
+  {ord:3, text:"Submit the single pair (m₀ⁱ, m₁ⁱ) to the Fountain. Take back the one sealed letter c.",
+   ok:"Two letters in, one seal out. That seal is the only thing in the whole bundle whose contents the machine does not know — which is exactly why it is the only thing that can carry the Fountain's hidden coin."},
+  {ord:4, text:"Send errands to the Seal-house: seal m₁ʲ for j below i, and m₀ʲ for j above i.",
+   ok:"Three errands, three seals, no key. *This is the step the old proof could not have taken.* Without an open Seal-house there is no way to fill a slot you were not dealt."},
+  {ord:5, text:"Assemble the bundle with c in slot i, and hand all four seals to Adversarius.",
+   ok:"The bundle closes. Below the rung, M₁; above it, M₀; and at the rung, a seal whose letter was chosen by a coin nobody in the room has seen."},
+  {ord:6, text:"Output his guess, unchanged. Do not grade him — relay him.",
+   ok:"The output lamp wakes. A′ is right exactly when Adversarius is right — which is the only honest thing it can do, because the coin it is guessing is not its own."},
+
+  {bad:"The Fountain plays the one-letter game. It deals one seal, once, in one experiment. Ask it for four and you are no longer playing the game whose safety you are allowed to assume — you are assuming the very thing you set out to prove."},
+  {bad:"The Fountain accepts two *letters*, not two *bundles*. Handing it M₀ and M₁ assumes it already plays the bundle game safely. That is the theorem. You cannot spend it before you have earned it."},
+  {bad:"You have no key. If you had one you would not be reducing anything — you would simply read his mail. The Seal-house exists precisely so that a machine with no key can still produce a seal."},
+  {bad:"Then your two worlds are H₀ and 'H₀ with one slot swapped' — for every choice of i. Those are four separate comparisons that all start from the same place, and nothing makes them add up to the distance between the ends. A chain works because each link ends where the next begins."},
+  {bad:"That was the old machine, and it was right there — because *there* D built the ciphertext itself and knew the coin. Here the Fountain holds the coin and never shows it. A machine cannot score an answer against a bit it does not have. It can only pass the answer along."}
+];
+CARDS[6].text = "Ask the Fountain of Judgment for four sealed letters instead of one.";
+CARDS[7].text = "Submit the whole bundles (M₀, M₁) to the Fountain as your pair.";
+CARDS[8].text = "Seal the other three slots yourself, using the village key k.";
+CARDS[9].text = "Fill every slot except i with m₀ʲ, from the Seal-house.";
+CARDS[10].text = "Flip your own coin b, and output ONE if his guess equals it.";
+
+const HINTS = [
+  "Before he is summoned, before anything is sealed — the machine must commit to a rung, and it must be a blind draw.",
+  "There is no bundle to build until he has named what goes in it. Two bundles, his choice, matching lengths.",
+  "The Fountain is where the hidden coin lives. Go to it with exactly what it accepts: two letters. Which two? The ones at your rung.",
+  "Three slots are still empty and you have no key. Who in Nagara will seal a letter for anyone who asks?",
+  "Now close the bundle: the Fountain's seal at the rung, your errands everywhere else, and hand it over.",
+  "You do not know the coin. So you cannot say whether he was right. What is the only thing left to do with his answer?"
+];
+
+/* =========================================================
+   5c. THE LADDER PUZZLE
+   ========================================================= */
+/* For each step, one legal rung (a single-slot move) and two illegal ones. */
+const LADDER_STEPS = [
+  { good:[1,0,0,0],
+    bad:[
+      {pat:[1,1,0,0], why:"Two letters change at once. Your machine holds *one* sealed letter from the Fountain — it can move one slot and no more. A rung it cannot build is not a rung."},
+      {pat:[0,0,0,0], why:"Nothing changed. A free step is a worthless step: he is handed the same bundle twice, so there is no gap here for anyone to exploit."}
+    ]},
+  { good:[1,1,0,0],
+    bad:[
+      {pat:["?",1,0,0], why:"He never named that letter. A rung must be a bundle he could genuinely be dealt — invent a letter and you have walked out of his game, and his boast no longer applies to you."},
+      {pat:[1,1,1,0], why:"That is two letters past the rung below. It is a fine bundle and it will be a fine rung — but not this one. Every step is a single slot, or the machine cannot build it."}
+    ]},
+  { good:[1,1,1,0],
+    bad:[
+      {pat:[1,0,1,0], why:"Slot 2 fell back to M₀ while slot 3 moved up. Two slots changed, in opposite directions. Still two."},
+      {pat:[1,1,1,1], why:"That is the top of the ladder. Reaching it in one step is exactly the jump you cannot make — it is the whole reason the ladder exists."}
+    ]},
+  { good:[1,1,1,1],
+    bad:[
+      {pat:[1,1,0,1], why:"Slot 3 slipped back to M₀ as slot 4 moved up. Two changes again. The ladder does not permit trades."},
+      {pat:[1,1,1,"?"], why:"A letter from neither bundle, at the very last slot. The top rung must be «M₁» itself, or the chain does not reach the world he is actually judged in."}
+    ]}
+];
+
+/* =========================================================
+   5d. THE BATTLE
+   ========================================================= */
+const BATTLE = [
+  { banner:"WORLD ZERO — THE FOUNTAIN'S COIN IS 0",
+    intro:"The Fountain seals «m₀ⁱ» and hands it back. A′ drops it into slot «i» and closes the bundle.",
+    turns:[
+      { q:"WHAT BUNDLE REACHES ADVERSARIUS?",
+        opts:[
+          {a:"H₍ᵢ₋₁₎ — slots below the rung from M₁, slot i now from M₀, slots above from M₀.", ok:true, dmg:160,
+           r:"Exactly the rung below. «A′» did not build that on purpose — it built the only bundle it could, and the Fountain's coin decided which rung it landed on."},
+          {a:"H₀ — every slot from M₀.", ok:false,
+           r:"Only if the rung happened to be the first. The slots below «i» were filled from «M₁» at the Seal-house before the Fountain was ever visited."},
+          {a:"Nothing he recognises — he refuses to play.", ok:false,
+           r:"He cannot refuse what he cannot detect. Four seals, one key, fresh salt on each: the bundle has exactly the shape his contract promised."}
+        ]},
+      { q:"SO HOW OFTEN IS A′ CORRECT IN THIS WORLD?",
+        opts:[
+          {a:"Whenever he says 0 — probability 1 − p₍ᵢ₋₁₎, since A′ relays his answer without touching it.", ok:true, dmg:160,
+           r:"«p₍ᵢ₋₁₎» is how often he says ONE when handed that rung. So he says ZERO the rest of the time, and A′ says it with him."},
+          {a:"Exactly half — he learns nothing from a rung.", ok:false,
+           r:"He may learn a great deal from a rung. That is the entire hope of the argument: «A′» wants him to have an opinion, and wants to borrow it."},
+          {a:"1/2 + δ/2, his boast.", ok:false,
+           r:"His boast is about the two *ends* of the ladder. One rung is one step. Do not lend him more than he claimed."}
+        ]}
+    ],
+    conclude:"bit 0  ⇒  A sees H(i−1)   ·   Pr[A′ right] = 1 − p(i−1)",
+    line:"The needle does not move yet. One world proves nothing; it is the difference between two that carries the signal."
+  },
+  { banner:"WORLD ONE — THE FOUNTAIN'S COIN IS 1",
+    intro:"Same rung. Same three errands. The Fountain seals «m₁ⁱ» this time — and nothing else in the bundle has changed.",
+    turns:[
+      { q:"WHAT CHANGED BETWEEN THE TWO WORLDS?",
+        opts:[
+          {a:"Exactly one letter — slot i. The bundle is now Hᵢ, one rung above.", ok:true, dmg:180,
+           r:"The three errands were sent to the Seal-house *before* the coin was flipped. They could not have heard about it. One slot moved, and it moved by exactly one rung."},
+          {a:"The whole bundle became M₁.", ok:false,
+           r:"Only slot «i» touched the Fountain. Everything above the rung is still «M₀» and always was."},
+          {a:"Nothing — the seals all look like noise either way.", ok:false,
+           r:"They look like noise to *you*. He was hired precisely because they do not look like noise to him."}
+        ]},
+      { q:"PUT THE TWO WORLDS TOGETHER. WHAT IS A′'s SUCCESS RATE AT THIS RUNG?",
+        opts:[
+          {a:"½(1 − p₍ᵢ₋₁₎) + ½·pᵢ = ½ + gᵢ/2, where gᵢ = pᵢ − p₍ᵢ₋₁₎ is this rung's own gap.", ok:true, dmg:200,
+           r:"The coin is fair, so each world is worth half. The «½» is what a blind guess earns; the «gᵢ/2» is everything he adds — half his gap, because he only cashes it on the half of the runs the coin runs his way."},
+          {a:"1/2 + δ/2 — the same rate he gets.", ok:false,
+           r:"That is the climb of the whole ladder. You are standing on one rung of it."},
+          {a:"pᵢ − p₍ᵢ₋₁₎, the gap itself.", ok:false,
+           r:"That is the gap, not the win rate. A rate must start at a half — a blind machine is right half the time and cannot be robbed of that."}
+        ]}
+    ],
+    conclude:"Pr[ A′ wins | rung i ]  =  ½ + g(i)/2",
+    bar:"rung",
+    line:"The lower needle lifts off one half — by half of one rung's gap. A small thing. There are four of them."
+  },
+  { banner:"THE STRIKE — SUMMING THE LADDER",
+    intro:"Four rungs. Four gaps. And a rung drawn blind from a hat before any of this began.",
+    turns:[
+      { q:"A′ NEVER LEARNED WHERE HIS CRACK WAS. WHAT DOES IT COLLECT?",
+        opts:[
+          {a:"½ + δ/2t — the four gaps telescope to δ, so their average is δ/t, and a uniform draw collects the average.", ok:true, dmg:999,
+           r:"«(1/t)·Σ(pᵢ − p₍ᵢ₋₁₎) = (p_t − p₀)/t = δ/t». The sum collapses because each rung is subtracted once and added once. That collapse is the entire hybrid argument, and it just paid for the crossing."},
+          {a:"½ + δ/2 — every rung must carry an equal share of δ.", ok:false,
+           r:"They need not. He may hide the whole of «δ» on one rung and leave the others flat. The *average* is «δ/t» regardless — which is exactly why the blind draw is safe."},
+          {a:"Nothing, unless the hat gives it the right rung.", ok:false,
+           r:"It does not need the right rung. It needs the average, and an average is what a uniform draw buys you. That is why the machine may be ignorant and still correct."}
+        ]}
+    ],
+    conclude:"δ ≤ 2t · (A′'s edge)  ·  and A′'s edge is negligible",
+    bar:"whole",
+    line:"Two hatched bands now. The wide one is his — «δ/2». The narrow one is yours — «δ/2t», thinner by exactly the length of the ladder. The Fountain caps the narrow one at a whisper. Multiply a whisper by four and you have a whisper. His wide band was never wide."
+  }
+];
+
+/* =========================================================
+   6. CODEX
+   ========================================================= */
+const CODEX = [
+ {key:"many", name:"MANY LETTERS", html:`
+  <h3>One key, many letters</h3>
+  <p>Everything you proved last year was about a <em>single</em> challenge ciphertext. Real correspondence is not single. The definition has to be restated, and restating it is not a formality — the answer genuinely changes for some schemes.</p>
+  <h4>THE DETERMINISTIC DISASTER</h4>
+  <p>Let <code>Enc</code> be a function of the key and message alone (the old press: no salt). Then</p>
+  <div class="math">M₀ = (m, m)        M₁ = (m, m′),  m ≠ m′
+
+A outputs 0  iff  c¹ = c²      →   Pr[success] = 1</div>
+  <p>No decryption, no cleverness, no advantage-epsilon: a certainty, at two letters. <code>Enc_k(m) = G(k) ⊕ m</code> — the very scheme of the first game — dies here.</p>
+  <h4>THE COROLLARY</h4>
+  <p>Any scheme secure for multiple encryptions must be <em>randomized</em> (or stateful). Determinism is not a weakness to be patched; it is fatal at <code>t = 2</code>.</p>`},
+
+ {key:"cpa", name:"THE SEAL-HOUSE", html:`
+  <h3>Chosen-plaintext attack — the encryption oracle</h3>
+  <p>The adversary is given oracle access to <code>Enc_k(·)</code>: it may submit any messages it likes, as often as it likes, and receive genuine ciphertexts under the real key — before and after seeing its challenge.</p>
+  <div class="math">PrivK^cpa_{A,Π}(n):
+  1. k ← Gen(1ⁿ)
+  2. A^{Enc_k(·)}(1ⁿ) outputs m₀, m₁  with |m₀| = |m₁|
+  3. b ← {0,1};  c ← Enc_k(m_b)
+  4. A^{Enc_k(·)}(c) outputs b′
+  5. Experiment = 1 iff b′ = b</div>
+  <p><strong>Π is CPA-secure</strong> if every PPT <code>A</code> satisfies <code>Pr[...] ≤ 1/2 + negl(n)</code>.</p>
+  <h4>WHY THE ORACLE IS A GIFT TO US</h4>
+  <p>The oracle appears in the definition to <em>strengthen</em> the adversary. But a reduction inherits it: a machine holding no key can still manufacture ciphertexts. That is what makes this game's ladder buildable at all, and it is the exact reason the same theorem is <em>false</em> for eavesdropping security.</p>`},
+
+ {key:"bundle", name:"THE BUNDLE GAME", html:`
+  <h3>CPA security for multiple encryptions</h3>
+  <div class="math">PrivK^mult-cpa_{A,Π}(n):
+  1. k ← Gen(1ⁿ)
+  2. A^{Enc_k(·)}(1ⁿ) outputs two vectors
+       M₀ = (m₀¹,…,m₀ᵗ)   M₁ = (m₁¹,…,m₁ᵗ)
+     with |m₀ʲ| = |m₁ʲ| for every j
+  3. b ← {0,1};  cʲ ← Enc_k(m_bʲ) for each j
+  4. A^{Enc_k(·)}(c¹,…,cᵗ) outputs b′
+  5. Experiment = 1 iff b′ = b</div>
+  <p><code>A</code> is PPT, so <code>t = t(n)</code> is polynomial. That is not bookkeeping — see COMMON TRAPS.</p>
+  <h4>WHERE ½ + δ/2 COMES FROM</h4>
+  <p>Write <code>p₀</code> and <code>p_t</code> for how often <code>A</code> outputs 1 in the two worlds, and define the gap <code>δ := p_t − p₀</code>. The coin is fair, so condition on it: <code>A</code> is right when it says 0 in the first world and 1 in the second.</p>
+  <div class="math">Pr[A wins] = ½·(1 − p₀) + ½·p_t
+           = ½ + (p_t − p₀)/2
+           = ½ + δ/2</div>
+  <p>The <code>½</code> is the coin — a blind guess earns it. The <code>δ/2</code> is what <code>A</code> adds: half its gap, because it only converts the gap on the half of the runs the coin runs its way. The same identity, applied to two neighbouring rungs, gives <code>½ + gᵢ/2</code>.</p>`},
+
+ {key:"hybrid", name:"THE LADDER", html:`
+  <h3>Hybrids and the telescoping sum</h3>
+  <div class="math">H_i : ( Enc(m₁¹),…,Enc(m₁ⁱ), Enc(m₀^{i+1}),…,Enc(m₀ᵗ) )
+
+  H₀  = the challenge when b = 0
+  H_t = the challenge when b = 1
+  p_i := Pr[ A outputs 1 in H_i ]</div>
+  <p>Consecutive rungs differ in exactly one slot — the only shape a one-message reduction can manufacture. And consecutive differences always sum to the difference of the ends:</p>
+  <div class="math">p_t − p₀  =  Σ_{i=1..t} ( p_i − p_{i−1} )</div>
+  <h4>THE AVERAGING STEP</h4>
+  <p>If the ends are <code>δ</code> apart, some single rung must be worth at least <code>δ/t</code>. You cannot locate it — but you do not have to. Drawing <code>i</code> uniformly collects the <em>average</em> of the rung gaps, which is <code>δ/t</code> whatever the distribution: all on one rung, spread evenly, or anything between.</p>
+  <h4>THE ORDER DOES NOT MATTER</h4>
+  <p>Bottom-up is only the tidiest chain. Any sequence of single-slot swaps from <code>M₀</code> to <code>M₁</code> telescopes just as well. What is forced is that each step moves exactly one slot.</p>`},
+
+ {key:"machine", name:"THE MACHINE A′", html:`
+  <h3>A′, in full</h3>
+  <div class="math">A′^{Enc_k(·)}(1ⁿ):
+  1. i ← {1,…,t}                      // uniform, kept secret
+  2. run A to obtain (M₀, M₁)         // relay A's oracle queries
+  3. submit (m₀ⁱ, m₁ⁱ);  receive c ← Enc_k(m_bⁱ)
+  4. cʲ ← Enc_k(m₁ʲ)  for j &lt; i        // Seal-house
+     cʲ ← Enc_k(m₀ʲ)  for j &gt; i        // Seal-house
+     cⁱ := c
+  5. give (c¹,…,cᵗ) to A;  output whatever A outputs</div>
+  <h4>A′ IS EFFICIENT</h4>
+  <p>One run of <code>A</code>, <code>t−1</code> oracle calls, no rewinding. If <code>A</code> is PPT so is <code>A′</code> — necessary, since CPA security only binds efficient adversaries.</p>
+  <h4>THE TWO WORLDS</h4>
+  <p>Conditioned on <code>i</code>: bit 0 gives <code>A</code> exactly <code>H₍ᵢ₋₁₎</code>; bit 1 gives exactly <code>Hᵢ</code>. Hence</p>
+  <div class="math">Pr[ A′ wins | i ] = ½ + (p_i − p_{i−1})/2
+
+Pr[ A′ wins ] = ½ + (1/2t)·Σ_i (p_i − p_{i−1})
+              = ½ + (p_t − p₀)/2t
+              = ½ + δ/2t</div>
+  <h4>WHY A′ RELAYS INSTEAD OF GRADING</h4>
+  <p>In the first game, <code>D</code> flipped its own coin and output <code>[b′ = b]</code> — it could, because it built the ciphertext itself. Here the challenger holds the coin and <code>A′</code> never learns it. A machine cannot score an answer against a bit it does not have, so it passes the answer through: <code>A′</code> is right exactly when <code>A</code> is.</p>`},
+
+ {key:"pitfalls", name:"COMMON TRAPS", html:`
+  <h3>Where this proof goes wrong</h3>
+  <h4>1. ASSUMING THE ADVERSARY'S VECTORS ARE EASY</h4>
+  <p>"Suppose <code>M₀</code> and <code>M₁</code> differ in one slot" is a strictly weaker theorem. The definition quantifies over every PPT <code>A</code>, including the one that differs everywhere. You cannot restrict his hand; you can only build a machine that survives it.</p>
+  <h4>2. A CHAIN THAT DOES NOT JOIN UP</h4>
+  <p>Comparing <code>H₀</code> against "<code>H₀</code> with slot <code>i</code> swapped" for each <code>i</code> gives <code>t</code> comparisons that all start from the same place. They do not telescope. Consecutive links must share an endpoint.</p>
+  <h4>3. FORGETTING THE ORACLE</h4>
+  <p><code>A′</code> has no key. Step 4 is only implementable because CPA gives it <code>Enc_k(·)</code>. Drop the oracle and the reduction is unbuildable — and indeed the theorem becomes false, as the deterministic counterexample shows.</p>
+  <h4>4. FORGETTING THAT t IS POLYNOMIAL</h4>
+  <p>You are summing <code>t</code> negligible links, and <code>poly·negl = negl</code> is the only reason that survives. Chain superpolynomially many indistinguishable steps and the endpoints can be trivially distinguishable — walk one bit at a time from <code>0ⁿ</code> to <code>1ⁿ</code> and every step is a single flip.</p>
+  <h4>5. THE FACTOR OF 2, AND THE FACTOR OF t</h4>
+  <p>Two different halvings, often confused. "Advantage <code>δ</code>" is the gap <code>|p_t − p₀|</code>; "wins with probability <code>½ + δ/2</code>" is the success rate. Separately, the ladder costs a factor <code>t</code> in advantage — and about <code>t²</code> in samples, since distinguishing an edge <code>ε</code> takes on the order of <code>1/ε²</code> trials.</p>
+  <h4>6. WHAT THE STORY SIMPLIFIED</h4>
+  <p>The game shows <code>t = 4</code> fixed and <code>δ</code> drawn large. In the real statement <code>t = t(n)</code> is any polynomial the adversary likes and <code>δ = δ(n)</code> is a function of the security parameter. Nothing else changes.</p>`}
+];
+
+/* =========================================================
+   7. INTERACTIVE SCENES
+   ========================================================= */
+function bitRow(label, bits, cls){
+  const row = document.createElement("div"); row.className="brow";
+  const l = document.createElement("div"); l.className="blab"; l.textContent=label;
+  const b = document.createElement("div"); b.className="bits";
+  bits.forEach(v=>{ const d=document.createElement("div"); d.className="bit "+(cls||""); d.textContent=v; b.appendChild(d); });
+  row.appendChild(l); row.appendChild(b);
+  return {row, cells:[...b.children]};
+}
+
+/* ---- the old press: two letters, one key, no salt ---- */
+function sceneTwice(done){
+  const N = 12;
+  const m  = [0,1,0,0,1,1,0,0,1,0,1,1];
+  const m2 = [1,1,0,1,0,1,1,0,0,0,1,0];
+  const pad = Array.from({length:N},()=>Math.random()<.5?1:0);
+
+  panel.className="jwin on";
+  panel.innerHTML =
+    '<div class="pTitle">THE OLD PRESS &nbsp;·&nbsp; NO SALT-WELL</div>'+
+    '<div class="pSub">Two bundles of two letters, one key. M₀ = (m, m). M₁ = (m, m′). He never reads a word — he only compares.</div>'+
+    '<div class="pBody" id="tb"></div>'+
+    '<div style="margin-top:10px"><button class="startBtn" id="tgo" type="button">SEAL BOTH BUNDLES</button></div>';
+  const body = el("tb");
+  body.appendChild(bitRow("LETTER m", m).row);
+  body.appendChild(bitRow("LETTER m′", m2).row);
+  const out = [
+    bitRow("M₀ · SEAL 1", Array(N).fill("·"), "c"),
+    bitRow("M₀ · SEAL 2", Array(N).fill("·"), "c"),
+    bitRow("M₁ · SEAL 1", Array(N).fill("·"), "c"),
+    bitRow("M₁ · SEAL 2", Array(N).fill("·"), "c")
+  ];
+  const verdict = document.createElement("div");
+  verdict.className="verdict";
+
+  el("tgo").addEventListener("click", function(){
+    this.disabled=true; this.style.opacity=".5";
+    out.forEach(r=>body.appendChild(r.row));
+    body.appendChild(verdict);
+    const src = [m,m,m,m2];
+    let r=0, i=0;
+    const iv = setInterval(()=>{
+      if(r>=4){
+        clearInterval(iv);
+        out[0].cells.forEach(c=>c.classList.add("same"));
+        out[1].cells.forEach(c=>c.classList.add("same"));
+        verdict.innerHTML = "M₀ : SEAL 1 = SEAL 2 &nbsp;<b>▶ HE SAYS ZERO</b><br>"+
+                            "M₁ : SEAL 1 ≠ SEAL 2 &nbsp;<i>▶ HE SAYS ONE</i><br>"+
+                            "HE WINS WITH PROBABILITY 1. NOT 1/2 + ε. ONE.";
+        setTimeout(()=>{ panel.className="jwin"; done(); }, 2600);
+        return;
+      }
+      out[r].cells[i].textContent = src[r][i]^pad[i];
+      out[r].cells[i].classList.add("hot");
+      if(ac && soundOn) tone("square", hz("A4")*Math.pow(2,(i%8)/12), ac.currentTime, 0.05, 0.05, sfxGain);
+      const rr=r, ii=i; setTimeout(()=>out[rr].cells[ii].classList.remove("hot"),200);
+      i++; if(i>=N){ i=0; r++; }
+    }, reduced?8:42);
+  });
+}
+
+/* ---- the seal-house: bring the same letter three times ---- */
+function sceneOracle(done){
+  const N = 12;
+  const m = [1,0,1,1,0,0,1,0,0,1,1,0];
+  let n = 0;
+  panel.className="jwin on";
+  panel.innerHTML =
+    '<div class="pTitle">THE SEAL-HOUSE &nbsp;·&nbsp; 封の家</div>'+
+    '<div class="pSub">Bring the house any letter you like. It will seal it with the village key and hand it back — as often as you ask.</div>'+
+    '<div class="pBody" id="ob"></div>'+
+    '<div style="margin-top:10px"><button class="startBtn" id="ogo" type="button">BRING THE SAME LETTER</button></div>';
+  const body = el("ob");
+  body.appendChild(bitRow("YOUR LETTER m", m).row);
+  const note = document.createElement("div"); note.className="verdict"; body.appendChild(note);
+
+  el("ogo").addEventListener("click", function(){
+    n++;
+    const salt = Array.from({length:N},()=>Math.random()<.5?1:0);
+    const c = m.map((b,i)=>b^salt[i]);
+    body.insertBefore(bitRow("SEAL No."+n, c, "c").row, note);
+    sfx.lock();
+    if(n===1) note.innerHTML = "THE SAME LETTER. ASK AGAIN.";
+    if(n===2) note.innerHTML = "TWO SEALS OF ONE LETTER, AND THEY DO NOT MATCH. <i>▶ FRESH SALT EACH TIME</i>";
+    if(n>=3){
+      this.disabled=true; this.style.opacity=".5";
+      note.innerHTML = "THREE SEALS, THREE DIFFERENT RIBBONS, ONE LETTER.<br>"+
+        "<i>▶ NOTHING TO COMPARE. THE OLD ATTACK IS DEAD.</i><br>"+
+        "AND ANY MACHINE MAY USE THIS HOUSE — <b>EVEN ONE WITH NO KEY</b>.";
+      setTimeout(()=>{ panel.className="jwin"; done(); }, 2600);
+    }
+  });
+}
+
+/* ---- the ladder: choose a legal rung, four times ---- */
+function sceneLadder(done){
+  let step = 0;
+  const built = [rungPattern(0)];
+
+  panel.className="jwin on compact";
+  function draw(){
+    panel.innerHTML =
+      '<div class="pTitle">THE LADDER &nbsp;·&nbsp; RUNG '+(step+1)+' OF '+T+'</div>'+
+      '<div class="pSub">Each rung must sit exactly one letter above the one below it.</div>'+
+      '<div class="pBody"><div class="ladWrap">'+
+        built.map((p,i)=>'<div class="rungRow'+(i===built.length-1?" now":"")+'">'+
+          '<span class="rl">H'+SUB[i]+'</span>'+vecChips(p, i>0? i : 0)+'</div>').slice().reverse().join("")+
+      '</div><div class="legend"><b>■ m₀ʲ — from bundle M₀</b> &nbsp; <i>■ m₁ʲ — from bundle M₁</i></div></div>';
+  }
+  function ask(){
+    draw();
+    const st = LADDER_STEPS[step];
+    const opts = [
+      {pat:st.good, ok:true},
+      {pat:st.bad[0].pat, why:st.bad[0].why},
+      {pat:st.bad[1].pat, why:st.bad[1].why}
+    ];
+    for(let i=opts.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [opts[i],opts[j]]=[opts[j],opts[i]]; }
+    opts.forEach(o=>{ o.html = vecChips(o.pat); });
+    showMenu("WHICH BUNDLE MAY SIT ON RUNG "+(step+1)+"?", opts, (o,idx,btn)=>{
+      if(o.ok){
+        hideMenu(); sfx.rung(step);
+        built.push(o.pat.slice());
+        award("lad"+step, 5);
+        step++;
+        draw();
+        if(step < T){
+          say("Elder Kaji", step===1
+            ? "One letter moved, and the machine could have built that step. Again — and watch that the rung below never changes underneath you."
+            : step===2
+            ? "Good. Note that the *order* is ours: any sequence of single-slot swaps would do. What is forced is that each step is a single slot."
+            : "One more. The top rung must be «M₁» itself, or the chain never reaches the world he is judged in.");
+          waitThen(()=>ask());
+        } else {
+          say("Elder Kaji", "«H₀» at the bottom, «H₄» at the top, and four steps between them that your machine can actually build. *That is a ladder.*");
+          waitThen(()=>{
+            panel.innerHTML =
+              '<div class="pTitle">THE LADDER STANDS</div>'+
+              '<div class="pSub">Four steps. Each one a single letter. Each one a machine you could forge.</div>'+
+              '<div class="pBody"><div class="ladWrap">'+
+                built.map((p,i)=>'<div class="rungRow">'+
+                  '<span class="rl">H'+SUB[i]+'</span>'+vecChips(p, i>0? i : 0)+'</div>').slice().reverse().join("")+
+              '</div></div>'+
+              '<div style="margin-top:10px"><button class="startBtn" id="ldone" type="button">TO THE FORGE</button></div>';
+            el("ldone").addEventListener("click",()=>{ panel.className="jwin"; done(); });
+          });
+        }
+      } else {
+        btn.classList.add("dead"); sfx.err(); shakeStage();
+        say("Elder Kaji", o.why);
+      }
+    });
+  }
+  say("Elder Kaji", "«H₀» is laid. Now choose what may sit above it — and remember what your machine is able to move.");
+  waitThen(()=>ask());
+}
+
+/* ---- the forge ---- */
+function sceneAssemble(done){
+  let next = 0;
+  const order = CARDS.map((c,i)=>i);
+  for(let i=order.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [order[i],order[j]]=[order[j],order[i]]; }
+
+  panel.className="jwin on";
+  panel.innerHTML =
+    '<div style="display:flex;align-items:center;gap:10px">'+
+      '<div class="pTitle" style="flex:1;margin:0">FORGE THE MACHINE A′ &nbsp;·&nbsp; 帰着機</div>'+
+      '<button class="hbtn" id="ahint" type="button">HINT</button>'+
+    '</div>'+
+    '<div class="pSub">Seat six instructions, in order. Five of the eleven tactics are traps — and one of them was the right answer last year.</div>'+
+    '<div class="pBody asmBody"><div class="asm">'+
+      '<div class="chassis" id="chs"></div>'+
+      '<div class="cards" id="crd"></div>'+
+    '</div></div>';
+
+  const chs = el("chs"), crd = el("crd");
+  const byOrd = {};
+  el("ahint").addEventListener("click", ()=>{
+    const want = byOrd[next+1];
+    if(!want) return;
+    crd.querySelectorAll(".card").forEach(c=>c.classList.remove("hintOn"));
+    want.classList.add("hintOn");
+    want.scrollIntoView({block:"nearest"});
+    say("Elder Kaji", HINTS[next] || "Look at what the machine must do next.");
+  });
+  const slots = CHASSIS.map((_,i)=>{
+    const d = document.createElement("div");
+    d.className = "slot" + (i===0?" next":"");
+    d.innerHTML = '<span class="n">'+(i+1)+'</span><span class="s">— empty socket —</span>';
+    chs.appendChild(d); return d;
+  });
+
+  order.forEach(idx=>{
+    const c = CARDS[idx];
+    const b = document.createElement("button");
+    b.type="button"; b.className="card"; b.textContent = c.text;
+    if(c.ord) byOrd[c.ord] = b;
+    b.addEventListener("click", ()=>{
+      if(c.ord === next+1){
+        b.classList.add("used"); sfx.lock();
+        slots[next].classList.remove("next");
+        slots[next].classList.add("filled");
+        slots[next].querySelector(".s").textContent = CHASSIS[next];
+        say("Elder Kaji", c.ok);
+        award("asm"+c.ord, 5);
+        next++;
+        if(next < slots.length) slots[next].classList.add("next");
+        else {
+          setTimeout(()=>{
+            panel.innerHTML =
+              '<div class="pTitle">A′ IS COMPLETE</div>'+
+              '<div class="pSub">One rung drawn blind. One seal bought. Three errands run. One answer relayed.</div>'+
+              '<div class="pBody"><div class="chassis">'+
+                CHASSIS.map((t,i)=>'<div class="slot filled"><span class="n">'+(i+1)+'</span><span>'+t+'</span></div>').join("")+
+              '</div></div>'+
+              '<div style="margin-top:10px"><button class="startBtn" id="adone" type="button">SEAL THE MACHINE</button></div>';
+            el("adone").addEventListener("click",()=>{ panel.className="jwin"; done(); });
+          }, 900);
+        }
+      } else if(c.ord){
+        b.classList.remove("wrong"); void b.offsetWidth; b.classList.add("wrong"); sfx.err();
+        say("Elder Kaji", "That instruction belongs in the machine — but not yet. Socket " + (next+1) + " comes first, and order is everything: an errand sent before the rung is drawn is an errand sent to the wrong slot.");
+      } else {
+        b.classList.remove("wrong"); void b.offsetWidth; b.classList.add("wrong"); sfx.err();
+        shakeStage();
+        say("Elder Kaji", c.bad);
+      }
+    });
+    crd.appendChild(b);
+  });
+  say("Elder Kaji", "Socket one. What must happen *before* Adversarius is even summoned?");
+}
+
+/* ---- the battle ---- */
+function sceneBattle(done){
+  let phase = 0, turn = 0, boast = 1000;
+  const boastMax = 1000;
+  const gRung = DELTA / T;                 // this rung's gap, in the even case
+  const rateWhole = 0.5 + DELTA/2;
+  const rateRung  = 0.5 + DELTA/(2*T);
+
+  panel.className="jwin on compact";
+  panel.innerHTML =
+    '<div class="pTitle" id="bTitle"></div>'+
+    '<div class="pSub" id="bSub"></div>'+
+    '<div class="pBody">'+
+      '<div class="bar-wrap">'+
+        '<div class="bar-top"><span class="bar-name">ADVERSARIUS · BOAST</span><span class="bar-val" id="vBoast">100%</span></div>'+
+        '<div class="track"><div class="fill boast" id="fBoast" style="width:100%"></div></div>'+
+      '</div>'+
+      '<div style="height:10px"></div>'+
+      '<div class="bar-wrap">'+
+        '<div class="bar-top"><span class="bar-name">Pr[A WINS] · THE WHOLE BUNDLE</span><span class="bar-val" id="vWhole">—</span></div>'+
+        '<div class="track" id="tWhole"><div class="fill whole" id="fWhole"></div></div>'+
+      '</div>'+
+      '<div class="bar-wrap">'+
+        '<div class="bar-top"><span class="bar-name">Pr[A′ WINS] · ONE RUNG, DRAWN BLIND</span><span class="bar-val" id="vRung">—</span></div>'+
+        '<div class="track" id="tRung"><div class="fill rung" id="fRung"></div></div>'+
+        '<div class="scaleRow" id="scale"></div>'+
+      '</div>'+
+    '</div>';
+
+  ["tWhole","tRung"].forEach(id=>{
+    const t = el(id);
+    [0,.5,1].forEach(p=>{
+      const k=document.createElement("div"); k.className="tick"; k.style.left=(p*100)+"%"; t.appendChild(k);
+    });
+  });
+  const sc = el("scale");
+  [[0,"0"],[.5,"½"],[1,"1"]].forEach(([p,l])=>{
+    const d=document.createElement("div"); d.className="tickL"; d.style.left=(p*100)+"%"; d.textContent=l; sc.appendChild(d);
+  });
+
+  function setBar(which, v){
+    el(which==="whole"?"fWhole":"fRung").style.width=(v*100)+"%";
+    el(which==="whole"?"vWhole":"vRung").textContent = v.toFixed(3);
+  }
+  function markGaps(){
+    const a = document.createElement("div");
+    a.className="gapmark"; a.style.left="50%"; a.style.width=((DELTA/2)*100)+"%";
+    el("tWhole").appendChild(a);
+    const b = document.createElement("div");
+    b.className="gapmark thin"; b.style.left="50%"; b.style.width=((DELTA/(2*T))*100)+"%";
+    el("tRung").appendChild(b);
+  }
+  function hitBoast(d){
+    boast = Math.max(0, boast - d);
+    const p = boast/boastMax;
+    el("fBoast").style.width=(p*100)+"%";
+    el("vBoast").textContent = Math.round(p*100)+"%";
+    popDamage(d>=999 ? "BROKEN" : d);
+    sfx.strike(d>=999);
+    flash(); shakeStage();
+  }
+
+  function runPhase(){
+    const P2 = BATTLE[phase];
+    el("bTitle").textContent = P2.banner;
+    el("bSub").textContent = "";
+    say("Elder Kaji", P2.intro);
+    waitThen(()=>askTurn());
+  }
+  function askTurn(){
+    const P2 = BATTLE[phase], TT = P2.turns[turn];
+    showMenu(TT.q, TT.opts, (o,i,btn)=>{
+      if(o.ok){
+        hideMenu();
+        hitBoast(o.dmg);
+        award("bt"+phase+"_"+turn, 12);
+        say("Kaede", o.r);
+        waitThen(()=>{
+          turn++;
+          if(turn < P2.turns.length) askTurn();
+          else phaseEnd();
+        });
+      } else {
+        btn.classList.add("dead"); sfx.err();
+        say("Adversarius", o.r);
+      }
+    });
+  }
+  function phaseEnd(){
+    const P2 = BATTLE[phase];
+    el("bSub").textContent = P2.conclude;
+    if(P2.bar==="rung") setBar("rung", rateRung);
+    if(P2.bar==="whole"){ setBar("whole", rateWhole); markGaps(); }
+    say("Elder Kaji", P2.line);
+    waitThen(()=>{
+      phase++; turn=0;
+      if(phase < BATTLE.length) runPhase();
+      else {
+        const b = document.createElement("div");
+        b.style.marginTop="10px";
+        b.innerHTML = '<button class="startBtn" id="bdone" type="button">THE BOAST BREAKS</button>';
+        panel.appendChild(b);
+        el("bdone").addEventListener("click",()=>{ panel.className="jwin"; done(); });
+      }
+    });
+  }
+  runPhase();
+}
+
+/* a small helper: continue once the current line has been dismissed */
+let afterText = null;
+function waitThen(fn){ afterText = fn; }
+
+/* ---- ending ---- */
+function sceneEnding(){
+  const rank = S.insight >= 130 ? "REDUCTIONIST · FIRST RANK"
+             : S.insight >= 90  ? "REDUCTIONIST · SECOND RANK"
+             : "APPRENTICE OF NAGARA";
+  const lines = [
+    "Assume an efficient «A» wins the bundle game with probability «1/2 + δ/2» — that is, it separates «H₀» from «H_t» by a gap «δ».",
+    "Lay the ladder: «H_i» takes its first «i» letters from «M₁» and the rest from «M₀». Consecutive rungs differ in exactly one slot, and «p_t − p₀ = Σ (p_i − p_{i−1})».",
+    "Build «A′»: draw «i» uniformly; submit «(m₀ⁱ, m₁ⁱ)» to the one-letter challenger; fill every other slot from the encryption oracle — «m₁ʲ» below the rung, «m₀ʲ» above it — and hand the bundle to «A».",
+    "Conditioned on «i», the challenger's bit 0 gives «A» exactly «H₍ᵢ₋₁₎» and bit 1 gives exactly «H_i». Relaying «A»'s answer wins with probability «1/2 + (p_i − p_{i−1})/2».",
+    "Average over «i»: the sum telescopes, so «Pr[A′ wins] = 1/2 + (p_t − p₀)/2t = 1/2 + δ/2t».",
+    "Π is CPA-secure, so «δ/2t» is negligible; «t» is polynomial, so «δ» is negligible. Every efficient «A» has a negligible gap. *The seal holds for the whole season.*"
+  ];
+  panel.className="jwin on full";
+  panel.innerHTML =
+    '<div class="pTitle">終 · THE PROOF SCROLL</div>'+
+    '<div class="pSub">What the whole journey was, written plainly.</div>'+
+    '<div class="pBody"><div class="qed">'+
+      lines.map((t,i)=>'<div class="qedLine"><span class="qn">'+(i+1)+'</span><span>'+
+        t.replace(/«([^»]*)»/g,'<span style="font-family:JetBrains Mono,monospace;color:var(--gold)">$1</span>')
+         .replace(/\*([^*]*)\*/g,'<span style="color:var(--jade);font-weight:700">$1</span>')+'</span></div>').join("")+
+    '</div>'+
+    '<div class="rank">'+rank+'<br><span style="color:var(--jade);font-size:9px">INSIGHT '+S.insight+' / 150</span></div>'+
+    '<div style="text-align:center;margin-top:8px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">'+
+      '<button class="startBtn" id="eCodex" type="button">OPEN CODEX</button>'+
+      '<button class="startBtn ghost" id="eAgain" type="button">NEW GAME</button>'+
+    '</div></div>';
+  el("eCodex").addEventListener("click",()=>openCodex());
+  el("eAgain").addEventListener("click",()=>{ try{localStorage.removeItem("lq_save");}catch(e){} location.reload(); });
+  speakerEl.textContent=""; textEl.className="nar";
+  textEl.textContent = "Nagara sends four letters a season down the river. They are still not read.";
+  cursorEl.classList.remove("on");
+  waiting = null;
+}
+
+/* ---- codex ---- */
+const cx = el("codex");
+let codexOpen = false, codexSel = "many";
+function openCodex(){ codexOpen = true; drawCodex(); }
+function drawCodex(){
+  const entry = CODEX.find(c=>c.key===codexSel) || CODEX[0];
+  const locked = !S.unlocked.has(entry.key);
+  cx.className="jwin on";
+  cx.innerHTML =
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'+
+      '<div class="pTitle" style="margin:0;flex:1">CODEX &nbsp;·&nbsp; 図鑑</div>'+
+      '<button class="hbtn" id="cxClose" type="button">CLOSE</button>'+
+    '</div>'+
+    '<div class="pBody"><div class="cxGrid">'+
+      '<div class="cxList">'+ CODEX.map(c=>{
+        const lk = !S.unlocked.has(c.key);
+        return '<button type="button" class="cxItem'+(c.key===codexSel?" sel":"")+(lk?" locked":"")+'" data-k="'+c.key+'">'+
+               (lk ? "??? LOCKED" : c.name)+'</button>';
+      }).join("") + '</div>'+
+      '<div class="cxRead">'+ (locked
+        ? '<h3>Not yet discovered</h3><p>Play on. This entry unlocks when the story reaches it.</p>'
+        : entry.html) +'</div>'+
+    '</div></div>';
+  cx.querySelectorAll(".cxItem").forEach(b=>{
+    b.addEventListener("click",()=>{ if(b.classList.contains("locked")) return; codexSel=b.dataset.k; drawCodex(); });
+  });
+  el("cxClose").addEventListener("click",closeCodex);
+}
+function closeCodex(){
+  codexOpen = false;
+  cx.className = "jwin";
+  cx.innerHTML = "";
+}
+el("codexBtn").addEventListener("click", ()=>{ if(codexOpen) closeCodex(); else openCodex(); });
+
+/* =========================================================
+   8. RUNNER
+   ========================================================= */
+function save(){
+  try{ localStorage.setItem("lq_save", JSON.stringify({
+    i:S.i, insight:S.insight, first:S.first, unlocked:[...S.unlocked]
+  })); }catch(e){}
+}
+function load(){
+  try{
+    const raw = localStorage.getItem("lq_save"); if(!raw) return null;
+    return JSON.parse(raw);
+  }catch(e){ return null; }
+}
+
+function step(){
+  if(S.i >= script.length) return;
+  const b = script[S.i++];
+  switch(b.t){
+    case "chapter": chapterEl.textContent = b.name; step(); break;
+    case "bg": setBackdrop(b.id); step(); break;
+    case "cast": setCast(b.cfg); step(); break;
+    case "unlock": S.unlocked.add(b.key); sfx.lock(); step(); break;
+    case "save": save(); step(); break;
+    case "nar": say("", b.text, true); break;
+    case "say": say(b.who, b.text); break;
+    case "ask": doAsk(b); break;
+    case "twice": sceneTwice(step); break;
+    case "oracle": sceneOracle(step); break;
+    case "ladder": sceneLadder(step); break;
+    case "assemble": sceneAssemble(step); break;
+    case "battle": sceneBattle(step); break;
+    case "ending": sceneEnding(); break;
+    default: step();
+  }
+}
+
+function doAsk(b){
+  showMenu(b.q, b.opts, (o,i,btn)=>{
+    if(o.ok){
+      hideMenu(); sfx.ok();
+      if(o.key) award(o.key, o.pts||10);
+      say("", o.r, false);
+      speakerEl.textContent = "";
+      waitThen(step);
+    } else {
+      btn.classList.add("dead"); sfx.err();
+      say("", o.r, false);
+      speakerEl.textContent = "";
+    }
+  });
+}
+
+/* advance on click / key */
+function advance(){
+  if(codexOpen) return;
+  if(waiting === "text"){ finishText(); return; }
+  if(waiting === "click"){
+    waiting = null; cursorEl.classList.remove("on");
+    if(afterText){ const f = afterText; afterText = null; f(); return; }
+    if(menu.classList.contains("on") || panel.classList.contains("on")) return;
+    step();
+  }
+}
+dialog.addEventListener("click", advance);
+document.addEventListener("keydown", e=>{
+  if(e.key===" " || e.key==="Enter"){
+    if(document.activeElement && /BUTTON/.test(document.activeElement.tagName)) return;
+    e.preventDefault(); advance();
+  }
+  if(e.key==="Escape" && codexOpen) closeCodex();
+});
+
+/* ---- audio wiring ---- */
+const sndBtn = el("sndBtn");
+function syncSnd(){ sndBtn.textContent = soundOn ? "BGM ON" : "BGM OFF"; }
+syncSnd();
+sndBtn.addEventListener("click", ()=>{
+  initAudio();
+  setSound(!soundOn);
+  syncSnd();
+  if(soundOn && curTrack) playTrack(curTrack);
+});
+el("screen").addEventListener("pointerdown", e=>{
+  if(e.target.closest(".startBtn,.hbtn,.cxItem,.opt,.card,#dialog")) initAudio();
+  const b = e.target.closest(".startBtn,.hbtn,.cxItem");
+  if(b && !e.target.closest("#title") && b.id !== "sndBtn") sfx.ok();
+}, true);
+titleEl.addEventListener("pointerdown", e=>{
+  initAudio();
+  if(!e.target.closest(".startBtn") && curTrack !== "title") playTrack("title");
+});
+
+function beginGame(){
+  initAudio();
+  sfx.fanfare();
+  setTimeout(()=>{ titleEl.classList.add("off"); el("screen").focus(); step(); }, 640);
+}
+
+/* boot */
+sizeCanvas(); setBackdrop("village"); tick();
+curTrack = null;
+setInsight(0);
+const saved = load();
+if(saved && saved.i > 0){
+  el("btnCont").style.display = "";
+  el("btnCont").addEventListener("click", ()=>{
+    S.i = saved.i; S.insight = saved.insight||0; S.first = saved.first||{};
+    S.unlocked = new Set(saved.unlocked && saved.unlocked.length ? saved.unlocked : ["many"]);
+    setInsight(S.insight);
+    beginGame();
+  });
+}
+el("btnNew").addEventListener("click", ()=>{
+  try{ localStorage.removeItem("lq_save"); }catch(e){}
+  S.i=0; S.insight=0; S.first={}; S.unlocked=new Set(["many"]);
+  setInsight(0);
+  beginGame();
+});
+
+})();
+</script>
+</body>
+</html>
