@@ -42,7 +42,7 @@ window.LUNA_TOOLS = [
     // The first link renders as the "Try it" pill. The portal needs an invite code to register.
     links: {
       demo: "https://rental-34-9-243-171.sslip.io",
-      "Watch the demo": "assets/data-rental-demo.mp4",
+      "Watch the demo": "assets/data-rental-demo-v2.mp4",
       "Slides": "https://claude.ai/artifact/ED1ABRVmt9h68szUMpxL8f",
       "Evidence": "https://claude.ai/artifact/LumwkkY3Pj1S3cXsvEc7P6"
     },
